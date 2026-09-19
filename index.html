@@ -1191,7 +1191,6 @@ async function pullFromCloud(showIndicator = false) {
     if (data) {
       let updated = false;
 
-      // 🔄 Universal LocalStorage Backup Synchronizer (Pulls every single iron_ key)
       if (data.local_storage_backup && typeof data.local_storage_backup === 'object') {
         for (const k in data.local_storage_backup) {
           setL(k, data.local_storage_backup[k]);
@@ -1241,7 +1240,6 @@ async function pullFromCloud(showIndicator = false) {
 async function pushToCloud() {
   if (!currentUser || !supabaseClient) return;
   try {
-    // 🚀 Universal LocalStorage Backup Grabber (Captures every preset, weight, choice, and setting)
     const allLocalStorageData = {};
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
@@ -1960,6 +1958,8 @@ function saveActivePresetModal() {
   closePresetModal();
   const ex = FLAT_EXERCISES.find(e => e.category === category);
   if (ex) applyVariation(category, ex.prefix, variationValue, true);
+  
+  // 🚀 Explicitly push to cloud immediately upon saving preset
   pushToCloud();
   showToast('📌 Preset updated & synced!', 'success');
 }
