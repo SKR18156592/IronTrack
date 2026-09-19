@@ -1703,7 +1703,11 @@ const presetKey = (cat, varValue) => 'iron_preset_' + cat + '_' + varValue;
 function getChoice(cat) { return getL(choiceKey(cat)); }
 function setChoice(cat, val) { setL(choiceKey(cat), val); }
 function getPreset(cat, val) { return getJ(presetKey(cat, val)); }
-function setPreset(cat, val, sets) { setJ(presetKey(cat, val), sets); }
+function setPreset(cat, val, sets) { 
+  setJ(presetKey(cat, val), sets);
+  // 🚀 Auto-save & push to cloud immediately whenever any preset is updated!
+  pushToCloud();
+}
 
 function haptic(ms=15) {
   const vibe = document.getElementById('vibeToggle');
@@ -1958,9 +1962,6 @@ function saveActivePresetModal() {
   closePresetModal();
   const ex = FLAT_EXERCISES.find(e => e.category === category);
   if (ex) applyVariation(category, ex.prefix, variationValue, true);
-  
-  // 🚀 Explicitly push to cloud immediately upon saving preset
-  pushToCloud();
   showToast('📌 Preset updated & synced!', 'success');
 }
 
