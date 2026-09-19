@@ -1191,9 +1191,10 @@ async function pullFromCloud(showIndicator = false) {
     if (data) {
       let updated = false;
 
-      if (data.exercise_presets && typeof data.exercise_presets === 'object') {
-        for (const k in data.exercise_presets) {
-          setL(k, data.exercise_presets[k]);
+      // 🔄 Universal LocalStorage Backup Synchronizer (Pulls every single iron_ key)
+      if (data.local_storage_backup && typeof data.local_storage_backup === 'object') {
+        for (const k in data.local_storage_backup) {
+          setL(k, data.local_storage_backup[k]);
         }
         updated = true;
       }
@@ -1240,11 +1241,12 @@ async function pullFromCloud(showIndicator = false) {
 async function pushToCloud() {
   if (!currentUser || !supabaseClient) return;
   try {
-    const allPresets = {};
+    // 🚀 Universal LocalStorage Backup Grabber (Captures every preset, weight, choice, and setting)
+    const allLocalStorageData = {};
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
-      if (key && key.startsWith('iron_preset_')) {
-        allPresets[key] = localStorage.getItem(key);
+      if (key && key.startsWith('iron_')) {
+        allLocalStorageData[key] = localStorage.getItem(key);
       }
     }
 
@@ -1258,7 +1260,7 @@ async function pushToCloud() {
       var_order: getJ('iron_var_order', {}),
       exercise_orders: getJ('iron_all_exercise_orders', {}),
       section_orders: getJ('iron_section_orders', {}),
-      exercise_presets: allPresets,
+      local_storage_backup: allLocalStorageData,
       profile_name: getL('iron_profile_name', 'Suman Kumar Raj'),
       profile_age: getL('iron_profile_age', '23'),
       profile_weight: getL('iron_profile_weight', '72.5'),
@@ -1296,9 +1298,9 @@ function subscribeToRealtimeSync() {
       },
       (payload) => {
         if (payload.new) {
-          if (payload.new.exercise_presets && typeof payload.new.exercise_presets === 'object') {
-            for (const k in payload.new.exercise_presets) {
-              setL(k, payload.new.exercise_presets[k]);
+          if (payload.new.local_storage_backup && typeof payload.new.local_storage_backup === 'object') {
+            for (const k in payload.new.local_storage_backup) {
+              setL(k, payload.new.local_storage_backup[k]);
             }
           }
           if (Array.isArray(payload.new.history)) setJ('iron_workout_history', payload.new.history);
