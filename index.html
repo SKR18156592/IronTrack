@@ -281,13 +281,16 @@
     .calc-result-box { background: rgba(10, 14, 24, 0.85); border: 1px solid rgba(255,255,255,0.1); padding: 18px; border-radius: var(--radius-sm); text-align: center; font-size: 17.5px; font-weight: 800; color: var(--accent); box-shadow: inset 0 2px 8px rgba(0,0,0,0.4); font-family: 'JetBrains Mono', monospace; text-shadow: 0 0 10px var(--accent-dim); }
     .plate-breakdown { font-size: 13px; color: #cbd5e1; line-height: 1.6; text-align: center; font-family: 'JetBrains Mono', monospace; }
 
+    /* Interactive Accordion Log Item Styles with PR Badge Support */
     .log-item { padding: 0; border-radius: var(--radius-sm); background: rgba(15,23,42,0.65); border: 1px solid rgba(255,255,255,0.08); box-shadow: 0 8px 24px rgba(0,0,0,0.3); overflow: hidden; transition: border-color .2s; }
     .log-item:hover { border-color: var(--accent-glow); }
     .log-item-header { padding: 18px 20px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; font-size: 13.5px; font-weight: 700; font-family: 'JetBrains Mono', monospace; user-select: none; }
     .log-item-body { display: none; padding: 0 20px 20px; flex-direction: column; gap: 12px; border-top: 1px solid rgba(255,255,255,0.06); background: rgba(10, 14, 24, 0.4); }
     .log-item.expanded .log-item-body { display: flex; }
     .log-exercise-row { display: flex; flex-direction: column; gap: 4px; margin-top: 10px; }
+    .log-exercise-header-line { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
     .log-exercise-title { font-size: 13px; font-weight: 800; color: var(--accent); }
+    .log-pr-badge { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 800; background: rgba(251, 191, 36, 0.18); color: #fbbf24; border: 1px solid rgba(251,191,36,0.4); padding: 2px 8px; border-radius: 6px; text-transform: uppercase; box-shadow: 0 0 10px rgba(251,191,36,0.25); }
     .log-sets-summary { font-size: 12px; font-family: 'JetBrains Mono', monospace; color: var(--muted); }
 
     .settings-row { display: flex; justify-content: space-between; align-items: center; cursor: pointer; font-size: 14.5px; font-weight: 600; }
@@ -2723,7 +2726,41 @@ function renderMuscleRecoveryHeatmap() {
 }
 
 // ==========================================
-// INTERACTIVE ACCORDION LOG HISTORY
+// HELPER FOR PR / MILESTONE DETECTION
+// ==========================================
+function calculateMaxWeightsPerExercise() {
+  const history = getJ('iron_workout_history', []);
+  const maxMap = {}; // category -> maxWeight
+  // Iterate from oldest to newest to compute historical maxes
+  const reversed = [...history].reverse();
+  const historicalMaxAtSession = []; // map session index -> set of categories that hit PR in that session
+
+  history.forEach((h, sIdx) => {
+    const sessionPrs = new Set();
+    if (h.exercises) {
+      h.exercises.forEach(ex => {
+        const cat = ex.category;
+        if (!cat) return;
+        ex.sets.forEach(s => {
+          if (s.done === false) return;
+          const w = parseFloat(s.weight) || 0;
+          if (w > 0) {
+            if (maxMap[cat] === undefined || w > maxMap[cat]) {
+              maxMap[cat] = w;
+              sessionPrs.add(cat);
+            }
+          }
+        });
+      });
+    }
+    historicalMaxAtSession.push(sessionPrs);
+  });
+
+  return { maxMap, historicalMaxAtSession: historicalMaxAtSession.reverse() };
+}
+
+// ==========================================
+// INTERACTIVE ACCORDION LOG HISTORY WITH PR BADGES
 // ==========================================
 function toggleLogAccordion(headerElem) {
   const item = headerElem.closest('.log-item');
@@ -2738,8 +2775,10 @@ function renderHistory() {
     container.innerHTML = `<p style="color:var(--muted); text-align:center; padding:24px;">No logged workout sessions found yet.</p>`;
     return;
   }
+
+  const { maxMap, historicalMaxAtSession } = calculateMaxWeightsPerExercise();
   
-  history.forEach(h => {
+  history.forEach((h, idx) => {
     const div = document.createElement('div');
     div.className = 'log-item';
     
@@ -2748,9 +2787,25 @@ function renderHistory() {
       exercisesHtml = h.exercises.map(ex => {
         const workingSets = ex.sets.filter(s => s.done !== false);
         const setsStr = workingSets.map(s => `${s.weight}kg×${s.reps} (${s.tag || 'Working'})`).join(' • ');
+        
+        // Check if this exercise hit a PR in this session
+        let hitPr = false;
+        workingSets.forEach(s => {
+          const w = parseFloat(s.weight) || 0;
+          if (w > 0 && ex.category && maxMap[ex.category] === w) {
+            // Verify if it's part of the PR set for this session
+            hitPr = true;
+          }
+        });
+
+        const prBadge = hitPr ? `<span class="log-pr-badge">🏆 PR Hit</span>` : '';
+
         return `
           <div class="log-exercise-row">
-            <div class="log-exercise-title">${ex.name} (${ex.machineOpt || 'Standard'})</div>
+            <div class="log-exercise-header-line">
+              <div class="log-exercise-title">${ex.name} (${ex.machineOpt || 'Standard'})</div>
+              ${prBadge}
+            </div>
             <div class="log-sets-summary">${setsStr || 'No sets recorded'}</div>
           </div>
         `;
