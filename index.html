@@ -1957,10 +1957,9 @@ function saveActivePresetModal() {
     });
   });
   
-  // 🚀 Immediately commit to storage and push to cloud without waiting for Save Session
-  setPreset(category, variationValue, sets);
-  pushToCloud();
-
+  // 🚀 Explicitly save and auto-sync immediately
+  setJ(presetKey(category, variationValue), sets);
+  
   closePresetModal();
   const ex = FLAT_EXERCISES.find(e => e.category === category);
   if (ex) applyVariation(category, ex.prefix, variationValue, true);
@@ -2674,7 +2673,7 @@ function generateShareCard(record) {
   });
 
   ctx.fillStyle = '#94a3b8';
-    ctx.font = '700 14px "Plus Jakarta Sans", sans-serif';
+  ctx.font = '700 14px "Plus Jakarta Sans", sans-serif';
   ctx.fillText('⚡ Progress via Progressive Overload • irontrack.app', 60, 930);
 
   const link = document.createElement('a');
