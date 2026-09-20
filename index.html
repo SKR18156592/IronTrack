@@ -295,11 +295,8 @@
     .log-session-notes { font-size: 12.5px; color: #e2e8f0; font-style: italic; background: rgba(255,255,255,0.04); padding: 8px 12px; border-radius: 8px; border-left: 3px solid var(--accent); margin-top: 4px; }
 
     /* Advanced History Filter & Search Bar */
-    .history-filter-bar { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 10px; margin-bottom: 4px; }
+    .history-filter-bar { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 4px; }
     @media (max-width: 640px) { .history-filter-bar { grid-template-columns: 1fr; } }
-
-    /* Exercise History Progression Modal */
-    .exercise-history-chart-card { background: rgba(10, 14, 24, 0.9); border: 1px solid var(--accent-glow); border-radius: var(--radius-md); padding: 20px; display: flex; flex-direction: column; gap: 12px; margin-bottom: 12px; }
 
     .settings-row { display: flex; justify-content: space-between; align-items: center; cursor: pointer; font-size: 14.5px; font-weight: 600; }
     .settings-row input[type=checkbox] { width: 22px; height: 22px; accent-color: var(--accent); cursor: pointer; }
@@ -857,23 +854,6 @@
   </div>
 </div>
 
-<!-- Exercise Progression Chart Modal -->
-<div class="modal-overlay" id="exerciseChartModalOverlay" onclick="if(event.target===this) closeExerciseChartModal()">
-  <div class="modal-content" style="max-width: 640px;">
-    <div class="modal-header">
-      <h2 id="exerciseChartModalTitle">📈 Exercise Progression</h2>
-      <button class="btn-xs" onclick="closeExerciseChartModal()">✕</button>
-    </div>
-    <div class="modal-body">
-      <p style="font-size:13.5px; color:var(--muted);">Historical max weights lifted per session for this exercise.</p>
-      <div class="svg-chart-wrap" id="exerciseProgressionChartWrap"></div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="closeExerciseChartModal()">Close</button>
-    </div>
-  </div>
-</div>
-
 <div class="modal-overlay" id="historyModalOverlay" onclick="if(event.target===this) closeHistoryModal()">
   <div class="modal-content" style="max-width: 780px;">
     <div class="modal-header">
@@ -881,9 +861,8 @@
       <button class="btn-xs" onclick="closeHistoryModal()">✕</button>
     </div>
     <div class="modal-body">
-      <div class="history-filter-bar">
-        <input type="text" id="historySearchInput" class="input-field" placeholder="🔍 Search exercise name..." oninput="renderHistory()" style="text-align: left;" />
-        <select id="historyDayFilter" class="machine-dropdown" onchange="renderHistory()" style="padding: 10px;">
+      <div class="history-filter-bar" style="grid-template-columns: 1fr 1fr;">
+        <select id="historyDayFilter" class="machine-dropdown" onchange="onHistoryDayFilterChange()" style="padding: 10px;">
           <option value="">All Days / Splits</option>
           <option value="1">Day 1: Chest • Sh • Bi</option>
           <option value="2">Day 2: Legs • Core</option>
@@ -2602,6 +2581,7 @@ function finishCurrentDayWorkout() {
   lastFinishedRecord = record;
   showToast('💾 Workout saved & synced!', 'success');
   showCelebration();
+  populateHistoryExerciseDropdown();
 }
 
 function generateShareCard(record) {
@@ -2801,14 +2781,37 @@ function calculateMaxWeightsPerExercise() {
   return maxMap;
 }
 
+function onHistoryDayFilterChange() {
+  populateHistoryExerciseDropdown();
+  renderHistory();
+}
+
 function populateHistoryExerciseDropdown() {
   const select = document.getElementById('historyExerciseSelect');
+  const dayFilterVal = document.getElementById('historyDayFilter')?.value || '';
   if (!select) return;
+
   const history = getJ('iron_workout_history', []);
   const exerciseSet = new Set();
+  
   history.forEach(h => {
-    if (h.exercises) h.exercises.forEach(ex => { if (ex.name) exerciseSet.add(ex.name); });
+    if (dayFilterVal && String(h.day) !== dayFilterVal) return;
+    if (h.exercises) {
+      h.exercises.forEach(ex => {
+        if (ex.name) {
+          // Verify if this exercise actually belongs to the selected day's workout schema
+          if (dayFilterVal) {
+            const dayCatList = getDayExerciseCategories(parseInt(dayFilterVal, 10));
+            const matchesDay = dayCatList.includes(ex.category) || WORKOUT[parseInt(dayFilterVal, 10)].sections.some(sec => sec.exercises.some(e => e.title === ex.name));
+            if (matchesDay) exerciseSet.add(ex.name);
+          } else {
+            exerciseSet.add(ex.name);
+          }
+        }
+      });
+    }
   });
+
   let html = `<option value="">📈 View Progression Graph...</option>`;
   exerciseSet.forEach(name => {
     html += `<option value="${name}">${name}</option>`;
@@ -2819,9 +2822,11 @@ function populateHistoryExerciseDropdown() {
 function renderHistoryForSelectedExercise(exerciseName) {
   if (!exerciseName) return;
   const history = getJ('iron_workout_history', []);
+  const dayFilterVal = document.getElementById('historyDayFilter')?.value || '';
   const dataPoints = [];
 
   history.slice().reverse().forEach(h => {
+    if (dayFilterVal && String(h.day) !== dayFilterVal) return;
     if (h.exercises) {
       h.exercises.forEach(ex => {
         if (ex.name === exerciseName) {
@@ -2847,7 +2852,7 @@ function renderHistoryForSelectedExercise(exerciseName) {
 
   let chartSvg = '';
   if (!dataPoints.length) {
-    chartSvg = `<p style="color:var(--muted); text-align:center; padding:24px;">No lifting data recorded for ${exerciseName} yet.</p>`;
+    chartSvg = `<p style="color:var(--muted); text-align:center; padding:24px;">No lifting data recorded for ${exerciseName} in selected filter.</p>`;
   } else {
     const maxW = Math.max(...dataPoints.map(d => d.weight), 10);
     const w = 520, h = 260, pad = 40, chartW = w - pad * 2, chartH = h - pad * 2;
@@ -2905,17 +2910,10 @@ function renderHistory() {
   const history = getJ('iron_workout_history', []);
   container.innerHTML = '';
   
-  const searchQuery = document.getElementById('historySearchInput')?.value.toLowerCase().trim() || '';
   const dayFilter = document.getElementById('historyDayFilter')?.value || '';
 
   const filteredHistory = history.filter(h => {
     if (dayFilter && String(h.day) !== dayFilter) return false;
-    if (searchQuery) {
-      const matchDayTitle = h.dayTitle.toLowerCase().includes(searchQuery);
-      const matchNotes = h.notes && h.notes.toLowerCase().includes(searchQuery);
-      const matchEx = h.exercises && h.exercises.some(ex => ex.name.toLowerCase().includes(searchQuery));
-      if (!matchDayTitle && !matchNotes && !matchEx) return false;
-    }
     return true;
   });
 
@@ -3236,7 +3234,11 @@ function render1RMTrends() {
   wrap.innerHTML = '<p style="color:var(--muted); text-align:center; padding:24px;">Compound 1RM trend graphs active.</p>';
 }
 
-function openHistoryModal() { renderHistory(); document.getElementById('historyModalOverlay').classList.add('active'); }
+function openHistoryModal() { 
+  populateHistoryExerciseDropdown();
+  renderHistory(); 
+  document.getElementById('historyModalOverlay').classList.add('active'); 
+}
 function closeHistoryModal() { document.getElementById('historyModalOverlay').classList.remove('active'); }
 
 async function clearWorkoutHistory() {
