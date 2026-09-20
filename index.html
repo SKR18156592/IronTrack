@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="theme-color" content="#07080c" />
+  <meta name="theme-color" content="#0a0a0f" />
   <meta name="description" content="IronTrack - Progressive overload workout tracker & nutrition planner" />
   <title>IronTrack • Ultimate Workout Hub</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -195,7 +195,7 @@
     .info-pill.overload { background: rgba(236, 72, 153, 0.16); color: #f472b6; border-color: rgba(236,72,153,0.35); font-weight: 800; }
 
     .sets-table-wrap { overflow-x: auto; width: 100%; border-radius: var(--radius-sm); border: 1px solid rgba(255,255,255,0.06); background: rgba(10, 13, 22, 0.5); padding: 6px; }
-    .sets-table { width: 100%; border-collapse: collapse; min-width: 540px; }
+    .sets-table { width: 100%; border-collapse: collapse; min-width: 480px; }
     .sets-table th { text-align: left; font-size: 10.5px; text-transform: uppercase; color: var(--muted); padding: 10px 8px; border-bottom: 1px solid rgba(255,255,255,0.08); white-space: nowrap; letter-spacing: .5px; }
     .sets-table td { padding: 10px 8px; border-bottom: 1px solid rgba(255,255,255,0.04); vertical-align: middle; text-align: center; }
     .sets-table th:first-child, .sets-table td:first-child { text-align: left; padding-left: 12px; }
@@ -219,9 +219,6 @@
       outline: none; text-align: center; cursor: pointer; transition: border-color .2s;
     }
     .set-tag:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
-    .rpe-wrap { display: flex; align-items: center; gap: 8px; justify-content: center; }
-    .rpe-wrap input[type=range] { width: 76px; }
-    .rpe-val { font-family: 'JetBrains Mono', monospace; color: var(--accent); font-weight: 700; font-size: 14px; min-width: 22px; text-align: center; }
 
     .check-btn { width: 44px; height: 44px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.15); background: rgba(15, 23, 42, 0.95); color: var(--muted); font-size: 18px; font-weight: 700; cursor: pointer; transition: all .25s ease; display: flex; align-items: center; justify-content: center; margin: 0 auto; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
     .check-btn:hover { background: var(--accent-dim); color: var(--accent); border-color: var(--accent); transform: scale(1.08); box-shadow: 0 0 16px var(--accent-glow); }
@@ -269,7 +266,7 @@
     @keyframes slideUp { from { transform: translateY(24px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
     .rest-timer-val { font-family: 'JetBrains Mono', monospace; font-size: 26px; font-weight: 800; color: var(--accent); text-shadow: 0 0 14px var(--accent-glow); }
 
-    .modal-overlay { position: fixed; inset: 0; background: rgba(5, 6, 9, 0.9); backdrop-filter: blur(16px); display: none; align-items: center; justify-content: center; padding: 24px 16px; z-index: 100; overflow-y: auto; animation: fadeIn .25s ease; }
+    .modal-overlay { position: fixed; inset: 0; background: rgba(5, 6, 9, 0.88); backdrop-filter: blur(14px); display: none; align-items: center; justify-content: center; padding: 24px 16px; z-index: 100; overflow-y: auto; animation: fadeIn .25s ease; }
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
     .modal-overlay.active { display: flex; }
     .modal-content { width: 100%; max-width: 720px; max-height: 90vh; overflow-y: auto; padding: 32px; display: flex; flex-direction: column; gap: 20px; position: relative; box-shadow: 0 30px 70px rgba(0,0,0,0.8); border: 1px solid rgba(255,255,255,0.12); }
@@ -814,7 +811,7 @@
       <p style="font-size:13px; color:var(--muted);">Customize default sets for this equipment variation. These values will load automatically when starting a session or resetting a day.</p>
       <div class="sets-table-wrap">
         <table class="sets-table" id="presetEditTable">
-          <thead><tr><th>Set</th><th>Weight (kg)</th><th>Reps</th><th>Tag</th><th>RPE</th></tr></thead>
+          <thead><tr><th>Set</th><th>Weight (kg)</th><th>Reps</th><th>Tag</th></tr></thead>
           <tbody id="presetEditTbody"></tbody>
         </table>
       </div>
@@ -1394,7 +1391,7 @@ function getSupersetId(category) {
   return linked;
 }
 function epley1RM(w, r) { return (r === 1) ? w : (w * (1 + r / 30)); }
-const V = (value, label, setup, cue, sets) => ({ value, label, setup: setup ? '⚙️ Setup: ' + setup : '', cue: cue ? '💡 ' + cue : '', defaultSets: sets.map(s => ({ weight: s[0], reps: s[1], rir: s[2], tag: s[3] || 'Working', rpe: s[4] == null ? 7 : s[4] })) });
+const V = (value, label, setup, cue, sets) => ({ value, label, setup: setup ? '⚙️ Setup: ' + setup : '', cue: cue ? '💡 ' + cue : '', defaultSets: sets.map(s => ({ weight: s[0], reps: s[1], rir: s[2], tag: s[3] || 'Working' })) });
 const E = (category, prefix, title, target, scheme, rest, sets, variations) => {
   const exerciseType = getExerciseType(category);
   return { category, prefix, title, target, scheme, rest: exerciseType === 'compound' ? 150 : 75, defaultRows: sets, variations, exerciseType };
@@ -1909,7 +1906,7 @@ function openPresetModal(category) {
   const tbody = document.getElementById('presetEditTbody');
   tbody.innerHTML = '';
   sets.forEach((s) => {
-    addPresetRowDOM(s.weight, s.reps, s.tag, s.rpe);
+    addPresetRowDOM(s.weight, s.reps, s.tag);
   });
   document.getElementById('presetModalOverlay').classList.add('active');
 }
@@ -1919,7 +1916,7 @@ function closePresetModal() {
   activePresetModalData = null;
 }
 
-function addPresetRowDOM(w='', r='', tag='Working', rpe=7) {
+function addPresetRowDOM(w='', r='', tag='Working') {
   const tbody = document.getElementById('presetEditTbody');
   const n = tbody.children.length + 1;
   const tr = document.createElement('tr');
@@ -1935,7 +1932,6 @@ function addPresetRowDOM(w='', r='', tag='Working', rpe=7) {
         <option value="Failure" ${tag==='Failure'?'selected':''}>Failure</option>
       </select>
     </td>
-    <td><input type="number" class="input-field preset-rpe" min="1" max="10" value="${rpe}" /></td>
   `;
   tbody.appendChild(tr);
 }
@@ -1955,8 +1951,7 @@ function saveActivePresetModal() {
     sets.push({
       weight: tr.querySelector('.preset-w').value === '' ? '' : parseFloat(tr.querySelector('.preset-w').value),
       reps: tr.querySelector('.preset-r').value === '' ? '' : parseInt(tr.querySelector('.preset-r').value, 10),
-      tag: tr.querySelector('.preset-tag').value,
-      rpe: parseFloat(tr.querySelector('.preset-rpe').value) || 7
+      tag: tr.querySelector('.preset-tag').value
     });
   });
   setPreset(category, variationValue, sets);
@@ -1990,8 +1985,6 @@ function captureCurrentFormValues() {
           weight: tr.querySelector('.set-weight')?.value || '',
           reps: tr.querySelector('.set-reps')?.value || '',
           tag: tr.querySelector('.set-tag')?.value || 'Working',
-          rpe: tr.querySelector('.set-rpe')?.value || '7',
-          rir: tr.querySelector('.set-rir')?.value || '1',
           done: tr.querySelector('.check-btn')?.classList.contains('completed') || false
         });
       });
@@ -2010,16 +2003,11 @@ function restoreFormValues(data) {
         const wIn = rows[i].querySelector('.set-weight');
         const rIn = rows[i].querySelector('.set-reps');
         const tIn = rows[i].querySelector('.set-tag');
-        const rpIn = rows[i].querySelector('.set-rpe');
-        const rpLbl = rows[i].querySelector('.rpe-val');
-        const riIn = rows[i].querySelector('.set-rir');
         const btn = rows[i].querySelector('.check-btn');
 
         if (wIn) wIn.value = s.weight;
         if (rIn) rIn.value = s.reps;
         if (tIn) tIn.value = s.tag;
-        if (rpIn) { rpIn.value = s.rpe; if (rpLbl) rpLbl.textContent = s.rpe; }
-        if (riIn) riIn.value = s.rir;
         if (btn && s.done) btn.classList.add('completed');
       }
     });
@@ -2077,8 +2065,6 @@ function renderSetRows(prefix, sets, rest) {
   for (let i = 1; i <= sets.length; i++) {
     const s = sets[i-1] || {};
     const tag = s.tag || 'Working';
-    const rpe = s.rpe == null ? 7 : s.rpe;
-    const rir = s.rir == null ? 1 : s.rir;
     const wVal = s.weight === 0 ? '0' : (s.weight === '' || s.weight == null ? '' : s.weight);
     const rVal = s.reps == null ? '' : s.reps;
 
@@ -2087,8 +2073,6 @@ function renderSetRows(prefix, sets, rest) {
       <td><div class="stepper"><button class="stepper-btn" onclick="stepValue('${prefix}_w_${i}', -2.5)">−</button><input type="number" class="input-field set-weight" id="${prefix}_w_${i}" value="${wVal}" placeholder="kg" oninput="checkStartWorkoutTimer()"><button class="stepper-btn" onclick="stepValue('${prefix}_w_${i}', 2.5)">+</button></div></td>
       <td><div class="stepper"><button class="stepper-btn" onclick="stepValue('${prefix}_r_${i}', -1)">−</button><input type="number" class="input-field set-reps" id="${prefix}_r_${i}" value="${rVal}" placeholder="reps" oninput="checkStartWorkoutTimer()"><button class="stepper-btn" onclick="stepValue('${prefix}_r_${i}', 1)">+</button></div></td>
       <td><select class="set-tag" id="${prefix}_t_${i}"><option value="Warmup" ${tag==='Warmup'?'selected':''}>Warmup</option><option value="Working" ${tag==='Working'?'selected':''}>Working</option><option value="Drop Set" ${tag==='Drop Set'?'selected':''}>Drop Set</option><option value="Failure" ${tag==='Failure'?'selected':''}>Failure</option></select></td>
-      <td><div class="rpe-wrap"><input type="range" class="set-rpe" id="${prefix}_rp_${i}" min="1" max="10" step="1" value="${rpe}" oninput="updateRpeLabel(this, '${prefix}_rpl_${i}')"><span class="rpe-val" id="${prefix}_rpl_${i}">${rpe}</span></div></td>
-      <td><input type="number" class="input-field set-rir" id="${prefix}_ri_${i}" value="${rir}"></td>
       <td><button class="check-btn" onclick="toggleSet(this, ${rest})">✓</button></td>
     </tr>`;
   }
@@ -2202,7 +2186,7 @@ function renderExerciseCard(ex, idx) {
     </div>
     <div class="sets-table-wrap">
       <table class="sets-table" id="table_${ex.prefix}">
-        <thead><tr><th>Set</th><th>Weight</th><th>Reps</th><th>Tag</th><th>RPE</th><th>RIR</th><th>Done</th></tr></thead>
+        <thead><tr><th>Set</th><th>Weight</th><th>Reps</th><th>Tag</th><th>Done</th></tr></thead>
         <tbody>${renderSetRows(ex.prefix, sets, ex.rest)}</tbody>
       </table>
     </div>
@@ -2290,19 +2274,10 @@ function applyVariation(category, prefix, variation, fillRows=true) {
       const wInput = row.querySelector('.set-weight');
       const rInput = row.querySelector('.set-reps');
       const tInput = row.querySelector('.set-tag');
-      const rRange = row.querySelector('.set-rpe');
-      const rLabel = row.querySelector('.rpe-val');
-      const riInput = row.querySelector('.set-rir');
 
       if (wInput) wInput.value = wRaw;
       if (rInput) rInput.value = rRaw;
       if (tInput) tInput.value = s.tag || 'Working';
-      if (rRange) { 
-        const rpe = s.rpe == null ? 7 : s.rpe; 
-        rRange.value = rpe; 
-        if (rLabel) rLabel.textContent = rpe; 
-      }
-      if (riInput && s.rir != null) riInput.value = s.rir;
       
       const checkBtn = row.querySelector('.check-btn');
       if (checkBtn) checkBtn.classList.remove('completed');
@@ -2332,11 +2307,6 @@ function stepValue(id, delta) {
   checkStartWorkoutTimer();
 }
 
-function updateRpeLabel(range, labelId) {
-  const label = document.getElementById(labelId);
-  if (label) label.textContent = range.value;
-}
-
 function addSetRow(tableId, prefix, rest, update=true) {
   const table = document.getElementById(tableId);
   if (!table) return;
@@ -2347,8 +2317,6 @@ function addSetRow(tableId, prefix, rest, update=true) {
     <td><div class="stepper"><button class="stepper-btn" onclick="stepValue('${prefix}_w_${n}', -2.5)">−</button><input type="number" class="input-field set-weight" id="${prefix}_w_${n}" placeholder="kg" oninput="checkStartWorkoutTimer()"><button class="stepper-btn" onclick="stepValue('${prefix}_w_${n}', 2.5)">+</button></div></td>
     <td><div class="stepper"><button class="stepper-btn" onclick="stepValue('${prefix}_r_${n}', -1)">−</button><input type="number" class="input-field set-reps" id="${prefix}_r_${n}" placeholder="reps" oninput="checkStartWorkoutTimer()"><button class="stepper-btn" onclick="stepValue('${prefix}_r_${n}', 1)">+</button></div></td>
     <td><select class="set-tag" id="${prefix}_t_${n}"><option value="Warmup">Warmup</option><option value="Working" selected>Working</option><option value="Drop Set">Drop Set</option><option value="Failure">Failure</option></select></td>
-    <td><div class="rpe-wrap"><input type="range" class="set-rpe" id="${prefix}_rp_${n}" min="1" max="10" step="1" value="7" oninput="updateRpeLabel(this, '${prefix}_rpl_${n}')"><span class="rpe-val" id="${prefix}_rpl_${n}">7</span></div></td>
-    <td><input type="number" class="input-field set-rir" id="${prefix}_ri_${n}" value="1"></td>
     <td><button class="check-btn" onclick="toggleSet(this, ${rest})">✓</button></td>`;
   tbody.appendChild(tr);
   if (update) { updateSectionWorkingSetCounts(); updateProgress(); }
@@ -2570,11 +2538,9 @@ function finishCurrentDayWorkout() {
     card.querySelectorAll('tbody tr').forEach((tr, i) => {
       const wIn = tr.querySelector('.set-weight');
       const rIn = tr.querySelector('.set-reps');
-      const riIn = tr.querySelector('.set-rir');
       const tIn = tr.querySelector('.set-tag');
-      const rpIn = tr.querySelector('.set-rpe');
       if (!rIn || rIn.value === '') return;
-      sets.push({ setNum: i + 1, weight: wIn?.value || '0', reps: rIn?.value || '0', rir: riIn?.value || '0', tag: tIn?.value || 'Working', rpe: rpIn?.value || '7', done: tr.querySelector('.check-btn').classList.contains('completed') });
+      sets.push({ setNum: i + 1, weight: wIn?.value || '0', reps: rIn?.value || '0', tag: tIn?.value || 'Working', done: tr.querySelector('.check-btn').classList.contains('completed') });
     });
     exercises.push({ name, category: card.dataset.category, variationValue, exerciseType: card.dataset.exerciseType, machineOpt, sets });
   });
