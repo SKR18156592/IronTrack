@@ -152,8 +152,8 @@
     .session-meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(135px, 1fr)); gap: 14px; background: rgba(10, 15, 28, 0.55); padding: 18px; border-radius: var(--radius-md); border: 1px solid rgba(255,255,255,0.06); margin-bottom: 20px; }
     .meta-field { display: flex; flex-direction: column; gap: 6px; }
     .meta-field label { font-size: 11.5px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
-    .meta-field input { background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 11px 14px; border-radius: var(--radius-sm); font-size: 14px; font-weight: 600; outline: none; transition: border-color .2s, box-shadow .2s; width: 100%; }
-    .meta-field input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+    .meta-field input, .meta-field textarea { background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 11px 14px; border-radius: var(--radius-sm); font-size: 14px; font-weight: 600; outline: none; transition: border-color .2s, box-shadow .2s; width: 100%; font-family: 'Plus Jakarta Sans', sans-serif; resize: none; }
+    .meta-field input:focus, .meta-field textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
 
     .progress-wrapper { display: flex; flex-direction: column; gap: 8px; }
     .progress-header { display: flex; justify-content: space-between; font-size: 13px; font-weight: 700; color: var(--muted); flex-wrap: wrap; gap: 4px; }
@@ -292,6 +292,7 @@
     .log-exercise-title { font-size: 13px; font-weight: 800; color: var(--accent); }
     .log-pr-badge { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 800; background: rgba(251, 191, 36, 0.18); color: #fbbf24; border: 1px solid rgba(251,191,36,0.4); padding: 2px 8px; border-radius: 6px; text-transform: uppercase; box-shadow: 0 0 10px rgba(251,191,36,0.25); }
     .log-sets-summary { font-size: 12px; font-family: 'JetBrains Mono', monospace; color: var(--muted); }
+    .log-session-notes { font-size: 12.5px; color: #e2e8f0; font-style: italic; background: rgba(255,255,255,0.04); padding: 8px 12px; border-radius: 8px; border-left: 3px solid var(--accent); margin-top: 4px; }
 
     .settings-row { display: flex; justify-content: space-between; align-items: center; cursor: pointer; font-size: 14.5px; font-weight: 600; }
     .settings-row input[type=checkbox] { width: 22px; height: 22px; accent-color: var(--accent); cursor: pointer; }
@@ -473,7 +474,13 @@
           <div class="meta-field"><label>🔥 Energy (1-10)</label><input type="number" id="energyLevel" min="1" max="10" placeholder="8" /></div>
           <div class="meta-field"><label>💤 Sleep (hrs)</label><input type="number" id="sleepHours" placeholder="7.5" step="0.5" /></div>
         </div>
-        <div class="progress-wrapper">
+        
+        <div class="meta-field" style="margin-top: 12px;">
+          <label>📝 Session Notes &amp; Mood</label>
+          <textarea id="sessionNotes" rows="2" placeholder="e.g., Felt strong today, great sleep or nagging shoulder stiffness..."></textarea>
+        </div>
+
+        <div class="progress-wrapper" style="margin-top: 14px;">
           <div class="progress-header"><span>Current Session Progress</span><span id="progressText">0 / 0 Sets (0%)</span></div>
           <div class="progress-bar-bg"><div class="progress-bar-fill" id="progressBar"></div></div>
         </div>
@@ -2379,6 +2386,7 @@ function switchDayView(day) {
   workoutStartTime = null;
   clearInterval(workoutTimerInterval);
   document.getElementById('timeElapsed').textContent = "00:00:00";
+  if (document.getElementById('sessionNotes')) document.getElementById('sessionNotes').value = '';
 }
 
 function checkStartWorkoutTimer() {
@@ -2535,12 +2543,14 @@ function finishCurrentDayWorkout() {
     });
     exercises.push({ name, category: card.dataset.category, variationValue, exerciseType: card.dataset.exerciseType, machineOpt, sets });
   });
+  const notesVal = document.getElementById('sessionNotes')?.value.trim() || '';
   const record = {
     id: 'session_' + Date.now(), day: activeDay, dayTitle: WORKOUT[activeDay].title,
     date: document.getElementById('sessionDate').value,
     bodyWeight: document.getElementById('bodyWeight').value || 'N/A',
     energy: document.getElementById('energyLevel').value || 'N/A',
     sleep: document.getElementById('sleepHours').value || 'N/A',
+    notes: notesVal,
     duration: document.getElementById('timeElapsed').textContent,
     exercises
   };
@@ -2730,13 +2740,8 @@ function renderMuscleRecoveryHeatmap() {
 // ==========================================
 function calculateMaxWeightsPerExercise() {
   const history = getJ('iron_workout_history', []);
-  const maxMap = {}; // category -> maxWeight
-  // Iterate from oldest to newest to compute historical maxes
-  const reversed = [...history].reverse();
-  const historicalMaxAtSession = []; // map session index -> set of categories that hit PR in that session
-
-  history.forEach((h, sIdx) => {
-    const sessionPrs = new Set();
+  const maxMap = {};
+  history.slice().reverse().forEach((h) => {
     if (h.exercises) {
       h.exercises.forEach(ex => {
         const cat = ex.category;
@@ -2747,16 +2752,13 @@ function calculateMaxWeightsPerExercise() {
           if (w > 0) {
             if (maxMap[cat] === undefined || w > maxMap[cat]) {
               maxMap[cat] = w;
-              sessionPrs.add(cat);
             }
           }
         });
       });
     }
-    historicalMaxAtSession.push(sessionPrs);
   });
-
-  return { maxMap, historicalMaxAtSession: historicalMaxAtSession.reverse() };
+  return maxMap;
 }
 
 // ==========================================
@@ -2776,9 +2778,9 @@ function renderHistory() {
     return;
   }
 
-  const { maxMap, historicalMaxAtSession } = calculateMaxWeightsPerExercise();
+  const maxMap = calculateMaxWeightsPerExercise();
   
-  history.forEach((h, idx) => {
+  history.forEach((h) => {
     const div = document.createElement('div');
     div.className = 'log-item';
     
@@ -2788,12 +2790,10 @@ function renderHistory() {
         const workingSets = ex.sets.filter(s => s.done !== false);
         const setsStr = workingSets.map(s => `${s.weight}kg×${s.reps} (${s.tag || 'Working'})`).join(' • ');
         
-        // Check if this exercise hit a PR in this session
         let hitPr = false;
         workingSets.forEach(s => {
           const w = parseFloat(s.weight) || 0;
           if (w > 0 && ex.category && maxMap[ex.category] === w) {
-            // Verify if it's part of the PR set for this session
             hitPr = true;
           }
         });
@@ -2812,6 +2812,8 @@ function renderHistory() {
       }).join('');
     }
 
+    const notesBlock = h.notes ? `<div class="log-session-notes">"${h.notes}"</div>` : '';
+
     div.innerHTML = `
       <div class="log-item-header" onclick="toggleLogAccordion(this)">
         <span>📅 ${h.date} • Day ${h.day}: ${h.dayTitle}</span>
@@ -2819,6 +2821,7 @@ function renderHistory() {
       </div>
       <div class="log-item-body">
         <div style="font-size: 11.5px; color: var(--muted); margin-top: 6px;">Body Weight: ${h.bodyWeight}kg | Energy: ${h.energy}/10 | Sleep: ${h.sleep}hrs</div>
+        ${notesBlock}
         ${exercisesHtml}
       </div>
     `;
