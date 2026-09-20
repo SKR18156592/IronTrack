@@ -71,7 +71,7 @@
       background-attachment: fixed;
       color: var(--text);
       min-height: 100vh;
-      padding: 24px 16px calc(var(--bottom-h) + 32px);
+      padding: 24px 16px calc(var(--bottom-h) + 40px);
       display: flex;
       justify-content: center;
     }
@@ -84,7 +84,7 @@
 
     .user-auth-bar { display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; justify-content: flex-end; flex-shrink: 0; }
 
-    .toast-container { position: fixed; bottom: 94px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; gap: 8px; z-index: 1000; pointer-events: none; width: 90%; max-width: 380px; align-items: center; }
+    .toast-container { position: fixed; bottom: 104px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; gap: 8px; z-index: 1000; pointer-events: none; width: 90%; max-width: 380px; align-items: center; }
     .toast { background: var(--card-solid); border: 1px solid var(--card-border); color: var(--text); padding: 14px 20px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 700; box-shadow: 0 16px 40px rgba(0,0,0,0.6); opacity: 0; transform: translateY(20px); transition: all .35s cubic-bezier(0.16, 1, 0.3, 1); pointer-events: auto; backdrop-filter: blur(16px); text-align: center; width: 100%; }
     .toast.active { opacity: 1; transform: translateY(0); }
     .toast.success { border-color: var(--lime); color: #86efac; box-shadow: 0 0 24px var(--lime-glow); }
@@ -229,8 +229,8 @@
     .btn-xs { background: rgba(30, 41, 59, 0.85); border: 1px solid rgba(255,255,255,0.12); color: #e2e8f0; padding: 8px 14px; border-radius: 10px; font-size: 12.5px; font-weight: 700; cursor: pointer; transition: all .2s ease; min-height: 38px; white-space: nowrap; flex-shrink: 0; box-shadow: 0 4px 12px rgba(0,0,0,0.25); }
     .btn-xs:hover { background: rgba(51, 65, 85, 0.95); color: #fff; border-color: rgba(255,255,255,0.25); transform: translateY(-1px); box-shadow: 0 6px 16px rgba(0,0,0,0.35); }
     
-    /* Responsive Bottom Action Bar */
-    .bottom-bar { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 10px; flex-wrap: nowrap; width: 100%; }
+    /* Responsive Bottom Action Bar & Adjusted Padding for Rest Timer Bar Visibility */
+    .bottom-bar { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 10px; flex-wrap: nowrap; width: 100%; margin-bottom: 24px; }
     .bottom-bar .btn { flex: 1; justify-content: center; }
 
     @media (max-width: 768px) {
@@ -261,7 +261,8 @@
     .btn-danger:hover { background: rgba(239, 68, 68, 0.25); transform: translateY(-2px); }
     .btn:active, .btn-xs:active, .bottom-tab:active, .check-btn:active { transform: scale(0.96) !important; }
 
-    .rest-modal { position: fixed; bottom: 32px; right: 32px; background: var(--card-solid); border: 1px solid var(--accent-glow); border-radius: var(--radius-md); padding: 18px 26px; display: none; align-items: center; gap: 18px; box-shadow: 0 20px 50px rgba(0,0,0,0.7), 0 0 30px var(--accent-glow); z-index: 50; backdrop-filter: blur(18px); }
+    /* Rest Timer Modal positioned above bottom navbar and action bar so it's fully visible */
+    .rest-modal { position: fixed; bottom: 84px; right: 20px; background: var(--card-solid); border: 1px solid var(--accent-glow); border-radius: var(--radius-md); padding: 18px 26px; display: none; align-items: center; gap: 18px; box-shadow: 0 20px 50px rgba(0,0,0,0.7), 0 0 30px var(--accent-glow); z-index: 95; backdrop-filter: blur(18px); }
     .rest-modal.active { display: flex; animation: slideUp .35s cubic-bezier(0.16, 1, 0.3, 1); }
     @keyframes slideUp { from { transform: translateY(24px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
     .rest-timer-val { font-family: 'JetBrains Mono', monospace; font-size: 26px; font-weight: 800; color: var(--accent); text-shadow: 0 0 14px var(--accent-glow); }
@@ -1660,38 +1661,6 @@ function reorderSection(dayNum, secIdx, direction) {
   switchDayView(activeDay);
   restoreFormValues(formData);
   showToast('🔄 Section reordered!', 'success');
-}
-
-function getProgressiveOverloadSuggestion(ex, varObj) {
-  const history = getJ('iron_workout_history', []);
-  let lastSessionSets = null;
-  for (const rec of history) {
-    if (!rec.exercises) continue;
-    for (const exRec of rec.exercises) {
-      const match = (exRec.category && exRec.category === ex.category && exRec.variationValue === varObj.value) || (exRec.name === ex.title && exRec.machineOpt === varObj.label);
-      if (match) { lastSessionSets = exRec.sets; break; }
-    }
-    if (lastSessionSets) break;
-  }
-  if (!lastSessionSets || !lastSessionSets.length) return null;
-
-  let allTargetMet = true;
-  lastSessionSets.forEach(s => {
-    if (s.tag === 'Working') {
-      const r = parseInt(s.reps, 10) || 0;
-      const rir = parseInt(s.rir, 10) || 2;
-      if (r < 10 || rir > 1) allTargetMet = false;
-    }
-  });
-
-  if (allTargetMet) {
-    const lastW = parseFloat(lastSessionSets[0].weight) || 0;
-    if (lastW > 0) {
-      const suggestedW = lastW + (lastW >= 40 ? 2.5 : 1.25);
-      return `🔥 Overload Suggestion: Increase weight to ${suggestedW}kg across working sets!`;
-    }
-  }
-  return null;
 }
 
 let activeDay = 1;
