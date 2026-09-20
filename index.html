@@ -281,15 +281,14 @@
     .calc-result-box { background: rgba(10, 14, 24, 0.85); border: 1px solid rgba(255,255,255,0.1); padding: 18px; border-radius: var(--radius-sm); text-align: center; font-size: 17.5px; font-weight: 800; color: var(--accent); box-shadow: inset 0 2px 8px rgba(0,0,0,0.4); font-family: 'JetBrains Mono', monospace; text-shadow: 0 0 10px var(--accent-dim); }
     .plate-breakdown { font-size: 13px; color: #cbd5e1; line-height: 1.6; text-align: center; font-family: 'JetBrains Mono', monospace; }
 
-    .heatmap-card { padding: 22px; display: flex; flex-direction: column; gap: 14px; }
-    .heatmap-grid { display: grid; grid-template-rows: repeat(7, 1fr); grid-template-columns: repeat(4, 1fr); grid-auto-flow: column; gap: 6px; }
-    .heat-cell { aspect-ratio: 1; border-radius: 6px; background: rgba(30, 41, 59, 0.6); border: 1px solid rgba(255,255,255,0.06); transition: transform .15s; }
-    .heat-cell:hover { transform: scale(1.18); }
-    .heat-cell.level-1 { background: var(--lime-dim); border-color: rgba(57,255,20,0.4); }
-    .heat-cell.level-2 { background: rgba(57, 255, 20, 0.5); border-color: rgba(57,255,20,0.7); }
-    .heat-cell.level-3 { background: var(--lime); border-color: var(--lime); box-shadow: 0 0 12px var(--lime-glow); }
-    .log-item { padding: 20px; border-radius: var(--radius-sm); display: flex; flex-direction: column; gap: 10px; background: rgba(15,23,42,0.65); border: 1px solid rgba(255,255,255,0.08); box-shadow: 0 8px 24px rgba(0,0,0,0.3); }
-    .log-meta-line { display: flex; justify-content: space-between; font-size: 13.5px; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+    .log-item { padding: 0; border-radius: var(--radius-sm); background: rgba(15,23,42,0.65); border: 1px solid rgba(255,255,255,0.08); box-shadow: 0 8px 24px rgba(0,0,0,0.3); overflow: hidden; transition: border-color .2s; }
+    .log-item:hover { border-color: var(--accent-glow); }
+    .log-item-header { padding: 18px 20px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; font-size: 13.5px; font-weight: 700; font-family: 'JetBrains Mono', monospace; user-select: none; }
+    .log-item-body { display: none; padding: 0 20px 20px; flex-direction: column; gap: 12px; border-top: 1px solid rgba(255,255,255,0.06); background: rgba(10, 14, 24, 0.4); }
+    .log-item.expanded .log-item-body { display: flex; }
+    .log-exercise-row { display: flex; flex-direction: column; gap: 4px; margin-top: 10px; }
+    .log-exercise-title { font-size: 13px; font-weight: 800; color: var(--accent); }
+    .log-sets-summary { font-size: 12px; font-family: 'JetBrains Mono', monospace; color: var(--muted); }
 
     .settings-row { display: flex; justify-content: space-between; align-items: center; cursor: pointer; font-size: 14.5px; font-weight: 600; }
     .settings-row input[type=checkbox] { width: 22px; height: 22px; accent-color: var(--accent); cursor: pointer; }
@@ -843,12 +842,8 @@
 
 <div class="modal-overlay" id="historyModalOverlay" onclick="if(event.target===this) closeHistoryModal()">
   <div class="modal-content">
-    <div class="modal-header"><h2>Workout Session History &amp; Heatmap</h2><button class="btn-xs" onclick="closeHistoryModal()">✕</button></div>
+    <div class="modal-header"><h2>Workout Session History</h2><button class="btn-xs" onclick="closeHistoryModal()">✕</button></div>
     <div class="modal-body">
-      <div class="heatmap-card">
-        <div style="font-size:11.5px; font-weight:700; color:var(--muted); text-transform:uppercase;">Consistency Heatmap (Last 28 Days)</div>
-        <div class="heatmap-grid" id="heatmapGrid"></div>
-      </div>
       <div id="historyListContainer" style="display:flex; flex-direction:column; gap:12px;"></div>
     </div>
     <div class="modal-footer">
@@ -2728,6 +2723,55 @@ function renderMuscleRecoveryHeatmap() {
 }
 
 // ==========================================
+// INTERACTIVE ACCORDION LOG HISTORY
+// ==========================================
+function toggleLogAccordion(headerElem) {
+  const item = headerElem.closest('.log-item');
+  item.classList.toggle('expanded');
+}
+
+function renderHistory() {
+  const container = document.getElementById('historyListContainer');
+  const history = getJ('iron_workout_history', []);
+  container.innerHTML = '';
+  if (!history.length) {
+    container.innerHTML = `<p style="color:var(--muted); text-align:center; padding:24px;">No logged workout sessions found yet.</p>`;
+    return;
+  }
+  
+  history.forEach(h => {
+    const div = document.createElement('div');
+    div.className = 'log-item';
+    
+    let exercisesHtml = '';
+    if (h.exercises && h.exercises.length) {
+      exercisesHtml = h.exercises.map(ex => {
+        const workingSets = ex.sets.filter(s => s.done !== false);
+        const setsStr = workingSets.map(s => `${s.weight}kg×${s.reps} (${s.tag || 'Working'})`).join(' • ');
+        return `
+          <div class="log-exercise-row">
+            <div class="log-exercise-title">${ex.name} (${ex.machineOpt || 'Standard'})</div>
+            <div class="log-sets-summary">${setsStr || 'No sets recorded'}</div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    div.innerHTML = `
+      <div class="log-item-header" onclick="toggleLogAccordion(this)">
+        <span>📅 ${h.date} • Day ${h.day}: ${h.dayTitle}</span>
+        <span>⏱️ ${h.duration} ▾</span>
+      </div>
+      <div class="log-item-body">
+        <div style="font-size: 11.5px; color: var(--muted); margin-top: 6px;">Body Weight: ${h.bodyWeight}kg | Energy: ${h.energy}/10 | Sleep: ${h.sleep}hrs</div>
+        ${exercisesHtml}
+      </div>
+    `;
+    container.appendChild(div);
+  });
+}
+
+// ==========================================
 // PROFILE & BIOMETRICS MANAGEMENT
 // ==========================================
 function saveProfileData() {
@@ -2989,43 +3033,6 @@ function render1RMTrends() {
 
 function openHistoryModal() { renderHistory(); document.getElementById('historyModalOverlay').classList.add('active'); }
 function closeHistoryModal() { document.getElementById('historyModalOverlay').classList.remove('active'); }
-
-function renderHeatmap() {
-  const grid = document.getElementById('heatmapGrid');
-  if (!grid) return;
-  grid.innerHTML = '';
-  const history = getJ('iron_workout_history', []);
-  const counts = {};
-  history.forEach(h => { if (h.date) counts[h.date] = (counts[h.date] || 0) + 1; });
-  for (let col = 0; col < 4; col++) {
-    for (let row = 0; row < 7; row++) {
-      const daysAgo = 27 - (col * 7 + row);
-      const d = new Date(); d.setDate(d.getDate() - daysAgo);
-      const dStr = d.toISOString().slice(0, 10);
-      const count = counts[dStr] || 0;
-      const cell = document.createElement('div');
-      cell.className = 'heat-cell';
-      if (count >= 3) cell.classList.add('level-3');
-      else if (count === 2) cell.classList.add('level-2');
-      else if (count === 1) cell.classList.add('level-1');
-      grid.appendChild(cell);
-    }
-  }
-}
-
-function renderHistory() {
-  renderHeatmap();
-  const container = document.getElementById('historyListContainer');
-  const history = getJ('iron_workout_history', []);
-  container.innerHTML = '';
-  if (!history.length) { container.innerHTML = `<p style="color:var(--muted); text-align:center; padding:24px;">No logged workout sessions found yet.</p>`; return; }
-  history.forEach(h => {
-    const div = document.createElement('div');
-    div.className = 'log-item';
-    div.innerHTML = `<div class="log-meta-line"><span>📅 ${h.date} • Day ${h.day}</span><span>⏱️ ${h.duration}</span></div>`;
-    container.appendChild(div);
-  });
-}
 
 async function clearWorkoutHistory() {
   if (confirm('Clear workout history?')) {
