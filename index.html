@@ -1703,10 +1703,7 @@ const presetKey = (cat, varValue) => 'iron_preset_' + cat + '_' + varValue;
 function getChoice(cat) { return getL(choiceKey(cat)); }
 function setChoice(cat, val) { setL(choiceKey(cat), val); }
 function getPreset(cat, val) { return getJ(presetKey(cat, val)); }
-function setPreset(cat, val, sets) { 
-  setJ(presetKey(cat, val), sets);
-  pushToCloud();
-}
+function setPreset(cat, val, sets) { setJ(presetKey(cat, val), sets); }
 
 function haptic(ms=15) {
   const vibe = document.getElementById('vibeToggle');
@@ -1957,11 +1954,15 @@ function saveActivePresetModal() {
       rpe: parseFloat(tr.querySelector('.preset-rpe').value) || 7
     });
   });
-  setPreset(category, variationValue, sets);
+  
+  // 🚀 Directly store into localStorage and push to cloud asynchronously
+  setJ(presetKey(category, variationValue), sets);
+  pushToCloud();
+
   closePresetModal();
   const ex = FLAT_EXERCISES.find(e => e.category === category);
   if (ex) applyVariation(category, ex.prefix, variationValue, true);
-  pushToCloud();
+  
   showToast('📌 Preset updated & synced!', 'success');
 }
 
