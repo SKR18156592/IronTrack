@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#0a0a0f" />
-  <meta name="description" content="IronTrack PRO SPLIT - Progressive overload workout tracker & nutrition planner" />
+  <meta name="description" content="IronTrack - Progressive overload workout tracker & nutrition planner" />
   <title>IronTrack • Ultimate Workout Hub</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -75,15 +75,14 @@
       display: flex;
       justify-content: center;
     }
-    .app-shell { width: 100%; max-width: 960px; display: flex; flex-direction: column; gap: 20px; }
+    .app-shell { width: 100%; max-width: 960px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
 
-    .app-topbar { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; gap: 8px; width: 100%; flex-wrap: wrap; }
+    .app-topbar { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; gap: 12px; width: 100%; flex-wrap: wrap; }
     .brand-logo { font-weight: 800; font-size: 21px; letter-spacing: -0.5px; display: flex; align-items: center; gap: 8px; white-space: nowrap; flex-shrink: 0; }
     .logo-bolt { color: var(--accent); text-shadow: 0 0 20px var(--accent-glow); font-size: 22px; animation: pulseBolt 3s infinite ease-in-out; }
     @keyframes pulseBolt { 0%, 100% { transform: scale(1); text-shadow: 0 0 15px var(--accent-glow); } 50% { transform: scale(1.08); text-shadow: 0 0 25px var(--accent-glow); } }
-    .brand-badge { font-size: 11px; font-weight: 700; background: var(--accent-dim); color: var(--accent); padding: 4px 8px; border-radius: 8px; border: 1px solid var(--accent-glow); letter-spacing: 0.5px; white-space: nowrap; }
 
-    .user-auth-bar { display: flex; align-items: center; gap: 6px; flex-wrap: nowrap; justify-content: flex-end; flex-shrink: 0; }
+    .user-auth-bar { display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; justify-content: flex-end; flex-shrink: 0; }
 
     .toast-container { position: fixed; bottom: 94px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; gap: 8px; z-index: 1000; pointer-events: none; width: 90%; max-width: 380px; align-items: center; }
     .toast { background: var(--card-solid); border: 1px solid var(--card-border); color: var(--text); padding: 14px 20px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 700; box-shadow: 0 16px 40px rgba(0,0,0,0.6); opacity: 0; transform: translateY(20px); transition: all .35s cubic-bezier(0.16, 1, 0.3, 1); pointer-events: auto; backdrop-filter: blur(16px); text-align: center; width: 100%; }
@@ -417,7 +416,6 @@
     <div class="brand-logo">
       <span class="logo-bolt">⚡</span>
       <span>IronTrack</span>
-      <span class="brand-badge">PRO SPLIT</span>
     </div>
     <div class="user-auth-bar" id="userBar">
       <div class="net-status online" id="netStatus" title="Connection Active"><span class="net-dot"></span></div>
@@ -1705,7 +1703,10 @@ const presetKey = (cat, varValue) => 'iron_preset_' + cat + '_' + varValue;
 function getChoice(cat) { return getL(choiceKey(cat)); }
 function setChoice(cat, val) { setL(choiceKey(cat), val); }
 function getPreset(cat, val) { return getJ(presetKey(cat, val)); }
-function setPreset(cat, val, sets) { setJ(presetKey(cat, val), sets); }
+function setPreset(cat, val, sets) { 
+  setJ(presetKey(cat, val), sets);
+  pushToCloud();
+}
 
 function haptic(ms=15) {
   const vibe = document.getElementById('vibeToggle');
@@ -2601,7 +2602,7 @@ function generateShareCard(record) {
 
   ctx.fillStyle = '#00f3ff';
   ctx.font = '800 24px "Plus Jakarta Sans", sans-serif';
-  ctx.fillText('⚡ IRONTRACK PRO SPLIT', 60, 90);
+  ctx.fillText('⚡ IRONTRACK', 60, 90);
 
   ctx.fillStyle = '#94a3b8';
   ctx.font = '700 16px "Plus Jakarta Sans", sans-serif';
