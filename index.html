@@ -1958,14 +1958,14 @@ function saveActivePresetModal() {
     });
   });
   
-  // 🚀 Explicitly save locally and push to cloud instantly on save click
+  // 🚀 Explicitly save locally, update UI, and push to cloud asynchronously
   setPreset(category, variationValue, sets);
-  pushToCloud();
-
+  
   closePresetModal();
   const ex = FLAT_EXERCISES.find(e => e.category === category);
   if (ex) applyVariation(category, ex.prefix, variationValue, true);
   
+  pushToCloud();
   showToast('📌 Preset updated & synced!', 'success');
 }
 
