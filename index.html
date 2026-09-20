@@ -152,8 +152,8 @@
     .session-meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(135px, 1fr)); gap: 14px; background: rgba(10, 15, 28, 0.55); padding: 18px; border-radius: var(--radius-md); border: 1px solid rgba(255,255,255,0.06); margin-bottom: 20px; }
     .meta-field { display: flex; flex-direction: column; gap: 6px; }
     .meta-field label { font-size: 11.5px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
-    .meta-field input, .meta-field textarea { background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 11px 14px; border-radius: var(--radius-sm); font-size: 14px; font-weight: 600; outline: none; transition: border-color .2s, box-shadow .2s; width: 100%; font-family: 'Plus Jakarta Sans', sans-serif; resize: none; }
-    .meta-field input:focus, .meta-field textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+    .meta-field input, .meta-field textarea, .meta-field select { background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 11px 14px; border-radius: var(--radius-sm); font-size: 14px; font-weight: 600; outline: none; transition: border-color .2s, box-shadow .2s; width: 100%; font-family: 'Plus Jakarta Sans', sans-serif; resize: none; }
+    .meta-field input:focus, .meta-field textarea:focus, .meta-field select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
 
     .progress-wrapper { display: flex; flex-direction: column; gap: 8px; }
     .progress-header { display: flex; justify-content: space-between; font-size: 13px; font-weight: 700; color: var(--muted); flex-wrap: wrap; gap: 4px; }
@@ -270,7 +270,7 @@
     .modal-overlay { position: fixed; inset: 0; background: rgba(5, 6, 9, 0.88); backdrop-filter: blur(14px); display: none; align-items: center; justify-content: center; padding: 24px 16px; z-index: 100; overflow-y: auto; animation: fadeIn .25s ease; }
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
     .modal-overlay.active { display: flex; }
-    .modal-content { width: 100%; max-width: 720px; max-height: 90vh; overflow-y: auto; padding: 32px; display: flex; flex-direction: column; gap: 20px; position: relative; box-shadow: 0 30px 70px rgba(0,0,0,0.8); border: 1px solid rgba(255,255,255,0.12); }
+    .modal-content { width: 100%; max-width: 780px; max-height: 90vh; overflow-y: auto; padding: 32px; display: flex; flex-direction: column; gap: 20px; position: relative; box-shadow: 0 30px 70px rgba(0,0,0,0.8); border: 1px solid rgba(255,255,255,0.12); }
     .modal-header { display: flex; justify-content: space-between; align-items: center; }
     .modal-header h2 { font-size: 22px; font-weight: 800; }
     .modal-body { display: flex; flex-direction: column; gap: 18px; }
@@ -293,6 +293,13 @@
     .log-pr-badge { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 800; background: rgba(251, 191, 36, 0.18); color: #fbbf24; border: 1px solid rgba(251,191,36,0.4); padding: 2px 8px; border-radius: 6px; text-transform: uppercase; box-shadow: 0 0 10px rgba(251,191,36,0.25); }
     .log-sets-summary { font-size: 12px; font-family: 'JetBrains Mono', monospace; color: var(--muted); }
     .log-session-notes { font-size: 12.5px; color: #e2e8f0; font-style: italic; background: rgba(255,255,255,0.04); padding: 8px 12px; border-radius: 8px; border-left: 3px solid var(--accent); margin-top: 4px; }
+
+    /* Exercise History Graph Modal Styles */
+    .history-filter-bar { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 4px; }
+    .history-filter-bar input, .history-filter-bar select { flex: 1; min-width: 140px; }
+    
+    .exercise-history-chart-card { background: rgba(15, 23, 42, 0.9); border: 1px solid var(--accent-glow); border-radius: var(--radius-md); padding: 20px; display: flex; flex-direction: column; gap: 14px; margin-bottom: 16px; box-shadow: 0 12px 35px rgba(0,0,0,0.4); }
+    .exercise-history-header { font-size: 15px; font-weight: 800; color: var(--accent); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
 
     .settings-row { display: flex; justify-content: space-between; align-items: center; cursor: pointer; font-size: 14.5px; font-weight: 600; }
     .settings-row input[type=checkbox] { width: 22px; height: 22px; accent-color: var(--accent); cursor: pointer; }
@@ -714,7 +721,7 @@
         <div style="font-size: 15px; font-weight: 800;">🔒 Cloud Account &amp; Session</div>
         <div class="meta-field">
           <label>Cloud Sync Status</label>
-          <input type="text" id="profileEmailField" class="input-field" readonly style="text-align: left; padding: 12px; color: var(--muted);" value="Connected via Supabase Auth" />
+          <input type="text" id="profileEmailField" class="input-field" readonly style="text-align: left; padding: 12px; color: var(--muted); value="Connected via Supabase Auth" />
         </div>
         <button class="btn btn-danger" onclick="handleSignOut()" style="justify-content: center; margin-top: 4px;">🚪 Log Out of Account</button>
       </div>
@@ -850,11 +857,29 @@
   </div>
 </div>
 
+<!-- Workout Session History & Exercise Progress Graph Modal -->
 <div class="modal-overlay" id="historyModalOverlay" onclick="if(event.target===this) closeHistoryModal()">
   <div class="modal-content">
-    <div class="modal-header"><h2>Workout Session History</h2><button class="btn-xs" onclick="closeHistoryModal()">✕</button></div>
+    <div class="modal-header">
+      <h2>Workout Session History &amp; Exercise Progress</h2>
+      <button class="btn-xs" onclick="closeHistoryModal()">✕</button>
+    </div>
     <div class="modal-body">
-      <div id="historyListContainer" style="display:flex; flex-direction:column; gap:12px;"></div>
+      <div class="history-filter-bar">
+        <input type="text" id="historySearchInput" class="input-field" placeholder="🔍 Search exercise name..." oninput="renderHistory()" style="text-align: left;" />
+        <select id="historyDayFilter" class="machine-dropdown" onchange="renderHistory()" style="padding: 10px;">
+          <option value="">All Days / Splits</option>
+          <option value="1">Day 1: Chest • Sh • Bi</option>
+          <option value="2">Day 2: Legs • Core</option>
+          <option value="3">Day 3: Back • Tri</option>
+        </select>
+        <select id="exerciseGraphSelect" class="machine-dropdown" onchange="renderExerciseHistoryGraph()" style="padding: 10px;">
+          <option value="">📈 Select Exercise for Weight Trend Graph</option>
+        </select>
+      </div>
+
+      <div id="exerciseGraphContainer"></div>
+      <div id="historyListContainer" style="display:flex; flex-direction:column; gap:12px; margin-top:6px;"></div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-danger" onclick="clearWorkoutHistory()">🗑️ Clear Logs</button>
@@ -2736,7 +2761,7 @@ function renderMuscleRecoveryHeatmap() {
 }
 
 // ==========================================
-// HELPER FOR PR / MILESTONE DETECTION
+// HELPER FOR PR & EXERCISE HISTORY GRAPH
 // ==========================================
 function calculateMaxWeightsPerExercise() {
   const history = getJ('iron_workout_history', []);
@@ -2744,14 +2769,14 @@ function calculateMaxWeightsPerExercise() {
   history.slice().reverse().forEach((h) => {
     if (h.exercises) {
       h.exercises.forEach(ex => {
-        const cat = ex.category;
-        if (!cat) return;
+        const name = ex.name;
+        if (!name) return;
         ex.sets.forEach(s => {
           if (s.done === false) return;
           const w = parseFloat(s.weight) || 0;
           if (w > 0) {
-            if (maxMap[cat] === undefined || w > maxMap[cat]) {
-              maxMap[cat] = w;
+            if (maxMap[name] === undefined || w > maxMap[name]) {
+              maxMap[name] = w;
             }
           }
         });
@@ -2761,8 +2786,108 @@ function calculateMaxWeightsPerExercise() {
   return maxMap;
 }
 
+function populateExerciseGraphDropdown() {
+  const select = document.getElementById('exerciseGraphSelect');
+  if (!select) return;
+  const history = getJ('iron_workout_history', []);
+  const exerciseSet = new Set();
+  history.forEach(h => {
+    if (h.exercises) h.exercises.forEach(ex => { if (ex.name) exerciseSet.add(ex.name); });
+  });
+
+  let html = `<option value="">📈 Select Exercise for Weight Trend Graph</option>`;
+  Array.from(exerciseSet).sort().forEach(exName => {
+    html += `<option value="${exName}">${exName}</option>`;
+  });
+  select.innerHTML = html;
+}
+
+function renderExerciseHistoryGraph() {
+  const select = document.getElementById('exerciseGraphSelect');
+  const container = document.getElementById('exerciseGraphContainer');
+  if (!select || !container) return;
+
+  const targetEx = select.value;
+  if (!targetEx) {
+    container.innerHTML = '';
+    return;
+  }
+
+  const history = getJ('iron_workout_history', []).slice().reverse(); // chronological order
+  const dataPoints = [];
+
+  history.forEach(h => {
+    if (!h.exercises) return;
+    h.exercises.forEach(ex => {
+      if (ex.name === targetEx) {
+        let maxW = 0;
+        ex.sets.forEach(s => {
+          if (s.done !== false) {
+            const w = parseFloat(s.weight) || 0;
+            if (w > maxW) maxW = w;
+          }
+        });
+        if (maxW > 0) {
+          dataPoints.push({ date: h.date, weight: maxW });
+        }
+      }
+    });
+  });
+
+  if (!dataPoints.length) {
+    container.innerHTML = `<div class="exercise-history-chart-card"><div class="exercise-history-header"><span>📈 ${targetEx}</span></div><p style="color:var(--muted); text-align:center; font-size:13px; padding:12px;">No logged weight records for this exercise.</p></div>`;
+    return;
+  }
+
+  const maxW = Math.max(...dataPoints.map(d => d.weight), 10);
+  const chartW = 600, chartH = 180, padX = 40, padY = 25;
+  const innerW = chartW - padX * 2;
+  const innerH = chartH - padY * 2;
+
+  let svg = `<svg viewBox="0 0 ${chartW} ${chartH}" xmlns="http://www.w3.org/2000/svg" style="width:100%; height:auto;">`;
+  
+  // Grid lines
+  for (let i = 0; i <= 3; i++) {
+    const y = padY + (innerH / 3) * i;
+    const val = (maxW - (maxW / 3) * i).toFixed(1);
+    svg += `<line x1="${padX}" y1="${y}" x2="${chartW - padX}" y2="${y}" stroke="rgba(255,255,255,0.06)" stroke-width="1" stroke-dasharray="3 3"/>`;
+    svg += `<text x="${padX - 8}" y="${y + 4}" fill="var(--muted)" font-size="10" text-anchor="end" font-family="JetBrains Mono">${val}</text>`;
+  }
+
+  const points = dataPoints.map((pt, i) => {
+    const x = padX + (dataPoints.length === 1 ? innerW / 2 : (i / (dataPoints.length - 1)) * innerW);
+    const y = padY + innerH - (pt.weight / maxW) * innerH;
+    return { x, y, ...pt };
+  });
+
+  if (points.length > 1) {
+    let pathD = `M ${points[0].x} ${points[0].y}`;
+    for (let i = 1; i < points.length; i++) {
+      pathD += ` L ${points[i].x} ${points[i].y}`;
+    }
+    svg += `<path d="${pathD}" fill="none" stroke="var(--accent)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" filter="drop-shadow(0 0 8px var(--accent))"/>`;
+  }
+
+  points.forEach(pt => {
+    svg += `<circle cx="${pt.x}" cy="${pt.y}" r="5" fill="var(--bg)" stroke="var(--accent)" stroke-width="2.5"/>`;
+    svg += `<text x="${pt.x}" y="${chartH - 6}" fill="var(--muted)" font-size="9" text-anchor="middle" font-family="JetBrains Mono">${pt.date.slice(5)}</text>`;
+  });
+
+  svg += `</svg>`;
+
+  container.innerHTML = `
+    <div class="exercise-history-chart-card">
+      <div class="exercise-history-header">
+        <span>📈 ${targetEx} Peak Weight Trend</span>
+        <span class="brand-badge" style="font-size:11px;">Max: ${maxW} kg</span>
+      </div>
+      <div class="svg-chart-wrap">${svg}</div>
+    </div>
+  `;
+}
+
 // ==========================================
-// INTERACTIVE ACCORDION LOG HISTORY WITH PR BADGES
+// INTERACTIVE ACCORDION LOG HISTORY WITH ADVANCED SEARCH & PRs
 // ==========================================
 function toggleLogAccordion(headerElem) {
   const item = headerElem.closest('.log-item');
@@ -2770,17 +2895,33 @@ function toggleLogAccordion(headerElem) {
 }
 
 function renderHistory() {
+  populateExerciseGraphDropdown();
   const container = document.getElementById('historyListContainer');
   const history = getJ('iron_workout_history', []);
   container.innerHTML = '';
-  if (!history.length) {
-    container.innerHTML = `<p style="color:var(--muted); text-align:center; padding:24px;">No logged workout sessions found yet.</p>`;
+  
+  const searchQuery = document.getElementById('historySearchInput')?.value.toLowerCase().trim() || '';
+  const dayFilter = document.getElementById('historyDayFilter')?.value || '';
+
+  const filteredHistory = history.filter(h => {
+    if (dayFilter && String(h.day) !== dayFilter) return false;
+    if (searchQuery) {
+      const matchDayTitle = h.dayTitle.toLowerCase().includes(searchQuery);
+      const matchNotes = h.notes && h.notes.toLowerCase().includes(searchQuery);
+      const matchEx = h.exercises && h.exercises.some(ex => ex.name.toLowerCase().includes(searchQuery));
+      if (!matchDayTitle && !matchNotes && !matchEx) return false;
+    }
+    return true;
+  });
+
+  if (!filteredHistory.length) {
+    container.innerHTML = `<p style="color:var(--muted); text-align:center; padding:24px;">No matching workout sessions found.</p>`;
     return;
   }
 
   const maxMap = calculateMaxWeightsPerExercise();
   
-  history.forEach((h) => {
+  filteredHistory.forEach((h) => {
     const div = document.createElement('div');
     div.className = 'log-item';
     
@@ -2793,7 +2934,7 @@ function renderHistory() {
         let hitPr = false;
         workingSets.forEach(s => {
           const w = parseFloat(s.weight) || 0;
-          if (w > 0 && ex.category && maxMap[ex.category] === w) {
+          if (w > 0 && ex.name && maxMap[ex.name] === w) {
             hitPr = true;
           }
         });
@@ -3089,7 +3230,10 @@ function render1RMTrends() {
   wrap.innerHTML = '<p style="color:var(--muted); text-align:center; padding:24px;">Compound 1RM trend graphs active.</p>';
 }
 
-function openHistoryModal() { renderHistory(); document.getElementById('historyModalOverlay').classList.add('active'); }
+function openHistoryModal() { 
+  renderHistory(); 
+  document.getElementById('historyModalOverlay').classList.add('active'); 
+}
 function closeHistoryModal() { document.getElementById('historyModalOverlay').classList.remove('active'); }
 
 async function clearWorkoutHistory() {
