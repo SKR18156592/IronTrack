@@ -1692,6 +1692,9 @@ let lastFinishedRecord = null;
 let activePresetModalData = null;
 let activeAddVarCategory = null;
 let lastActiveTabBeforeProfile = 'workout';
+let hasStartedWorkout = false;
+let workoutStartTime = null;
+let workoutTimerInterval = null;
 
 const getL = (k, def) => { try { const v = localStorage.getItem(k); return v === null ? def : v; } catch(e){ return def; } };
 const setL = (k, v) => { try { localStorage.setItem(k, v); } catch(e){} };
@@ -1957,14 +1960,12 @@ function saveActivePresetModal() {
       rpe: parseFloat(tr.querySelector('.preset-rpe').value) || 7
     });
   });
-  
-  // 🚀 Explicitly save locally, update UI, and push to cloud asynchronously
   setPreset(category, variationValue, sets);
-  
   closePresetModal();
   const ex = FLAT_EXERCISES.find(e => e.category === category);
   if (ex) applyVariation(category, ex.prefix, variationValue, true);
   
+  // 🚀 Trigger instant cloud backup of presets
   pushToCloud();
   showToast('📌 Preset updated & synced!', 'success');
 }
@@ -2086,8 +2087,8 @@ function renderSetRows(prefix, sets, rest) {
 
     html += `<tr>
       <td class="set-num-cell">${i}</td>
-      <td><div class="stepper"><button class="stepper-btn" onclick="stepValue('${prefix}_w_${i}', -2.5)">−</button><input type="number" class="input-field set-weight" id="${prefix}_w_${i}" value="${wVal}" placeholder="kg"><button class="stepper-btn" onclick="stepValue('${prefix}_w_${i}', 2.5)">+</button></div></td>
-      <td><div class="stepper"><button class="stepper-btn" onclick="stepValue('${prefix}_r_${i}', -1)">−</button><input type="number" class="input-field set-reps" id="${prefix}_r_${i}" value="${rVal}" placeholder="reps"><button class="stepper-btn" onclick="stepValue('${prefix}_r_${i}', 1)">+</button></div></td>
+      <td><div class="stepper"><button class="stepper-btn" onclick="stepValue('${prefix}_w_${i}', -2.5)">−</button><input type="number" class="input-field set-weight" id="${prefix}_w_${i}" value="${wVal}" placeholder="kg" oninput="checkStartWorkoutTimer()"><button class="stepper-btn" onclick="stepValue('${prefix}_w_${i}', 2.5)">+</button></div></td>
+      <td><div class="stepper"><button class="stepper-btn" onclick="stepValue('${prefix}_r_${i}', -1)">−</button><input type="number" class="input-field set-reps" id="${prefix}_r_${i}" value="${rVal}" placeholder="reps" oninput="checkStartWorkoutTimer()"><button class="stepper-btn" onclick="stepValue('${prefix}_r_${i}', 1)">+</button></div></td>
       <td><select class="set-tag" id="${prefix}_t_${i}"><option value="Warmup" ${tag==='Warmup'?'selected':''}>Warmup</option><option value="Working" ${tag==='Working'?'selected':''}>Working</option><option value="Drop Set" ${tag==='Drop Set'?'selected':''}>Drop Set</option><option value="Failure" ${tag==='Failure'?'selected':''}>Failure</option></select></td>
       <td><div class="rpe-wrap"><input type="range" class="set-rpe" id="${prefix}_rp_${i}" min="1" max="10" step="1" value="${rpe}" oninput="updateRpeLabel(this, '${prefix}_rpl_${i}')"><span class="rpe-val" id="${prefix}_rpl_${i}">${rpe}</span></div></td>
       <td><input type="number" class="input-field set-rir" id="${prefix}_ri_${i}" value="${rir}"></td>
@@ -2331,6 +2332,7 @@ function stepValue(id, delta) {
   if (!input) return;
   const val = parseFloat(input.value) || 0;
   input.value = Math.max(0, val + delta);
+  checkStartWorkoutTimer();
 }
 
 function updateRpeLabel(range, labelId) {
@@ -2345,8 +2347,8 @@ function addSetRow(tableId, prefix, rest, update=true) {
   const n = tbody.children.length + 1;
   const tr = document.createElement('tr');
   tr.innerHTML = `<td class="set-num-cell">${n}</td>
-    <td><div class="stepper"><button class="stepper-btn" onclick="stepValue('${prefix}_w_${n}', -2.5)">−</button><input type="number" class="input-field set-weight" id="${prefix}_w_${n}" placeholder="kg"><button class="stepper-btn" onclick="stepValue('${prefix}_w_${n}', 2.5)">+</button></div></td>
-    <td><div class="stepper"><button class="stepper-btn" onclick="stepValue('${prefix}_r_${n}', -1)">−</button><input type="number" class="input-field set-reps" id="${prefix}_r_${n}" placeholder="reps"><button class="stepper-btn" onclick="stepValue('${prefix}_r_${n}', 1)">+</button></div></td>
+    <td><div class="stepper"><button class="stepper-btn" onclick="stepValue('${prefix}_w_${n}', -2.5)">−</button><input type="number" class="input-field set-weight" id="${prefix}_w_${n}" placeholder="kg" oninput="checkStartWorkoutTimer()"><button class="stepper-btn" onclick="stepValue('${prefix}_w_${n}', 2.5)">+</button></div></td>
+    <td><div class="stepper"><button class="stepper-btn" onclick="stepValue('${prefix}_r_${n}', -1)">−</button><input type="number" class="input-field set-reps" id="${prefix}_r_${n}" placeholder="reps" oninput="checkStartWorkoutTimer()"><button class="stepper-btn" onclick="stepValue('${prefix}_r_${n}', 1)">+</button></div></td>
     <td><select class="set-tag" id="${prefix}_t_${n}"><option value="Warmup">Warmup</option><option value="Working" selected>Working</option><option value="Drop Set">Drop Set</option><option value="Failure">Failure</option></select></td>
     <td><div class="rpe-wrap"><input type="range" class="set-rpe" id="${prefix}_rp_${n}" min="1" max="10" step="1" value="7" oninput="updateRpeLabel(this, '${prefix}_rpl_${n}')"><span class="rpe-val" id="${prefix}_rpl_${n}">7</span></div></td>
     <td><input type="number" class="input-field set-rir" id="${prefix}_ri_${n}" value="1"></td>
@@ -2417,6 +2419,27 @@ function switchDayView(day) {
   updateSectionWorkingSetCounts();
   updateProgress();
   confettiFired = false;
+  
+  // Reset session timer state on day switch
+  hasStartedWorkout = false;
+  workoutStartTime = null;
+  clearInterval(workoutTimerInterval);
+  document.getElementById('timeElapsed').textContent = "00:00:00";
+}
+
+function checkStartWorkoutTimer() {
+  if (!hasStartedWorkout) {
+    hasStartedWorkout = true;
+    workoutStartTime = Date.now();
+    clearInterval(workoutTimerInterval);
+    workoutTimerInterval = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - workoutStartTime) / 1000);
+      const h = String(Math.floor(elapsed / 3600)).padStart(2, '0');
+      const m = String(Math.floor((elapsed % 3600) / 60)).padStart(2, '0');
+      const s = String(elapsed % 60).padStart(2, '0');
+      document.getElementById('timeElapsed').textContent = `${h}:${m}:${s}`;
+    }, 1000);
+  }
 }
 
 function updateSectionWorkingSetCounts() {
@@ -2471,6 +2494,7 @@ function updateProgress() {
 }
 
 function toggleSet(btn, restSeconds) {
+  checkStartWorkoutTimer();
   btn.classList.toggle('completed');
   updateProgress();
   if (btn.classList.contains('completed')) {
@@ -3090,7 +3114,8 @@ function init() {
   else switchDayView(1);
 
   setInterval(() => {
-    const elapsed = Math.floor((Date.now() - window.ironStart) / 1000);
+    if (!hasStartedWorkout) return;
+    const elapsed = Math.floor((Date.now() - workoutStartTime) / 1000);
     const h = String(Math.floor(elapsed / 3600)).padStart(2, '0');
     const m = String(Math.floor((elapsed % 3600) / 60)).padStart(2, '0');
     const s = String(elapsed % 60).padStart(2, '0');
