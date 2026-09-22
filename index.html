@@ -294,7 +294,7 @@
     .log-sets-summary { font-size: 12px; font-family: 'JetBrains Mono', monospace; color: var(--muted); }
     .log-session-notes { font-size: 12.5px; color: #e2e8f0; font-style: italic; background: rgba(255,255,255,0.04); padding: 8px 12px; border-radius: 8px; border-left: 3px solid var(--accent); margin-top: 4px; }
 
-    /* Advanced History Filter & Search Bar */
+    /* Advanced History Filter Bar */
     .history-filter-bar { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 4px; }
     @media (max-width: 640px) { .history-filter-bar { grid-template-columns: 1fr; } }
 
@@ -861,7 +861,7 @@
       <button class="btn-xs" onclick="closeHistoryModal()">✕</button>
     </div>
     <div class="modal-body">
-      <div class="history-filter-bar" style="grid-template-columns: 1fr 1fr;">
+      <div class="history-filter-bar">
         <select id="historyDayFilter" class="machine-dropdown" onchange="onHistoryDayFilterChange()" style="padding: 10px;">
           <option value="">All Days / Splits</option>
           <option value="1">Day 1: Chest • Sh • Bi</option>
@@ -892,7 +892,9 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 let supabaseClient = null;
 try {
   if (window.supabase && SUPABASE_URL !== 'YOUR_SUPABASE_URL') {
-    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
+    });
   }
 } catch(e) { console.warn('Supabase initialization fallback active'); }
 
@@ -2799,12 +2801,8 @@ function populateHistoryExerciseDropdown() {
     if (h.exercises) {
       h.exercises.forEach(ex => {
         if (ex.name) {
-          // Verify if this exercise actually belongs to the selected day's workout schema
-          if (dayFilterVal) {
-            const dayCatList = getDayExerciseCategories(parseInt(dayFilterVal, 10));
-            const matchesDay = dayCatList.includes(ex.category) || WORKOUT[parseInt(dayFilterVal, 10)].sections.some(sec => sec.exercises.some(e => e.title === ex.name));
-            if (matchesDay) exerciseSet.add(ex.name);
-          } else {
+          // Verify if exercise belongs to the selected day in workout base
+          if (!dayFilterVal || Number(h.day) === Number(dayFilterVal)) {
             exerciseSet.add(ex.name);
           }
         }
