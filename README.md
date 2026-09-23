@@ -1,3 +1,5 @@
+---
+
 # IronTrack PWA 🏋️‍♂️💪
 
 **IronTrack** is a production-ready, cross-platform workout tracking application designed for performance and reliability. Built with a modern tech stack centered around **React 18**, **Vite 5**, **Tailwind CSS**, and **Supabase**, it functions as a fully installable Progressive Web App (PWA) supporting offline usage and real-time multi-device synchronization across iOS, Android, macOS, Windows, and Linux.
