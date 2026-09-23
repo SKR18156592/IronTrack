@@ -123,4 +123,4 @@ Distributed under the [MIT License](https://opensource.org/licenses/MIT?utm_sour
 
 ## 👤 Author
 
-Maintained by **[Suman Kumar Raj](https://github.com/SKR18156592?utm_source=gemini)**.
+Maintained by **[Suman Kumar Raj](https://github.com/SKR18156592)**.
