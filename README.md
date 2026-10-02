@@ -25,13 +25,14 @@
 irontrack-pwa/
 ├── index.html           # The entire app: markup, styles, and logic (Supabase via CDN)
 ├── public/              # PWA manifest, icons, and service worker
+├── supabase/user_sync.sql  # Table + RLS the app syncs through (safe to re-run)
 ├── supabase/schema.sql  # Legacy normalized schema (not used by index.html; see note below)
 ├── package.json         # Vite dev server & build only
 └── README.md
 ```
 
-> **Note:** the app syncs through a single `user_sync` table (one row per user) that is
-> not yet defined in `supabase/schema.sql`. Do not run `schema.sql` against production:
+> **Note:** the app syncs through a single `user_sync` table (one row per user), defined in
+> `supabase/user_sync.sql`. Do not run `schema.sql` against production:
 > it recreates the `supabase_realtime` publication and drops `user_sync` from realtime.
 
 ---
@@ -66,7 +67,7 @@ npm install
 
 
 4. **Initialize the Database:**
-* In your [Supabase Dashboard](https://supabase.com/dashboard), create a `user_sync` table keyed by `user_id`, with RLS restricting each row to `auth.uid()`, and add it to the `supabase_realtime` publication.
+* In your [Supabase Dashboard](https://supabase.com/dashboard), open the **SQL Editor** and run `supabase/user_sync.sql`. It creates (or upgrades) the `user_sync` table, enables RLS so each user can only access their own row, and adds the table to realtime. It is safe to re-run.
 * Do **not** run `supabase/schema.sql` (see the note above).
 
 

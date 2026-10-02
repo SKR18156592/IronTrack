@@ -715,7 +715,7 @@
         <div class="calc-row">
           <div class="meta-field">
             <label>👤 Full Name</label>
-            <input type="text" id="profileFullName" class="input-field" placeholder="Suman Kumar Raj" style="text-align: left; padding: 12px;" oninput="saveProfileTab()" />
+            <input type="text" id="profileFullName" class="input-field" placeholder="Your name" style="text-align: left; padding: 12px;" oninput="saveProfileTab()" />
           </div>
           <div class="meta-field">
             <label>🎂 Age (Years)</label>
@@ -1263,6 +1263,7 @@ async function handleAuthSubmit(e) {
     showToast(res.error.message, 'error');
   } else if (res.data.session) {
     currentUser = res.data.session.user;
+    prepareLocalDataFor(currentUser);
     updateUserSessionUI(currentUser);
     await pullFromCloud();
     subscribeToRealtimeSync();
@@ -1275,12 +1276,24 @@ async function handleAuthSubmit(e) {
 }
 
 async function handleSignOut() {
+  if (currentUser && supabaseClient && !(await flushPush())) {
+    const discard = confirm('Some changes have not reached the cloud yet (you may be offline).\n\nSign out anyway and discard them from this device?');
+    if (!discard) return;
+  }
   if (syncChannel && supabaseClient) {
     supabaseClient.removeChannel(syncChannel);
     syncChannel = null;
   }
-  if (supabaseClient) await supabaseClient.auth.signOut();
+  if (supabaseClient) {
+    try {
+      const { error } = await supabaseClient.auth.signOut();
+      // Offline: the server call fails and the session would survive, so drop it locally.
+      if (error) await supabaseClient.auth.signOut({ scope: 'local' });
+    } catch (e) { console.warn('Sign-out error:', e); }
+  }
   currentUser = null;
+  // The next person to sign in on this device must not inherit this account's data.
+  clearLocalUserData();
   window.location.reload();
 }
 
@@ -1323,11 +1336,57 @@ function refreshAllUI() {
   if (typeof renderMuscleRecoveryHeatmap === 'function') renderMuscleRecoveryHeatmap();
 }
 
+// ---- Sync bookkeeping. These keys are outside the iron_ namespace so they are never synced themselves.
+const SYNC_DIRTY_KEY = 'irontrack_sync_dirty';      // '1' while local edits have not reached the cloud
+const SYNC_OWNER_KEY = 'irontrack_owner';           // user id the local iron_* data belongs to
+const SYNC_STAMP_KEY = 'irontrack_last_synced_at';  // updated_at of the last row we pushed or applied
+const PUSH_DEBOUNCE_MS = 800;
+let pushTimer = null;
+let pushInFlight = null;
+let localEditSeq = 0;
+
+const isSyncDirty = () => getL(SYNC_DIRTY_KEY, '') === '1';
+
+function clearLocalUserData() {
+  const keys = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && key.startsWith('iron_')) keys.push(key);
+  }
+  keys.forEach(k => localStorage.removeItem(k));
+  [SYNC_DIRTY_KEY, SYNC_OWNER_KEY, SYNC_STAMP_KEY].forEach(k => localStorage.removeItem(k));
+}
+
+// Never let one account's local data leak into another account on a shared device.
+function prepareLocalDataFor(user) {
+  const owner = getL(SYNC_OWNER_KEY, '');
+  if (owner && owner !== user.id) {
+    clearLocalUserData();
+    refreshAllUI();
+    loadProfileTabUI();
+  }
+  setL(SYNC_OWNER_KEY, user.id);
+}
+
 async function pullFromCloud(showIndicator = false) {
   if (!currentUser || !supabaseClient) return;
+  const syncBtn = document.getElementById('manualSyncBtn');
+  const finish = (ok, message) => {
+    if (syncBtn && showIndicator) {
+      syncBtn.textContent = ok ? '✅ Synced' : '❌ Error';
+      setTimeout(() => { syncBtn.textContent = '☁️ Sync'; }, 2000);
+    }
+    if (showIndicator) showToast(message, ok ? 'success' : 'error');
+  };
   try {
-    const syncBtn = document.getElementById('manualSyncBtn');
     if (syncBtn && showIndicator) syncBtn.textContent = '⏳ Syncing...';
+
+    // Local edits that have not been uploaded yet win: upload them instead of overwriting them.
+    if (isSyncDirty() || pushTimer || pushInFlight) {
+      const ok = await flushPush();
+      finish(ok, ok ? 'Data synchronized successfully!' : 'Offline: changes are saved on this device and will sync later.');
+      return;
+    }
 
     const { data, error } = await supabaseClient
       .from('user_sync')
@@ -1337,76 +1396,112 @@ async function pullFromCloud(showIndicator = false) {
 
     if (error) {
       console.error('Cloud pull error:', error);
-      if (syncBtn && showIndicator) syncBtn.textContent = '❌ Error';
-      if (showIndicator) showToast('Sync failed: ' + error.message, 'error');
+      finish(false, 'Sync failed: ' + error.message);
       return;
     }
 
-    if (data) {
-      let updated = false;
+    // The user edited something while the request was in flight: keep their edit.
+    if (isSyncDirty() || pushTimer || pushInFlight) return;
 
-      if (data.local_storage_backup && typeof data.local_storage_backup === 'object') {
-        for (const k in data.local_storage_backup) {
-          if (k === 'iron_active_day') continue;
-          setL(k, data.local_storage_backup[k]);
-        }
-        updated = true;
-      }
-
-      if (Array.isArray(data.microcycle_config)) { setJ('iron_microcycle_config', data.microcycle_config); updated = true; }
-      if (Array.isArray(data.custom_days)) { setJ('iron_custom_days', data.custom_days); updated = true; }
-      if (Array.isArray(data.custom_sections)) { setJ('iron_custom_sections', data.custom_sections); updated = true; }
-      if (Array.isArray(data.hidden_days)) { setJ('iron_hidden_days', data.hidden_days); updated = true; }
-      if (Array.isArray(data.history)) { setJ('iron_workout_history', data.history); updated = true; }
-      if (Array.isArray(data.custom_exercises)) { setJ('iron_custom_exercises', data.custom_exercises); updated = true; }
-      if (Array.isArray(data.hidden_exercises)) { setJ('iron_hidden_exercises', data.hidden_exercises); updated = true; }
-      if (data.custom_variations && typeof data.custom_variations === 'object') { setJ('iron_custom_variations', data.custom_variations); updated = true; }
-      if (data.hidden_variations && typeof data.hidden_variations === 'object') { setJ('iron_hidden_variations', data.hidden_variations); updated = true; }
-      if (data.var_order && typeof data.var_order === 'object') { setJ('iron_var_order', data.var_order); updated = true; }
-      if (data.section_orders && typeof data.section_orders === 'object') { setJ('iron_section_orders', data.section_orders); updated = true; }
-      if (data.exercise_orders && typeof data.exercise_orders === 'object') {
-        setJ('iron_all_exercise_orders', data.exercise_orders);
-        for (const key in data.exercise_orders) { setJ(key, data.exercise_orders[key]); }
-        updated = true;
-      }
-      
-      if (data.profile_name) { setL('iron_profile_name', data.profile_name); updated = true; }
-      if (data.profile_age) { setL('iron_profile_age', data.profile_age); updated = true; }
-      if (data.profile_weight) { setL('iron_profile_weight', data.profile_weight); updated = true; }
-      if (data.profile_height) { setL('iron_profile_height', data.profile_height); updated = true; }
-      if (data.profile_sex) { setL('iron_profile_sex', data.profile_sex); updated = true; }
-      if (data.profile_avatar !== undefined) { setL('iron_profile_avatar', data.profile_avatar); updated = true; }
-
-      if (updated) {
-        refreshAllUI();
-        loadProfileTabUI();
-      }
-    } else {
-      await pushToCloud();
+    if (!data) {
+      // First sync for this account: upload what this device has.
+      setL(SYNC_DIRTY_KEY, '1');
+      const ok = await flushPush();
+      finish(ok, ok ? 'Data synchronized successfully!' : 'Sync failed.');
+      return;
     }
 
-    if (syncBtn && showIndicator) {
-      syncBtn.textContent = '✅ Synced';
-      setTimeout(() => { syncBtn.textContent = '☁️ Sync'; }, 2000);
+    // Skip rows we already have (including the echo of our own push).
+    const lastStamp = getL(SYNC_STAMP_KEY, '');
+    if (data.updated_at && lastStamp && Date.parse(data.updated_at) === Date.parse(lastStamp)) {
+      finish(true, 'Already up to date.');
+      return;
     }
-    if (showIndicator) showToast('Data synchronized successfully!', 'success');
+
+    applyCloudRow(data);
+    if (data.updated_at) setL(SYNC_STAMP_KEY, data.updated_at);
+    refreshAllUI();
+    loadProfileTabUI();
+    finish(true, 'Data synchronized successfully!');
   } catch (err) {
     console.error('Unexpected sync error:', err);
-    if (showIndicator) showToast('Sync error occurred.', 'error');
+    finish(false, 'Sync error occurred.');
   }
 }
 
-async function pushToCloud() {
+function applyCloudRow(data) {
+  if (data.local_storage_backup && typeof data.local_storage_backup === 'object') {
+    for (const k in data.local_storage_backup) {
+      if (!k.startsWith('iron_') || k === 'iron_active_day') continue;
+      setL(k, data.local_storage_backup[k]);
+    }
+  }
+
+  if (Array.isArray(data.microcycle_config)) setJ('iron_microcycle_config', data.microcycle_config);
+  if (Array.isArray(data.custom_days)) setJ('iron_custom_days', data.custom_days);
+  if (Array.isArray(data.custom_sections)) setJ('iron_custom_sections', data.custom_sections);
+  if (Array.isArray(data.hidden_days)) setJ('iron_hidden_days', data.hidden_days);
+  if (Array.isArray(data.history)) setJ('iron_workout_history', data.history);
+  if (Array.isArray(data.custom_exercises)) setJ('iron_custom_exercises', data.custom_exercises);
+  if (Array.isArray(data.hidden_exercises)) setJ('iron_hidden_exercises', data.hidden_exercises);
+  if (data.custom_variations && typeof data.custom_variations === 'object') setJ('iron_custom_variations', data.custom_variations);
+  if (data.hidden_variations && typeof data.hidden_variations === 'object') setJ('iron_hidden_variations', data.hidden_variations);
+  if (data.var_order && typeof data.var_order === 'object') setJ('iron_var_order', data.var_order);
+  if (data.section_orders && typeof data.section_orders === 'object') setJ('iron_section_orders', data.section_orders);
+  if (data.exercise_orders && typeof data.exercise_orders === 'object') {
+    setJ('iron_all_exercise_orders', data.exercise_orders);
+    for (const key in data.exercise_orders) {
+      if (key.startsWith('iron_order_')) setJ(key, data.exercise_orders[key]);
+    }
+  }
+
+  if (data.profile_name) setL('iron_profile_name', data.profile_name);
+  if (data.profile_age) setL('iron_profile_age', data.profile_age);
+  if (data.profile_weight) setL('iron_profile_weight', data.profile_weight);
+  if (data.profile_height) setL('iron_profile_height', data.profile_height);
+  if (data.profile_sex) setL('iron_profile_sex', data.profile_sex);
+  if (data.profile_avatar) setL('iron_profile_avatar', data.profile_avatar);
+}
+
+// Called after every local edit. Marks local data as unsynced and schedules one debounced upload.
+function pushToCloud() {
   if (!currentUser || !supabaseClient) return;
+  localEditSeq++;
+  setL(SYNC_DIRTY_KEY, '1');
+  clearTimeout(pushTimer);
+  pushTimer = setTimeout(() => { pushTimer = null; flushPush(); }, PUSH_DEBOUNCE_MS);
+}
+
+// Uploads pending local edits now. Uploads never overlap. Resolves true once nothing is left unsynced.
+async function flushPush() {
+  clearTimeout(pushTimer);
+  pushTimer = null;
+  while (pushInFlight) await pushInFlight;
+  if (!currentUser || !supabaseClient) return false;
+  // Re-upload if the user edited again while an upload was running.
+  while (isSyncDirty()) {
+    if (pushInFlight) { await pushInFlight; continue; }
+    pushInFlight = uploadSnapshot();
+    let ok;
+    try { ok = await pushInFlight; } finally { pushInFlight = null; }
+    if (!ok) return false;
+  }
+  return true;
+}
+
+async function uploadSnapshot() {
+  const seq = localEditSeq;
   try {
     const allLocalStorageData = {};
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
-      if (key && key.startsWith('iron_')) {
+      // The avatar is sent once, as profile_avatar.
+      if (key && key.startsWith('iron_') && key !== 'iron_profile_avatar') {
         allLocalStorageData[key] = localStorage.getItem(key);
       }
     }
 
+    const updatedAt = new Date().toISOString();
     const payload = {
       user_id: currentUser.id,
       microcycle_config: getMicrocycle(),
@@ -1422,13 +1517,13 @@ async function pushToCloud() {
       exercise_orders: getJ('iron_all_exercise_orders', {}),
       section_orders: getJ('iron_section_orders', {}),
       local_storage_backup: allLocalStorageData,
-      profile_name: getL('iron_profile_name', 'Suman Kumar Raj'),
-      profile_age: getL('iron_profile_age', '23'),
-      profile_weight: getL('iron_profile_weight', '72.5'),
-      profile_height: getL('iron_profile_height', '175'),
-      profile_sex: getL('iron_profile_sex', 'male'),
+      profile_name: getL('iron_profile_name', ''),
+      profile_age: getL('iron_profile_age', ''),
+      profile_weight: getL('iron_profile_weight', ''),
+      profile_height: getL('iron_profile_height', ''),
+      profile_sex: getL('iron_profile_sex', ''),
       profile_avatar: getL('iron_profile_avatar', null),
-      updated_at: new Date().toISOString()
+      updated_at: updatedAt
     };
 
     let { error } = await supabaseClient
@@ -1450,19 +1545,26 @@ async function pushToCloud() {
       }
     }
 
+    if (error) {
+      console.error('Cloud push error:', error);
+      return false;
+    }
+
+    setL(SYNC_STAMP_KEY, updatedAt);
+    // Only clear the flag if nothing was edited while this upload was running.
+    if (seq === localEditSeq) localStorage.removeItem(SYNC_DIRTY_KEY);
+
     if (syncChannel) {
       syncChannel.send({
         type: 'broadcast',
         event: 'iron_sync_ping',
-        payload: { updated_at: Date.now() }
+        payload: { updated_at: updatedAt }
       });
     }
-
-    if (error) {
-      console.error('Cloud push error:', error);
-    }
+    return true;
   } catch (err) {
     console.error('Unexpected push error:', err);
+    return false;
   }
 }
 
@@ -1772,17 +1874,17 @@ function renderScheduleRibbon() {
       const dot = item.dayNum == 1 ? '🔴' : item.dayNum == 2 ? '🔵' : item.dayNum == 3 ? '🟢' : '🟣';
       const label = WORKOUT[item.dayNum] ? WORKOUT[item.dayNum].title.replace('⚡ ', '').split('•')[0].trim() : `Day ${item.dayNum}`;
       return `
-        <div class="sched-item ${todayClass}" onclick="switchDayView('${item.dayNum}', true)">
-          <span class="sched-day-name">${item.day}</span>
+        <div class="sched-item ${todayClass}" onclick="switchDayView('${safeId(item.dayNum)}', true)">
+          <span class="sched-day-name">${esc(item.day)}</span>
           <span class="sched-dot">${dot}</span>
-          <span class="sched-label" style="color:var(--accent)" title="${label}">${label}</span>
+          <span class="sched-label" style="color:var(--accent)" title="${esc(label)}">${esc(label)}</span>
         </div>
       `;
     } else {
       restCount++;
       return `
-        <div class="sched-item ${todayClass}" onclick="notifyRestDay('${item.full}')">
-          <span class="sched-day-name">${item.day}</span>
+        <div class="sched-item ${todayClass}" onclick="notifyRestDay('${safeId(item.full)}')">
+          <span class="sched-day-name">${esc(item.day)}</span>
           <span class="sched-dot">⚪</span>
           <span class="sched-label" style="color:var(--muted)">Rest</span>
         </div>
@@ -1804,12 +1906,12 @@ function openMicrocycleModal() {
 
   container.innerHTML = cycle.map((item, idx) => `
     <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(15,23,42,0.8); padding:10px 14px; border-radius:10px; border:1px solid rgba(255,255,255,0.08);">
-      <span style="font-weight:700; font-size:14px;">${item.full}</span>
+      <span style="font-weight:700; font-size:14px;">${esc(item.full)}</span>
       <select class="machine-dropdown" id="microcycle_select_${idx}" style="min-width:180px; padding:8px 12px; font-size:13px;">
         <option value="rest" ${item.type === 'rest' ? 'selected' : ''}>⚪ Rest Day</option>
         ${workoutDays.map(d => `
           <option value="${d}" ${item.type === 'workout' && String(item.dayNum) === String(d) ? 'selected' : ''}>
-            ⚡ Day ${d}: ${WORKOUT[d].title.replace('⚡ ', '')}
+            ⚡ Day ${d}: ${esc(WORKOUT[d].title.replace('⚡ ', ''))}
           </option>
         `).join('')}
       </select>
@@ -1853,7 +1955,7 @@ function renderDayNav() {
       <button class="nav-btn day-${d} ${String(d) === String(activeDay) ? 'active' : ''}" onclick="switchDayView('${d}', true)">
         <span>${dot}</span>
         <span>Day ${d}</span>
-        <span style="font-size: 11px; opacity: 0.75; font-weight: 500;">(${cfg.title.replace('⚡ ', '').split('•')[0].trim()})</span>
+        <span style="font-size: 11px; opacity: 0.75; font-weight: 500;">(${esc(cfg.title.replace('⚡ ', '').split('•')[0].trim())})</span>
       </button>
     `;
   }).join('');
@@ -1910,7 +2012,7 @@ function handleSaveCustomDay(e) {
 function openAddSecModal() {
   const sel = document.getElementById('secTargetDay');
   if (sel) {
-    sel.innerHTML = Object.keys(WORKOUT).map(d => `<option value="${d}" ${String(d) === String(activeDay) ? 'selected' : ''}>Day ${d}: ${WORKOUT[d].title.replace('⚡ ', '')}</option>`).join('');
+    sel.innerHTML = Object.keys(WORKOUT).map(d => `<option value="${d}" ${String(d) === String(activeDay) ? 'selected' : ''}>Day ${d}: ${esc(WORKOUT[d].title.replace('⚡ ', ''))}</option>`).join('');
   }
   document.getElementById('secNameInput').value = '';
   document.getElementById('addSecModalOverlay').classList.add('active');
@@ -2050,7 +2152,7 @@ function populateHistoryDayFilter() {
   const curr = select.value;
   let html = `<option value="">All Days / Splits</option>`;
   Object.keys(WORKOUT).forEach(d => {
-    html += `<option value="${d}">Day ${d}: ${WORKOUT[d].title.replace('⚡ ', '')}</option>`;
+    html += `<option value="${d}">Day ${d}: ${esc(WORKOUT[d].title.replace('⚡ ', ''))}</option>`;
   });
   select.innerHTML = html;
   select.value = curr;
@@ -2192,6 +2294,21 @@ function rebuildWorkoutDatabase() {
     }
   });
 
+  // Drop or repair anything whose IDs could break out of inline handlers (e.g. from an imported backup).
+  Object.keys(WORKOUT).forEach(dNum => {
+    if (!isSafeId(dNum)) { delete WORKOUT[dNum]; return; }
+    WORKOUT[dNum].sections.forEach(sec => {
+      if (!isSafeId(sec.tag)) sec.tag = 'sec_' + safeId(sec.tag);
+      if (!isSafeId(sec.color)) sec.color = 'blue';
+      sec.exercises = sec.exercises.filter(ex => isSafeId(ex.category) && isSafeId(ex.prefix));
+      sec.exercises.forEach(ex => {
+        ex.rest = Number(ex.rest) || 75;
+        ex.variations = (ex.variations || []).filter(v => isSafeId(v.value));
+        if (!ex.variations.length) ex.variations = [{ value: 'custom_var', label: 'Standard', setup: '', cue: '', defaultSets: [] }];
+      });
+    });
+  });
+
   FLAT_EXERCISES = [];
   Object.values(WORKOUT).forEach(day => day.sections.forEach(sec => sec.exercises.forEach(ex => FLAT_EXERCISES.push(ex))));
 }
@@ -2235,6 +2352,12 @@ const getL = (k, def) => { try { const v = localStorage.getItem(k); return v ===
 const setL = (k, v) => { try { localStorage.setItem(k, v); } catch(e){} };
 const getJ = (k, def) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : def; } catch(e){ return def; } };
 const setJ = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){} };
+
+// Escape text before it goes into an innerHTML template.
+const esc = (v) => String(v ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+// IDs end up inside inline onclick="fn('...')" handlers, where HTML escaping is not enough.
+const isSafeId = (v) => /^[A-Za-z0-9_-]+$/.test(String(v ?? ''));
+const safeId = (v) => String(v ?? '').replace(/[^A-Za-z0-9_-]/g, '');
 
 const choiceKey = (cat) => 'iron_choice_master_' + cat;
 const presetKey = (cat, varValue) => 'iron_preset_' + cat + '_' + varValue;
@@ -2284,7 +2407,7 @@ function closeAddExModal() { document.getElementById('addExModalOverlay').classL
 function populateDayDropdown() {
   const sel = document.getElementById('exDay');
   if (!sel) return;
-  sel.innerHTML = Object.keys(WORKOUT).map(d => `<option value="${d}">Day ${d}: ${WORKOUT[d].title.replace('⚡ ', '')}</option>`).join('');
+  sel.innerHTML = Object.keys(WORKOUT).map(d => `<option value="${d}">Day ${d}: ${esc(WORKOUT[d].title.replace('⚡ ', ''))}</option>`).join('');
 }
 
 function populateSectionDropdown(dayNum) {
@@ -2292,7 +2415,7 @@ function populateSectionDropdown(dayNum) {
   if (!select || !WORKOUT[dayNum]) return;
   
   const sections = WORKOUT[dayNum].sections || [];
-  let html = sections.map(s => `<option value="${s.title}">${s.title}</option>`).join('');
+  let html = sections.map(s => `<option value="${esc(s.title)}">${esc(s.title)}</option>`).join('');
   html += `<option value="__NEW__">➕ Create New Custom Section...</option>`;
   select.innerHTML = html;
   
@@ -2501,8 +2624,8 @@ function addPresetRowDOM(w='', r='', tag='Working') {
   const tr = document.createElement('tr');
   tr.innerHTML = `
     <td class="set-num-cell">${n}</td>
-    <td><input type="number" class="input-field preset-w" value="${w}" placeholder="kg" /></td>
-    <td><input type="number" class="input-field preset-r" value="${r}" placeholder="reps" /></td>
+    <td><input type="number" class="input-field preset-w" value="${esc(w)}" placeholder="kg" /></td>
+    <td><input type="number" class="input-field preset-r" value="${esc(r)}" placeholder="reps" /></td>
     <td>
       <select class="set-tag preset-tag">
         <option value="Warmup" ${tag==='Warmup'?'selected':''}>Warmup</option>
@@ -2656,10 +2779,10 @@ function renderSetRows(prefix, sets, rest) {
 
     html += `<tr>
       <td class="set-num-cell">${i}</td>
-      <td><div class="stepper"><button class="stepper-btn" onclick="stepValue('${prefix}_w_${i}', -2.5)">−</button><input type="number" class="input-field set-weight" id="${prefix}_w_${i}" value="${wVal}" placeholder="kg" oninput="checkStartWorkoutTimer()"><button class="stepper-btn" onclick="stepValue('${prefix}_w_${i}', 2.5)">+</button></div></td>
-      <td><div class="stepper"><button class="stepper-btn" onclick="stepValue('${prefix}_r_${i}', -1)">−</button><input type="number" class="input-field set-reps" id="${prefix}_r_${i}" value="${rVal}" placeholder="reps" oninput="checkStartWorkoutTimer()"><button class="stepper-btn" onclick="stepValue('${prefix}_r_${i}', 1)">+</button></div></td>
+      <td><div class="stepper"><button class="stepper-btn" onclick="stepValue('${prefix}_w_${i}', -2.5)">−</button><input type="number" class="input-field set-weight" id="${prefix}_w_${i}" value="${esc(wVal)}" placeholder="kg" oninput="checkStartWorkoutTimer()"><button class="stepper-btn" onclick="stepValue('${prefix}_w_${i}', 2.5)">+</button></div></td>
+      <td><div class="stepper"><button class="stepper-btn" onclick="stepValue('${prefix}_r_${i}', -1)">−</button><input type="number" class="input-field set-reps" id="${prefix}_r_${i}" value="${esc(rVal)}" placeholder="reps" oninput="checkStartWorkoutTimer()"><button class="stepper-btn" onclick="stepValue('${prefix}_r_${i}', 1)">+</button></div></td>
       <td><select class="set-tag" id="${prefix}_t_${i}"><option value="Warmup" ${tag==='Warmup'?'selected':''}>Warmup</option><option value="Working" ${tag==='Working'?'selected':''}>Working</option><option value="Drop Set" ${tag==='Drop Set'?'selected':''}>Drop Set</option><option value="Failure" ${tag==='Failure'?'selected':''}>Failure</option></select></td>
-      <td><input type="number" class="input-field set-rir" id="${prefix}_ri_${i}" value="${rir}"></td>
+      <td><input type="number" class="input-field set-rir" id="${prefix}_ri_${i}" value="${esc(rir)}"></td>
       <td><button class="check-btn" onclick="toggleSet(this, ${rest})">✓</button></td>
     </tr>`;
   }
@@ -2731,7 +2854,7 @@ function toggleSuperset(category) {
 
 function renderExerciseCard(ex, idx) {
   const firstVar = ex.variations[0];
-  const options = ex.variations.map(v => `<option value="${v.value}">${v.label}</option>`).join('');
+  const options = ex.variations.map(v => `<option value="${esc(v.value)}">${esc(v.label)}</option>`).join('');
   
   const savedChoice = getChoice(ex.category);
   const activeVarVal = (savedChoice && ex.variations.some(v => v.value === savedChoice)) ? savedChoice : firstVar.value;
@@ -2743,15 +2866,15 @@ function renderExerciseCard(ex, idx) {
   const supBtn = getSupersetBtn(ex.category);
 
   return `
-  <div class="exercise-card ${idx===1 ? 'highlight' : ''} ${dec.cls}" data-category="${ex.category}" data-prefix="${ex.prefix}" data-exercise-type="${ex.exerciseType}" data-rest="${ex.rest}">
+  <div class="exercise-card ${idx===1 ? 'highlight' : ''} ${dec.cls}" data-category="${ex.category}" data-prefix="${ex.prefix}" data-exercise-type="${esc(ex.exerciseType)}" data-rest="${ex.rest}">
     <div class="ex-header">
       <div>
-        <div class="ex-title-row"><span class="ex-number">${String(idx).padStart(2,'0')}</span><div class="ex-title">${ex.title}</div>${dec.badge}</div>
-        <div class="ex-target">${ex.target}</div>
+        <div class="ex-title-row"><span class="ex-number">${String(idx).padStart(2,'0')}</span><div class="ex-title">${esc(ex.title)}</div>${dec.badge}</div>
+        <div class="ex-target">${esc(ex.target)}</div>
       </div>
       <div class="ex-meta">
-        <span class="ex-type-badge">${ex.exerciseType}</span>
-        <span class="ex-scheme-badge">${ex.scheme}</span>
+        <span class="ex-type-badge">${esc(ex.exerciseType)}</span>
+        <span class="ex-scheme-badge">${esc(ex.scheme)}</span>
       </div>
     </div>
     <div class="machine-selector-wrapper">
@@ -2767,11 +2890,11 @@ function renderExerciseCard(ex, idx) {
     </div>
     <div class="ex-meta-info">
       <div class="info-row">
-        <span class="info-pill setup" id="${ex.prefix}SetupBadge">${activeVarObj.setup}</span>
-        <span class="info-pill prev" id="${ex.prefix}PrevBadge">⏮️️ Preset: ${formatPreset(sets)}</span>
+        <span class="info-pill setup" id="${ex.prefix}SetupBadge">${esc(activeVarObj.setup)}</span>
+        <span class="info-pill prev" id="${ex.prefix}PrevBadge">⏮️️ Preset: ${esc(formatPreset(sets))}</span>
       </div>
       <div class="info-row">
-        <span class="info-pill cue" id="${ex.prefix}CueBadge">${activeVarObj.cue}</span>
+        <span class="info-pill cue" id="${ex.prefix}CueBadge">${esc(activeVarObj.cue)}</span>
         <span class="info-pill overload" id="${ex.prefix}OverloadBadge" style="display:none;"></span>
       </div>
     </div>
@@ -2800,7 +2923,7 @@ function renderDay(dayNum) {
     const displayTitle = (sec.title && sec.title !== 'undefined') ? sec.title : 'General';
     html += `<div class="category-section">
       <div class="category-header-row">
-        <div class="category-tag tag-${sec.color || 'blue'}" id="${sec.tag}">${sidx+1}. ${displayTitle} (<span class="set-count">0</span> Working Sets)</div>
+        <div class="category-tag tag-${sec.color || 'blue'}" id="${sec.tag}">${sidx+1}. ${esc(displayTitle)} (<span class="set-count">0</span> Working Sets)</div>
         <div class="section-actions">
           <button class="btn-xs" title="Move Section Up" onclick="reorderSection('${dayNum}', ${sidx}, -1)">⬆ Up</button>
           <button class="btn-xs" title="Move Section Down" onclick="reorderSection('${dayNum}', ${sidx}, 1)">⬇ Down</button>
@@ -3402,7 +3525,7 @@ function populateHistoryExerciseDropdown() {
 
   let html = `<option value="">📈 View Progression Graph...</option>`;
   exerciseSet.forEach(name => {
-    html += `<option value="${name}">${name}</option>`;
+    html += `<option value="${esc(name)}">${esc(name)}</option>`;
   });
   select.innerHTML = html;
 }
@@ -3422,7 +3545,7 @@ function populateCompoundSelect() {
 
   let html = `<option value="">All Top Lifts</option>`;
   exerciseSet.forEach(name => {
-    html += `<option value="${name}">${name}</option>`;
+    html += `<option value="${esc(name)}">${esc(name)}</option>`;
   });
   select.innerHTML = html;
   select.value = currentVal;
@@ -3461,7 +3584,7 @@ function renderHistoryForSelectedExercise(exerciseName) {
 
   let chartSvg = '';
   if (!dataPoints.length) {
-    chartSvg = `<p style="color:var(--muted); text-align:center; padding:24px;">No lifting data recorded for ${exerciseName} in selected filter.</p>`;
+    chartSvg = `<p style="color:var(--muted); text-align:center; padding:24px;">No lifting data recorded for ${esc(exerciseName)} in selected filter.</p>`;
   } else {
     const maxW = Math.max(...dataPoints.map(d => d.weight), 10);
     const w = 520, h = 260, pad = 40, chartW = w - pad * 2, chartH = h - pad * 2;
@@ -3491,7 +3614,7 @@ function renderHistoryForSelectedExercise(exerciseName) {
   modal.innerHTML = `
     <div class="modal-content" style="max-width: 620px;">
       <div class="modal-header">
-        <h2>📈 Progression: ${exerciseName}</h2>
+        <h2>📈 Progression: ${esc(exerciseName)}</h2>
         <button class="btn-xs" onclick="this.closest('.modal-overlay').remove()">✕</button>
       </div>
       <div class="modal-body">
@@ -3541,7 +3664,7 @@ function renderHistory() {
     if (h.exercises && h.exercises.length) {
       exercisesHtml = h.exercises.map(ex => {
         const workingSets = ex.sets.filter(s => s.done !== false);
-        const setsStr = workingSets.map(s => `${s.weight}kg×${s.reps} (${s.tag || 'Working'})`).join(' • ');
+        const setsStr = workingSets.map(s => `${esc(s.weight)}kg×${esc(s.reps)} (${esc(s.tag || 'Working')})`).join(' • ');
         
         let hitPr = false;
         workingSets.forEach(s => {
@@ -3557,7 +3680,7 @@ function renderHistory() {
         return `
           <div class="log-exercise-row">
             <div class="log-exercise-header-line">
-              <div class="log-exercise-title">${ex.name} (${ex.machineOpt || 'Standard'})</div>
+              <div class="log-exercise-title">${esc(ex.name)} (${esc(ex.machineOpt || 'Standard')})</div>
               ${prBadge}
             </div>
             <div class="log-sets-summary">${setsStr || 'No sets recorded'}</div>
@@ -3566,15 +3689,15 @@ function renderHistory() {
       }).join('');
     }
 
-    const notesBlock = h.notes ? `<div class="log-session-notes">"${h.notes}"</div>` : '';
+    const notesBlock = h.notes ? `<div class="log-session-notes">"${esc(h.notes)}"</div>` : '';
 
     div.innerHTML = `
       <div class="log-item-header" onclick="toggleLogAccordion(this)">
-        <span>📅 ${h.date} • Day ${h.day}: ${h.dayTitle}</span>
-        <span>⏱️ ${h.duration} ▾</span>
+        <span>📅 ${esc(h.date)} • Day ${esc(h.day)}: ${esc(h.dayTitle)}</span>
+        <span>⏱️ ${esc(h.duration)} ▾</span>
       </div>
       <div class="log-item-body">
-        <div style="font-size: 11.5px; color: var(--muted); margin-top: 6px;">Body Weight: ${h.bodyWeight}kg | Energy: ${h.energy}/10 | Sleep: ${h.sleep}hrs</div>
+        <div style="font-size: 11.5px; color: var(--muted); margin-top: 6px;">Body Weight: ${esc(h.bodyWeight)}kg | Energy: ${esc(h.energy)}/10 | Sleep: ${esc(h.sleep)}hrs</div>
         ${notesBlock}
         ${exercisesHtml}
       </div>
@@ -3639,19 +3762,19 @@ function updateAvatarDisplay(imgSrcOrNull) {
   const initialsEl = document.getElementById('avatarInitials');
   if (!container) return;
 
-  if (imgSrcOrNull) {
+  if (imgSrcOrNull && /^data:image\/(png|jpe?g|gif|webp);base64,[A-Za-z0-9+/=]+$/.test(imgSrcOrNull)) {
     container.innerHTML = `<img src="${imgSrcOrNull}" alt="Avatar" />`;
   } else {
     const name = document.getElementById('profileFullName')?.value || 'User';
     const parts = name.trim().split(' ');
     let initials = parts.length > 1 ? (parts[0][0] + parts[parts.length - 1][0]) : name.slice(0, 2);
     initials = initials.toUpperCase();
-    container.innerHTML = `<span id="avatarInitials">${initials}</span>`;
+    container.innerHTML = `<span id="avatarInitials">${esc(initials)}</span>`;
   }
 }
 
 function loadProfileTabUI() {
-  const name = getL('iron_profile_name', 'Suman Kumar Raj');
+  const name = getL('iron_profile_name', '');
   const age = getL('iron_profile_age', '23');
   const weight = getL('iron_profile_weight', '72.5');
   const height = getL('iron_profile_height', '175');
@@ -3894,7 +4017,7 @@ function render1RMTrends() {
     const [x, y] = coords[i].split(',');
     svg += `<circle cx="${x}" cy="${y}" class="chart-point" fill="var(--accent)" />`;
     svg += `<text x="${x}" y="${parseFloat(y) - 10}" text-anchor="middle" class="chart-value">${p.val.toFixed(1)}kg</text>`;
-    svg += `<text x="${x}" y="${h - 12}" text-anchor="middle" class="chart-label">${p.date ? p.date.slice(5) : ''}</text>`;
+    svg += `<text x="${x}" y="${h - 12}" text-anchor="middle" class="chart-label">${esc(p.date ? String(p.date).slice(5) : '')}</text>`;
   });
 
   svg += `</svg>`;
@@ -4098,6 +4221,7 @@ function init() {
     supabaseClient.auth.getSession().then(({ data: { session } }) => {
       if (session && session.user) {
         currentUser = session.user;
+        prepareLocalDataFor(currentUser);
         updateUserSessionUI(currentUser);
         pullFromCloud();
         subscribeToRealtimeSync();
