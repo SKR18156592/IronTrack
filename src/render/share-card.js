@@ -5,6 +5,8 @@ export function generateShareCard(record) {
   canvas.width = 800;
   canvas.height = 1000;
   const ctx = canvas.getContext('2d');
+  // Drawn in the current theme accent, like the rest of the app.
+  const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#00f3ff';
 
   const bgGrad = ctx.createLinearGradient(0, 0, 800, 1000);
   bgGrad.addColorStop(0, '#07080c');
@@ -13,17 +15,16 @@ export function generateShareCard(record) {
   ctx.fillStyle = bgGrad;
   ctx.fillRect(0, 0, 800, 1000);
 
-  ctx.strokeStyle = '#00f3ff';
+  ctx.strokeStyle = accent;
   ctx.lineWidth = 4;
-  ctx.shadowColor = '#00f3ff';
+  ctx.shadowColor = accent;
   ctx.shadowBlur = 20;
   ctx.strokeRect(30, 30, 740, 940);
   ctx.shadowBlur = 0;
 
-  ctx.fillStyle = '#ff007f';
+  ctx.fillStyle = accent;
   ctx.fillRect(30, 30, 740, 8);
 
-  ctx.fillStyle = '#00f3ff';
   ctx.font = '800 24px "Plus Jakarta Sans", sans-serif';
   ctx.fillText('⚡ IRONTRACK', 60, 90);
 
@@ -66,10 +67,10 @@ export function generateShareCard(record) {
     ctx.fillText(val, x + 24, y + 80);
   };
 
-  drawStatBox(60, 230, 335, 110, 'Total Volume Tonnage', `${totalTonnage.toFixed(0)} kg`, '#39ff14');
-  drawStatBox(405, 230, 335, 110, 'Completed Sets', `${completedSets} Sets`, '#00f3ff');
-  drawStatBox(60, 360, 335, 110, 'Session Duration', record.duration, '#ff007f');
-  drawStatBox(405, 360, 335, 110, 'Body Weight', `${record.bodyWeight} kg`, '#fbbf24');
+  drawStatBox(60, 230, 335, 110, 'Total Volume Tonnage', `${totalTonnage.toFixed(0)} kg`, accent);
+  drawStatBox(405, 230, 335, 110, 'Completed Sets', `${completedSets} Sets`, '#f8fafc');
+  drawStatBox(60, 360, 335, 110, 'Session Duration', record.duration, '#f8fafc');
+  drawStatBox(405, 360, 335, 110, 'Body Weight', `${record.bodyWeight} kg`, '#f8fafc');
 
   ctx.fillStyle = '#ffffff';
   ctx.font = '800 20px "Plus Jakarta Sans", sans-serif';
@@ -90,7 +91,7 @@ export function generateShareCard(record) {
 
     const workingSets = ex.sets.filter(s => s.done !== false);
     const setsSummary = workingSets.map(s => `${s.weight}kg×${s.reps}`).join(', ');
-    ctx.fillStyle = '#00f3ff';
+    ctx.fillStyle = accent;
     ctx.font = '600 13px "JetBrains Mono", monospace';
     ctx.fillText(setsSummary, 60, startY + 22);
 

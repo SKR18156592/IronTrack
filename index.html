@@ -33,11 +33,19 @@
       --accent-glow: rgba(0, 243, 255, 0.35);
       --accent-dim: rgba(0, 243, 255, 0.1);
       
-      --lime: #39ff14;
-      --lime-glow: rgba(57, 255, 20, 0.35);
-      --lime-dim: rgba(57, 255, 20, 0.1);
-      --coral: #ff4d4d;
-      --coral-glow: rgba(255, 77, 77, 0.35);
+      /* Status colours: green = done/fresh, amber = warning/recovering, red = danger/fatigued.
+         Everything else uses the theme accent. (--lime/--coral are the old names, kept as aliases.) */
+      --success: #4ade80;
+      --success-glow: rgba(74, 222, 128, 0.28);
+      --success-dim: rgba(74, 222, 128, 0.1);
+      --warning: #fbbf24;
+      --danger: #f87171;
+      --danger-glow: rgba(248, 113, 113, 0.3);
+      --lime: var(--success);
+      --lime-glow: var(--success-glow);
+      --lime-dim: var(--success-dim);
+      --coral: var(--danger);
+      --coral-glow: var(--danger-glow);
       --radius-sm: 14px;
       --radius-md: 20px;
       --radius-lg: 28px;
@@ -45,9 +53,9 @@
     }
 
     [data-theme="lime"] {
-      --accent: #39ff14;
-      --accent-glow: rgba(57, 255, 20, 0.35);
-      --accent-dim: rgba(57, 255, 20, 0.1);
+      --accent: #a3e635;
+      --accent-glow: rgba(163, 230, 53, 0.32);
+      --accent-dim: rgba(163, 230, 53, 0.1);
     }
     [data-theme="magenta"] {
       --accent: #ff007f;
@@ -73,8 +81,7 @@
       background-color: var(--bg);
       background-image:
         radial-gradient(at 0% 0%, var(--accent-dim) 0, transparent 50%),
-        radial-gradient(at 100% 0%, rgba(255, 0, 127, 0.08) 0, transparent 50%),
-        radial-gradient(at 50% 100%, var(--lime-dim) 0, transparent 50%);
+        radial-gradient(at 100% 100%, rgba(255, 255, 255, 0.025) 0, transparent 50%);
       background-attachment: fixed;
       color: var(--text);
       min-height: 100vh;
@@ -97,12 +104,6 @@
     .toast.success { border-color: var(--lime); color: #86efac; box-shadow: 0 0 24px var(--lime-glow); }
     .toast.error { border-color: var(--coral); color: #fca5a5; box-shadow: 0 0 24px var(--coral-glow); }
     .toast.info { border-color: var(--accent); color: var(--accent); box-shadow: 0 0 24px var(--accent-glow); }
-
-    .net-status { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 50%; background: rgba(15,23,42,0.85); border: 1px solid rgba(255,255,255,0.08); flex-shrink: 0; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
-    .net-dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
-    .net-status.online .net-dot { background: var(--lime); box-shadow: 0 0 12px var(--lime-glow); }
-    .net-status.offline .net-dot { background: var(--coral); box-shadow: 0 0 12px var(--coral-glow); }
-
     .app-views { position: relative; }
     .app-view { display: none; flex-direction: column; gap: 20px; }
     .app-view.active { display: flex; animation: viewIn .4s cubic-bezier(0.16, 1, 0.3, 1); }
@@ -124,7 +125,6 @@
     .sched-item:hover { transform: translateY(-3px); background: rgba(51, 65, 85, 0.6); border-color: rgba(255,255,255,0.12); }
     .sched-item.today { border-color: var(--accent); box-shadow: 0 0 18px var(--accent-glow); background: var(--accent-dim); }
     .sched-day-name { font-size: 10.5px; font-weight: 700; color: var(--muted); text-transform: uppercase; }
-    .sched-dot { font-size: 14px; }
     .sched-label { font-size: 11px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; text-align: center; }
 
     .day-nav-wrapper {
@@ -161,9 +161,9 @@
       box-shadow: 0 0 18px var(--accent-glow);
     }
     .nav-btn-add {
-      background: rgba(57, 255, 20, 0.08);
-      border: 1px dashed rgba(57, 255, 20, 0.4);
-      color: var(--lime);
+      background: var(--accent-dim);
+      border: 1px dashed var(--accent-glow);
+      color: var(--accent);
       font-size: 12.5px;
       font-weight: 800;
       padding: 10px 16px;
@@ -177,19 +177,17 @@
       transition: all .2s;
     }
     .nav-btn-add:hover {
-      background: rgba(57, 255, 20, 0.18);
-      border-color: var(--lime);
-      box-shadow: 0 0 16px var(--lime-glow);
+      background: var(--accent-dim);
+      border-color: var(--accent);
+      box-shadow: 0 0 16px var(--accent-glow);
     }
 
     .header-card { padding: 24px; border-radius: var(--radius-lg); position: relative; overflow: hidden; }
-    .header-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, #ff007f, var(--accent), var(--lime)); opacity: .9; }
+    .header-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, transparent, var(--accent), transparent); opacity: .8; }
     .header-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
     .title-group h1 { font-size: 26px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 4px; }
     .title-group p { color: var(--muted); font-size: 14px; }
     .badge-day { display: inline-block; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .8px; padding: 4px 10px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.12); background: var(--accent-dim); color: var(--accent); }
-    .timer-badge { font-family: 'JetBrains Mono', monospace; font-size: 20px; font-weight: 700; background: var(--card-solid); border: 1px solid var(--accent-glow); padding: 8px 16px; border-radius: var(--radius-sm); color: var(--accent); box-shadow: 0 0 16px var(--accent-glow); }
-
     /* Session bar: timer + progress, pinned while scrolling through the exercises */
     .session-bar {
       position: sticky; top: calc(env(safe-area-inset-top, 0px) + 8px); z-index: 40;
@@ -238,8 +236,7 @@
     .title-badges { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
     .stat-pill { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .6px; }
     .stat-pill strong { font-family: 'JetBrains Mono', monospace; color: var(--accent); font-size: 17px; text-shadow: 0 0 10px var(--accent-glow); }
-    .stat-pill.lime strong { color: var(--lime); text-shadow: 0 0 10px var(--lime-glow); }
-
+    .stat-pill.lime strong { color: var(--text); text-shadow: none; }
     .session-meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; background: rgba(10, 15, 28, 0.55); padding: 16px; border-radius: var(--radius-md); border: 1px solid rgba(255,255,255,0.06); margin-bottom: 16px; }
     .meta-field { display: flex; flex-direction: column; gap: 6px; }
     .meta-field label { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
@@ -249,7 +246,7 @@
     .progress-wrapper { display: flex; flex-direction: column; gap: 8px; }
     .progress-header { display: flex; justify-content: space-between; font-size: 12.5px; font-weight: 700; color: var(--muted); flex-wrap: wrap; gap: 4px; }
     .progress-bar-bg { height: 8px; background: rgba(15, 23, 42, 0.95); border-radius: 999px; overflow: hidden; border: 1px solid rgba(255,255,255,0.06); }
-    .progress-bar-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--accent), var(--lime)); border-radius: 999px; transition: width .4s cubic-bezier(0.16, 1, 0.3, 1); box-shadow: 0 0 14px var(--accent-glow); }
+    .progress-bar-fill { height: 100%; width: 0%; background: var(--accent); border-radius: 999px; transition: width .5s cubic-bezier(0.16, 1, 0.3, 1); box-shadow: 0 0 14px var(--accent-glow); }
 
     .day-view { display: none; flex-direction: column; gap: 18px; }
     /* .day-view.active { display: flex; animation: dayIn .35s cubic-bezier(0.16, 1, 0.3, 1); } */
@@ -271,48 +268,42 @@
     .ex-title { font-size: 18px; font-weight: 800; letter-spacing: -0.3px; }
     .ex-target { font-size: 12px; color: var(--muted); font-weight: 600; }
     .ex-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-    .ex-scheme-badge { font-family: 'JetBrains Mono', monospace; background: var(--card-solid); color: var(--accent); font-size: 11px; font-weight: 700; padding: 5px 10px; border-radius: 8px; border: 1px solid var(--accent-glow); white-space: nowrap; box-shadow: 0 0 10px var(--accent-dim); }
-    .ex-type-badge { font-family: 'JetBrains Mono', monospace; background: var(--card-solid); color: var(--lime); font-size: 10px; font-weight: 700; padding: 4px 8px; border-radius: 7px; border: 1px solid rgba(57,255,20,0.25); text-transform: uppercase; box-shadow: 0 0 10px var(--lime-dim); }
-
+    .ex-scheme-badge { background: var(--card-solid); color: var(--accent); font-size: 11.5px; font-weight: 700; padding: 5px 10px; border-radius: 8px; border: 1px solid var(--accent-glow); white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .ex-type-badge { background: rgba(148, 163, 184, 0.1); color: var(--muted); font-size: 10.5px; font-weight: 800; padding: 4px 8px; border-radius: 7px; border: 1px solid rgba(148, 163, 184, 0.2); text-transform: uppercase; letter-spacing: .5px; }
     .machine-selector-wrapper { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
     .machine-label { font-size: 12.5px; font-weight: 700; color: var(--muted); }
     .machine-dropdown { flex: 1; min-width: 180px; background: rgba(15, 23, 42, 0.85); color: #fff; border: 1px solid rgba(255,255,255,0.12); padding: 9px 12px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 600; cursor: pointer; transition: border-color .2s; }
     .machine-dropdown:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 2px var(--accent-glow); }
     .machine-dropdown option { background: #0f172a; color: #fff; }
-
-    .ex-meta-info { display: flex; flex-direction: column; gap: 6px; }
-    .info-row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
-    .info-pill { font-size: 11.5px; font-weight: 600; padding: 5px 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.08); display: inline-flex; align-items: center; gap: 5px; }
-    .info-pill.setup { background: var(--accent-dim); color: var(--accent); border-color: var(--accent-glow); }
-    .info-pill.cue { background: rgba(251, 191, 36, 0.14); color: #fcd34d; border-color: rgba(251,191,36,0.25); }
-    .info-pill.prev { font-family: 'JetBrains Mono', monospace; background: var(--lime-dim); color: #7fff7f; border-color: rgba(57,255,20,0.2); }
-    .info-pill.overload { background: rgba(236, 72, 153, 0.16); color: #f472b6; border-color: rgba(236,72,153,0.35); font-weight: 800; }
-
     /* Sets: one compact grid row per set (number · weight · reps · done); tapping the number
        reveals tag + RIR on a second line. Fits a phone screen without sideways scrolling. */
     .sets-table-wrap { width: 100%; border-radius: var(--radius-sm); border: 1px solid rgba(255,255,255,0.06); background: rgba(10, 13, 22, 0.5); padding: 2px 8px; }
-    .sets-table, .sets-table thead, .sets-table tbody { display: block; width: 100%; }
-    .sets-table tr { display: grid; grid-template-columns: 30px minmax(0, 1.15fr) minmax(0, 1fr) 44px; align-items: center; column-gap: 6px; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
-    .sets-table thead tr { padding: 8px 0; border-bottom-color: rgba(255,255,255,0.08); }
-    .sets-table tbody tr:last-child { border-bottom: none; }
-    .sets-table th, .sets-table td { display: block; padding: 0; border: none; text-align: center; }
+    /* Base table (also used by the preset editor) */
+    .sets-table { width: 100%; border-collapse: collapse; }
+    .sets-table th, .sets-table td { padding: 6px; text-align: center; vertical-align: middle; }
     .sets-table th { font-size: 10px; text-transform: uppercase; color: var(--muted); white-space: nowrap; letter-spacing: .5px; font-weight: 700; }
     .sets-table th:first-child { text-align: left; }
+    /* Workout set rows: a grid per row */
+    .exercise-card .sets-table, .exercise-card .sets-table thead, .exercise-card .sets-table tbody { display: block; width: 100%; }
+    .exercise-card .sets-table tr { display: grid; grid-template-columns: 30px minmax(0, 1.15fr) minmax(0, 1fr) 44px; align-items: center; column-gap: 6px; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
+    .exercise-card .sets-table thead tr { padding: 8px 0; border-bottom-color: rgba(255,255,255,0.08); }
+    .exercise-card .sets-table tbody tr:last-child { border-bottom: none; }
+    .exercise-card .sets-table th, .exercise-card .sets-table td { display: block; padding: 0; border: none; }
     .set-num-btn { position: relative; width: 30px; height: 40px; border-radius: 8px; border: 1px solid transparent; background: none; color: var(--accent); font-family: 'JetBrains Mono', monospace; font-size: 15px; font-weight: 700; cursor: pointer; padding: 0 0 6px; }
     .set-num-btn::after { content: '▾'; position: absolute; left: 50%; bottom: 2px; transform: translateX(-50%); font-size: 8px; color: var(--muted); }
     .sets-table tr.expanded .set-num-btn { background: var(--accent-dim); border-color: var(--accent-glow); }
     .sets-table tr.expanded .set-num-btn::after { content: '▴'; }
     /* Non-working sets are colour-coded on the set number */
-    .sets-table tr:has(.set-tag option[value="Warmup"]:checked) .set-num-btn { color: #fbbf24; }
-    .sets-table tr:has(.set-tag option[value="Drop Set"]:checked) .set-num-btn { color: #f472b6; }
-    .sets-table tr:has(.set-tag option[value="Failure"]:checked) .set-num-btn { color: #f87171; }
+    .sets-table tr:has(.set-tag option[value="Warmup"]:checked) .set-num-btn { color: var(--warning); }
+    .sets-table tr:has(.set-tag option[value="Drop Set"]:checked) .set-num-btn { color: #c4b5fd; }
+    .sets-table tr:has(.set-tag option[value="Failure"]:checked) .set-num-btn { color: var(--danger); }
     .sets-table td.set-extra { display: none; grid-column: 2 / -1; gap: 12px; padding-top: 8px; align-items: center; }
     .sets-table tr.expanded td.set-extra { display: flex; }
     .set-extra label { display: flex; align-items: center; gap: 6px; font-size: 10.5px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; }
     .set-extra .set-tag { min-width: 104px; }
     .set-extra .set-rir { width: 52px; height: 38px; }
     
-    .input-field { width: 100%; min-width: 48px; background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 8px; border-radius: 8px; font-family: 'JetBrains Mono', monospace; font-size: 13.5px; font-weight: 600; text-align: center; outline: none; transition: all .2s; }
+    .input-field { width: 100%; min-width: 48px; background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 8px; border-radius: 8px; font-family: 'Plus Jakarta Sans', sans-serif; font-variant-numeric: tabular-nums; font-size: 14px; font-weight: 700; text-align: center; outline: none; transition: all .2s; }
     .input-field::placeholder { color: var(--muted); opacity: .45; font-size: 11px; font-weight: 500; font-family: 'Plus Jakarta Sans', sans-serif; }
     .input-field:focus { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-glow); }
 
@@ -336,7 +327,7 @@
     
     .check-btn { width: 44px; height: 44px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.15); background: rgba(15, 23, 42, 0.95); color: var(--muted); font-size: 16px; font-weight: 700; cursor: pointer; transition: all .25s ease; display: flex; align-items: center; justify-content: center; margin: 0 auto; box-shadow: 0 4px 12px rgba(0,0,0,0.3); font-size: 18px; }
     .check-btn:hover { background: var(--accent-dim); color: var(--accent); border-color: var(--accent); transform: scale(1.08); box-shadow: 0 0 16px var(--accent-glow); }
-    .check-btn.completed { background: var(--lime); color: #051a03; border-color: var(--lime); box-shadow: 0 0 20px var(--lime-glow), inset 0 0 0 1px #fff; animation: popCheck .35s cubic-bezier(0.16, 1, 0.3, 1); }
+    .check-btn.completed { background: var(--success); color: #052e14; border-color: var(--success); box-shadow: 0 0 14px var(--success-glow); }
     @keyframes popCheck { 0% { transform: scale(1); } 50% { transform: scale(1.25); } 100% { transform: scale(1); } }
     .ex-actions-bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 
@@ -395,19 +386,18 @@
 
     .calc-box, .settings-card, .placeholder-card, .nutrition-card { padding: 20px; display: flex; flex-direction: column; gap: 14px; border-radius: var(--radius-md); }
     .calc-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .calc-result-box { background: rgba(10, 14, 24, 0.85); border: 1px solid rgba(255,255,255,0.1); padding: 16px; border-radius: var(--radius-sm); text-align: center; font-size: 16px; font-weight: 800; color: var(--accent); box-shadow: inset 0 2px 8px rgba(0,0,0,0.4); font-family: 'JetBrains Mono', monospace; text-shadow: 0 0 10px var(--accent-dim); }
-    .plate-breakdown { font-size: 12.5px; color: #cbd5e1; line-height: 1.6; text-align: center; font-family: 'JetBrains Mono', monospace; }
-
+    .calc-result-box { background: rgba(10, 14, 24, 0.85); border: 1px solid rgba(255,255,255,0.1); padding: 16px; border-radius: var(--radius-sm); text-align: center; font-size: 16px; font-weight: 800; color: var(--accent); box-shadow: inset 0 2px 8px rgba(0,0,0,0.4); font-variant-numeric: tabular-nums; text-shadow: 0 0 10px var(--accent-dim); }
+    .plate-breakdown { font-size: 12.5px; color: #cbd5e1; line-height: 1.6; text-align: center; font-variant-numeric: tabular-nums; }
     .log-item { padding: 0; border-radius: var(--radius-sm); background: rgba(15,23,42,0.65); border: 1px solid rgba(255,255,255,0.08); box-shadow: 0 8px 24px rgba(0,0,0,0.3); overflow: hidden; transition: border-color .2s; }
     .log-item:hover { border-color: var(--accent-glow); }
-    .log-item-header { padding: 16px 18px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; font-size: 13px; font-weight: 700; font-family: 'JetBrains Mono', monospace; user-select: none; }
+    .log-item-header { padding: 16px 18px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; font-size: 13px; font-weight: 700; gap: 10px; user-select: none; }
     .log-item-body { display: none; padding: 0 18px 18px; flex-direction: column; gap: 10px; border-top: 1px solid rgba(255,255,255,0.06); background: rgba(10, 14, 24, 0.4); }
     .log-item.expanded .log-item-body { display: flex; }
     .log-exercise-row { display: flex; flex-direction: column; gap: 3px; margin-top: 8px; }
     .log-exercise-header-line { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
     .log-exercise-title { font-size: 12.5px; font-weight: 800; color: var(--accent); }
-    .log-pr-badge { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 800; background: rgba(251, 191, 36, 0.18); color: #fbbf24; border: 1px solid rgba(251,191,36,0.4); padding: 2px 6px; border-radius: 5px; text-transform: uppercase; box-shadow: 0 0 8px rgba(251,191,36,0.25); }
-    .log-sets-summary { font-size: 11.5px; font-family: 'JetBrains Mono', monospace; color: var(--muted); }
+    .log-pr-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 10.5px; font-weight: 800; background: rgba(251, 191, 36, 0.14); color: var(--warning); border: 1px solid rgba(251, 191, 36, 0.3); padding: 2px 8px; border-radius: 999px; }
+    .log-sets-summary { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
     .log-session-notes { font-size: 12px; color: #e2e8f0; font-style: italic; background: rgba(255,255,255,0.04); padding: 8px 12px; border-radius: 8px; border-left: 3px solid var(--accent); margin-top: 4px; }
 
     .history-filter-bar { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 4px; }
@@ -419,7 +409,7 @@
     input[type=range] { -webkit-appearance: none; width: 100%; height: 8px; background: rgba(255,255,255,0.08); border-radius: 999px; outline: none; }
     input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 22px; height: 22px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 12px var(--accent-glow); cursor: pointer; margin-top: -7px; transition: transform .15s; }
     input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.15); }
-    input[type=range]::-webkit-slider-runnable-track { height: 8px; border-radius: 999px; background: linear-gradient(90deg, #ff007f, var(--accent), var(--lime)); }
+    input[type=range]::-webkit-slider-runnable-track { height: 8px; border-radius: 999px; background: linear-gradient(90deg, var(--accent-dim), var(--accent)); }
 
     .bottom-nav {
       position: fixed; bottom: 0; left: 0; right: 0;
@@ -478,22 +468,106 @@
     .meal-box:hover { border-color: var(--accent-glow); }
     .meal-header-row { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 10px; flex-wrap: wrap; gap: 8px; }
     .meal-title { font-size: 15.5px; font-weight: 800; color: var(--text); display: flex; align-items: center; gap: 8px; }
-    .meal-badge-summary { font-family: 'JetBrains Mono', monospace; font-size: 11.5px; font-weight: 700; background: var(--accent-dim); color: var(--accent); padding: 4px 10px; border-radius: 999px; border: 1px solid var(--accent-glow); box-shadow: 0 0 10px var(--accent-dim); }
+    .meal-badge-summary { font-size: 12px; font-weight: 700; background: var(--accent-dim); color: var(--accent); padding: 4px 10px; border-radius: 999px; border: 1px solid var(--accent-glow); font-variant-numeric: tabular-nums; }
     .food-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; align-items: stretch; }
     .food-card { background: rgba(10, 14, 24, 0.9); border: 1px solid rgba(255,255,255,0.06); border-radius: var(--radius-sm); padding: 14px; display: flex; flex-direction: column; gap: 8px; transition: transform .2s ease, border-color .2s ease; box-shadow: 0 6px 20px rgba(0,0,0,0.3); }
     .food-card:hover { transform: translateY(-2px); border-color: rgba(255,255,255,0.2); }
     .food-name { font-size: 13px; font-weight: 700; color: #f8fafc; }
-    .food-metrics-row { display: flex; justify-content: space-between; align-items: center; font-size: 11.5px; font-family: 'JetBrains Mono', monospace; color: var(--muted); }
+    .food-metrics-row { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
     .food-cals { color: var(--accent); font-weight: 700; }
     .macro-bar-container { display: flex; gap: 4px; height: 6px; width: 100%; background: rgba(255,255,255,0.06); border-radius: 999px; overflow: hidden; margin-top: 4px; }
-    .macro-fill-p { background: var(--lime); height: 100%; border-radius: 999px; box-shadow: 0 0 8px var(--lime-glow); }
-    .macro-fill-c { background: var(--accent); height: 100%; border-radius: 999px; box-shadow: 0 0 8px var(--accent-glow); }
-    .macro-fill-f { background: #fbbf24; height: 100%; border-radius: 999px; box-shadow: 0 0 8px rgba(251,191,36,0.3); }
+    .macro-fill-p { background: var(--accent); height: 100%; border-radius: 999px; }
+    .macro-fill-c { background: rgba(148, 163, 184, 0.55); height: 100%; border-radius: 999px; }
+    .macro-fill-f { background: var(--warning); height: 100%; border-radius: 999px; opacity: .85; }
 
-    .recovery-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }
-    .recovery-card { background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(255,255,255,0.08); border-radius: var(--radius-sm); padding: 12px; display: flex; flex-direction: column; gap: 6px; text-align: center; }
-    .recovery-bar-bg { width: 100%; height: 7px; background: rgba(255,255,255,0.06); border-radius: 999px; overflow: hidden; }
-    .recovery-bar-fill { height: 100%; border-radius: 999px; transition: width .5s ease; }
+    /* ---------- Icons (Lucide, inline SVG; colour follows currentColor) ---------- */
+    .icon { display: inline-block; flex-shrink: 0; vertical-align: -0.18em; }
+    .btn .icon, .btn-xs .icon { vertical-align: middle; }
+    .logo-bolt { display: inline-flex; animation: none; text-shadow: none; filter: drop-shadow(0 0 10px var(--accent-glow)); }
+    .bottom-tab-icon { display: inline-flex; font-size: 0; }
+    .bottom-tab.active .bottom-tab-icon { text-shadow: none; transform: scale(1.08); filter: drop-shadow(0 0 8px var(--accent-glow)); }
+    .analytics-header .icon, .calc-title .icon, .modal-header h2 .icon { color: var(--accent); }
+    .modal-header h2, .calc-title, .settings-title, .meta-field label, .machine-label { display: inline-flex; align-items: center; gap: 8px; }
+    .meta-field label { gap: 6px; }
+    .calc-title { font-size: 15px; font-weight: 800; color: var(--text); }
+    .settings-title { font-weight: 750; }
+    .settings-title .icon { color: var(--muted); }
+    .btn-xs-danger { color: #fca5a5; border-color: rgba(248, 113, 113, 0.35); }
+    .btn-xs-danger:hover { color: #fecaca; border-color: var(--danger); }
+    .log-item-title, .log-item-meta { display: inline-flex; align-items: center; gap: 6px; }
+    .log-item-meta { color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .log-item.expanded .log-item-meta .icon:last-child { transform: rotate(180deg); }
+    .celebration-badge > span { display: inline-flex; align-items: center; gap: 10px; }
+
+    /* ---------- Header: one avatar button with a sync-status dot ---------- */
+    .avatar-btn { position: relative; width: 42px; height: 42px; padding: 0; border-radius: 50%; border: 2px solid var(--accent-glow); background: var(--accent-dim); color: var(--accent); cursor: pointer; transition: transform .15s ease, border-color .2s ease; }
+    .avatar-btn:hover { border-color: var(--accent); }
+    .avatar-btn:active { transform: scale(0.94); }
+    .avatar-btn-face { display: flex; width: 100%; height: 100%; align-items: center; justify-content: center; border-radius: 50%; overflow: hidden; font-weight: 800; font-size: 14px; letter-spacing: .3px; }
+    .avatar-btn-face img { width: 100%; height: 100%; object-fit: cover; }
+    .sync-dot { width: 11px; height: 11px; border-radius: 50%; display: inline-block; background: var(--success); flex-shrink: 0; }
+    .avatar-btn .sync-dot { position: absolute; right: -1px; bottom: -1px; border: 2px solid var(--bg); }
+    .sync-dot[data-state="pending"] { background: var(--warning); animation: syncPulse 1.4s ease-in-out infinite; }
+    .sync-dot[data-state="offline"] { background: #64748b; }
+    .sync-dot[data-state="local"] { display: none; }
+    @keyframes syncPulse { 50% { opacity: .45; } }
+    .sync-status-row { display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 600; color: var(--muted); }
+
+    /* ---------- Exercise card info: one line of setup, the rest behind (i) ---------- */
+    .ex-info { display: flex; flex-direction: column; gap: 6px; }
+    .ex-info-line { display: flex; align-items: center; gap: 8px; min-height: 28px; }
+    .ex-setup { flex: 1; min-width: 0; font-size: 13px; font-weight: 600; color: #cbd5e1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .ex-setup:empty { display: none; }
+    .info-btn { flex-shrink: 0; width: 30px; height: 30px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.12); background: rgba(30, 41, 59, 0.7); color: var(--muted); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; transition: color .2s, border-color .2s, background .2s; }
+    .info-btn:hover, .ex-info.open .info-btn { color: var(--accent); border-color: var(--accent-glow); background: var(--accent-dim); }
+    .ex-cue { display: none; font-size: 13px; line-height: 1.5; color: var(--text); padding: 10px 12px; border-radius: var(--radius-sm); background: rgba(148, 163, 184, 0.08); border-left: 3px solid var(--accent); }
+    .ex-info.open .ex-setup { white-space: normal; }
+    .ex-info.open .ex-cue:not(:empty) { display: block; }
+    .ex-prev { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; }
+    .ex-prev:empty { display: none; }
+
+    /* ---------- Analytics: recovery figure, legend, empty states ---------- */
+    .body-figures { display: flex; justify-content: center; gap: 28px; }
+    .body-figure { display: flex; flex-direction: column; align-items: center; gap: 6px; margin: 0; }
+    .body-figure svg { width: 118px; height: auto; }
+    .body-figure figcaption { font-size: 11px; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: .8px; }
+    .body-base > * { fill: rgba(148, 163, 184, 0.12); stroke: rgba(148, 163, 184, 0.28); stroke-width: 1; }
+    .muscle > * { stroke: rgba(5, 6, 8, 0.6); stroke-width: 1; transition: fill .4s ease; }
+    .muscle[data-status="none"] > * { fill: rgba(148, 163, 184, 0.28); }
+    .muscle[data-status="fresh"] > * { fill: var(--success); fill-opacity: .8; }
+    .muscle[data-status="recovering"] > * { fill: var(--warning); fill-opacity: .85; }
+    .muscle[data-status="fatigued"] > * { fill: var(--danger); fill-opacity: .9; }
+    .recovery-legend { list-style: none; display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 0 20px; }
+    .recovery-row { display: grid; grid-template-columns: 10px auto 1fr auto; align-items: center; gap: 8px; font-size: 13px; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+    .recovery-swatch { width: 10px; height: 10px; border-radius: 50%; background: rgba(148, 163, 184, 0.4); }
+    .recovery-row[data-status="fresh"] .recovery-swatch { background: var(--success); }
+    .recovery-row[data-status="recovering"] .recovery-swatch { background: var(--warning); }
+    .recovery-row[data-status="fatigued"] .recovery-swatch { background: var(--danger); }
+    .recovery-name { font-weight: 700; }
+    .recovery-status { color: var(--muted); font-weight: 600; white-space: nowrap; }
+    .recovery-ago { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+    .chart-bar { fill: var(--accent); fill-opacity: .85; }
+    .chart-label-muted { opacity: .55; }
+    .chart-empty { text-align: center; padding: 26px 16px; color: var(--muted); font-size: 13.5px; line-height: 1.55; border: 1px dashed rgba(255,255,255,0.1); border-radius: var(--radius-sm); }
+    .macro-summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+    .macro-tile { display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; border-radius: var(--radius-sm); background: rgba(10, 14, 24, 0.7); border: 1px solid rgba(255,255,255,0.06); }
+    .macro-tile span { font-size: 10.5px; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: .6px; }
+    .macro-tile strong { font-family: 'JetBrains Mono', monospace; font-size: 19px; font-weight: 700; color: var(--text); white-space: nowrap; }
+    .macro-tile:first-child strong { color: var(--accent); }
+    @media (max-width: 560px) { .macro-summary { grid-template-columns: repeat(2, 1fr); } }
+    .chart-empty-stat { font-family: 'JetBrains Mono', monospace; font-size: 26px; font-weight: 700; color: var(--accent); margin-bottom: 4px; }
+
+    /* ---------- Motion ---------- */
+    .check-btn { position: relative; }
+    /* Only on a tap (toggleSet adds .just-completed briefly), not when completed sets are restored */
+    .check-btn.just-completed { animation: popCheck .4s cubic-bezier(0.16, 1, 0.3, 1); }
+    .check-btn.just-completed::after { content: ''; position: absolute; inset: -2px; border-radius: 50%; border: 2px solid var(--success); animation: checkRing .55s ease-out forwards; pointer-events: none; }
+    @keyframes checkRing { from { transform: scale(1); opacity: .9; } to { transform: scale(1.7); opacity: 0; } }
+    .sets-table tr { transition: background-color .3s ease; }
+    .sets-table tr:has(.check-btn.completed) .stepper .input-field { color: var(--success); }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+    }
   </style>
 </head>
 <body>
@@ -502,7 +576,7 @@
 <div class="modal-overlay active" id="authOverlay" style="align-items: center; z-index: 300;">
   <div class="modal-content" style="max-width: 400px; text-align: center;">
     <div class="brand-logo" style="justify-content: center; margin-bottom: 8px;">
-      <span class="logo-bolt">⚡</span>
+      <span class="logo-bolt"><i data-icon="zap" data-size="22"></i></span>
       <span>IronTrack</span>
       <span class="brand-badge">CLOUD SYNC</span>
     </div>
@@ -528,13 +602,14 @@
 <div class="app-shell">
   <div class="app-topbar">
     <div class="brand-logo">
-      <span class="logo-bolt">⚡</span>
+      <span class="logo-bolt"><i data-icon="zap" data-size="22"></i></span>
       <span>IronTrack</span>
     </div>
     <div class="user-auth-bar" id="userBar">
-      <div class="net-status online" id="netStatus" title="Connection Active"><span class="net-dot"></span></div>
-      <button class="btn-xs" id="manualSyncBtn" onclick="pullFromCloud(true)" style="color: var(--accent); border-color: var(--accent-glow);">☁️ Sync</button>
-      <button class="btn-xs" id="profileToggleBtn" onclick="toggleProfileTab()" style="color: var(--accent); border-color: var(--accent-glow); display: inline-flex; align-items: center; gap: 4px;">👤 Profile</button>
+      <button class="avatar-btn" id="profileToggleBtn" onclick="toggleProfileTab()" aria-label="Profile and sync">
+        <span class="avatar-btn-face" id="headerAvatar">?</span>
+        <span class="sync-dot" id="syncDot" data-state="synced"></span>
+      </button>
     </div>
   </div>
 
@@ -548,7 +623,7 @@
           <span class="week-chevron" aria-hidden="true">▾</span>
         </summary>
         <div class="schedule-ribbon" id="scheduleRibbon"></div>
-        <button class="btn-xs week-edit" style="color:var(--accent); border-color:var(--accent-glow);" onclick="openMicrocycleModal()">⚙️ Edit Microcycle</button>
+        <button class="btn-xs week-edit" style="color:var(--accent); border-color:var(--accent-glow);" onclick="openMicrocycleModal()"><i data-icon="settings" data-size="14"></i> Edit Microcycle</button>
       </details>
 
       <div class="day-nav-wrapper" id="dayNavContainer"></div>
@@ -558,24 +633,24 @@
           <div class="title-group">
             <div class="title-badges">
               <span class="badge-day" id="currentDayBadge">Day 1 Focus</span>
-              <button class="btn-xs edit-only" id="deleteSplitBtn" style="color: var(--coral); border-color: rgba(255, 77, 77, 0.35); padding: 3px 8px; font-size: 10.5px;" onclick="deleteCurrentSplit()">🗑️ Delete Day</button>
+              <button class="btn-xs edit-only" id="deleteSplitBtn" style="color: var(--coral); border-color: rgba(255, 77, 77, 0.35); padding: 3px 8px; font-size: 10.5px;" onclick="deleteCurrentSplit()"><i data-icon="trash" data-size="13"></i> Delete Day</button>
             </div>
             <h1 id="currentDayTitle">⚡ Chest • Shoulders • Biceps</h1>
             <p id="currentDaySub">Push Hypertrophy &amp; Arm Specialization</p>
           </div>
-          <button class="btn-xs edit-toggle" id="editModeBtn" aria-pressed="false" onclick="toggleEditMode()">✏️ Edit</button>
+          <button class="btn-xs edit-toggle" id="editModeBtn" aria-pressed="false" onclick="toggleEditMode()"><i data-icon="pencil" data-size="14"></i> <span class="edit-toggle-label">Edit</span></button>
         </div>
 
         <details class="session-details">
-          <summary>📝 Session details <span class="session-details-hint">date, body weight, energy, sleep, notes</span></summary>
+          <summary><i data-icon="notes" data-size="16"></i> Session details <span class="session-details-hint">date, body weight, energy, sleep, notes</span></summary>
           <div class="session-meta">
-            <div class="meta-field"><label>📅 Date</label><input type="date" id="sessionDate" /></div>
-            <div class="meta-field"><label>⚖️ Weight (kg)</label><input type="number" id="bodyWeight" placeholder="72.5" step="0.1" oninput="saveProfileData()" /></div>
-            <div class="meta-field"><label>🔥 Energy (1-10)</label><input type="number" id="energyLevel" min="1" max="10" placeholder="8" /></div>
-            <div class="meta-field"><label>💤 Sleep (hrs)</label><input type="number" id="sleepHours" placeholder="7.5" step="0.5" /></div>
+            <div class="meta-field"><label><i data-icon="calendar" data-size="13"></i> Date</label><input type="date" id="sessionDate" /></div>
+            <div class="meta-field"><label><i data-icon="scale" data-size="13"></i> Weight (kg)</label><input type="number" id="bodyWeight" placeholder="72.5" step="0.1" oninput="saveProfileData()" /></div>
+            <div class="meta-field"><label><i data-icon="flame" data-size="13"></i> Energy (1-10)</label><input type="number" id="energyLevel" min="1" max="10" placeholder="8" /></div>
+            <div class="meta-field"><label><i data-icon="moon" data-size="13"></i> Sleep (hrs)</label><input type="number" id="sleepHours" placeholder="7.5" step="0.5" /></div>
           </div>
           <div class="meta-field">
-            <label>📝 Session Notes &amp; Mood</label>
+            <label><i data-icon="notes" data-size="13"></i> Session Notes &amp; Mood</label>
             <textarea id="sessionNotes" rows="2" placeholder="e.g., Felt strong today, great sleep or nagging shoulder stiffness..."></textarea>
           </div>
         </details>
@@ -584,7 +659,7 @@
       <!-- Stays pinned while scrolling through the exercises -->
       <div class="session-bar" id="statBar">
         <div class="session-bar-row">
-          <span class="session-timer">⏱️ <span id="timeElapsed">00:00:00</span></span>
+          <span class="session-timer"><i data-icon="timer" data-size="17"></i> <span id="timeElapsed">00:00:00</span></span>
           <span class="session-progress-text" id="progressText">0 / 0 sets</span>
           <span class="stat-pill lime"><strong id="statsTonnage">0 kg</strong></span>
         </div>
@@ -595,11 +670,11 @@
 
       <!-- Bottom action bar -->
       <div class="bottom-bar">
-        <button class="btn btn-secondary" onclick="openHistoryModal()">📋 Log History</button>
-        <button class="btn btn-info edit-only" onclick="openAddExModal()">➕ Add Exercise</button>
-        <button class="btn btn-warning edit-only" onclick="openAddSecModal()">📑 Add Section</button>
-        <button class="btn btn-secondary" onclick="resetCurrentDayForm()">🔄 Reset Day</button>
-        <button class="btn btn-primary" onclick="finishCurrentDayWorkout()">💾 Save Session</button>
+        <button class="btn btn-secondary" onclick="openHistoryModal()"><i data-icon="history"></i> Log History</button>
+        <button class="btn btn-info edit-only" onclick="openAddExModal()"><i data-icon="plus"></i> Add Exercise</button>
+        <button class="btn btn-warning edit-only" onclick="openAddSecModal()"><i data-icon="list-plus"></i> Add Section</button>
+        <button class="btn btn-secondary" onclick="resetCurrentDayForm()"><i data-icon="reset"></i> Reset Day</button>
+        <button class="btn btn-primary" onclick="finishCurrentDayWorkout()"><i data-icon="save"></i> Save Session</button>
       </div>
     </section>
 
@@ -607,7 +682,7 @@
     <section id="view-nutrition" class="app-view">
       <div class="nutrition-card">
         <div class="analytics-header" style="justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
-          <span>🥗 Nutrition &amp; Meal Planner</span>
+          <span><i data-icon="salad" data-size="20"></i> Nutrition &amp; Meal Planner</span>
           <div class="range-toggle">
             <button class="range-btn active" id="dietRestBtn" onclick="setDietMode('rest')">Rest Day Plan</button>
             <button class="range-btn" id="dietWorkoutBtn" onclick="setDietMode('workout')">Workout Day Plan</button>
@@ -615,16 +690,16 @@
         </div>
         <p style="font-size:13px; color:var(--muted);">Preset macro plans linked with your saved profile metrics (BMR, Maintenance TDEE, and BMI).</p>
         
-        <div class="stat-bar" style="position:relative; top:0; margin-bottom:0;">
-          <div class="stat-pill">Plan Cals: <strong id="dietCals">2283 kcal</strong></div>
-          <div class="stat-pill lime">Protein: <strong id="dietProt">164.5 g</strong></div>
-          <div class="stat-pill">Carbs: <strong id="dietCarbs">237.8 g</strong></div>
-          <div class="stat-pill">Fat: <strong id="dietFat">72.9 g</strong></div>
+        <div class="macro-summary">
+          <div class="macro-tile"><span>Calories</span><strong id="dietCals">2283 kcal</strong></div>
+          <div class="macro-tile"><span>Protein</span><strong id="dietProt">164.5 g</strong></div>
+          <div class="macro-tile"><span>Carbs</span><strong id="dietCarbs">237.8 g</strong></div>
+          <div class="macro-tile"><span>Fat</span><strong id="dietFat">72.9 g</strong></div>
         </div>
 
         <div class="calc-result-box" id="nutritionProfileSummaryBox" style="margin-top:6px; font-size:13.5px; text-align:left; padding:12px; display:flex; flex-direction:column; gap:4px;">
           <span id="nutriBmiDisplay" style="color:var(--accent);">BMI: --</span>
-          <span id="nutriTdeeDisplay" style="color:var(--lime);">Calculated Maintenance TDEE: -- kcal/day</span>
+          <span id="nutriTdeeDisplay" style="color:var(--text);">Calculated Maintenance TDEE: -- kcal/day</span>
         </div>
       </div>
 
@@ -634,13 +709,13 @@
     <!-- ANALYTICS VIEW -->
     <section id="view-analytics" class="app-view">
       <div class="analytics-card">
-        <div class="analytics-header">🔋 Muscle Recovery Heatmap</div>
+        <div class="analytics-header"><i data-icon="battery" data-size="20"></i> Muscle Recovery</div>
         <p style="font-size:12.5px; color:var(--muted);">Real-time muscle recovery status calculated from your recent workout volume.</p>
         <div class="recovery-grid" id="recoveryGridContainer"></div>
       </div>
 
       <div class="analytics-card">
-        <div class="analytics-header">📊 Muscle Group Tonnage</div>
+        <div class="analytics-header"><i data-icon="chart" data-size="20"></i> Muscle Group Tonnage</div>
         <div class="range-toggle">
           <button class="range-btn active" data-range="7" onclick="setAnalyticRange(7)">Last 7 days</button>
           <button class="range-btn" data-range="28" onclick="setAnalyticRange(28)">Last 28 days</button>
@@ -648,7 +723,7 @@
         <div class="svg-chart-wrap" id="muscleBarChartWrap"></div>
       </div>
       <div class="analytics-card">
-        <div class="analytics-header">📈 Estimated 1RM Trends (Epley)</div>
+        <div class="analytics-header"><i data-icon="trend" data-size="20"></i> Estimated 1RM Trends (Epley)</div>
         <div class="compound-select-row" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
           <label for="compoundSelect" style="font-size:12.5px; color:var(--muted); font-weight:700;">Focus:</label>
           <select id="compoundSelect" class="machine-dropdown" onchange="render1RMTrends()" style="min-width:200px;">
@@ -662,8 +737,8 @@
     <!-- TOOLS VIEW -->
     <section id="view-tools" class="app-view">
       <div class="calc-box">
-        <strong style="color:var(--accent)">🔥 Maintenance Calories &amp; TDEE Calculator (Mifflin-St Jeor)</strong>
-        <p style="font-size:12.5px; color:var(--muted);">Estimate your exact Basal Metabolic Rate (BMR) and Total Daily Energy Expenditure (TDEE).</p>
+        <strong class="calc-title"><i data-icon="flame" data-size="18"></i> Calorie Calculator</strong>
+        <p style="font-size:12.5px; color:var(--muted);">Your Basal Metabolic Rate (BMR) and maintenance calories (TDEE), using the Mifflin-St Jeor formula.</p>
         <div class="calc-row">
           <div class="meta-field">
             <label>Biological Sex</label>
@@ -688,12 +763,13 @@
             <option value="1.9">Extremely Active (Athlete / Physical job) [1.9]</option>
           </select>
         </div>
-        <div class="calc-result-box" id="calcTdeeResult" style="color:var(--lime);">BMR: 0 kcal | Maintenance TDEE: 0 kcal</div>
-        <button class="btn btn-primary" onclick="syncCalculatorToProfile()" style="justify-content:center; margin-top:4px;">💾 Save Weight to Profile</button>
+        <div class="calc-result-box" id="calcTdeeResult">BMR: 0 kcal | Maintenance TDEE: 0 kcal</div>
+        <button class="btn btn-primary" onclick="syncCalculatorToProfile()" style="justify-content:center; margin-top:4px;"><i data-icon="save"></i> Save Weight to Profile</button>
       </div>
 
       <div class="calc-box">
-        <strong style="color:var(--accent)">One Rep Max (Epley Formula)</strong>
+        <strong class="calc-title"><i data-icon="trophy" data-size="18"></i> One Rep Max</strong>
+        <p style="font-size:12.5px; color:var(--muted);">Estimated with the Epley formula.</p>
         <div class="calc-row">
           <div class="meta-field"><label>Weight (kg)</label><input type="number" id="calc1rmWeight" placeholder="80" oninput="compute1RM()"></div>
           <div class="meta-field"><label>Reps Done</label><input type="number" id="calc1rmReps" placeholder="8" oninput="compute1RM()"></div>
@@ -701,7 +777,8 @@
         <div class="calc-result-box" id="calc1rmResult">Est. 1RM: 0.0 kg</div>
       </div>
       <div class="calc-box">
-        <strong style="color:var(--lime)">Olympic Barbell Plate Loader (Per Side)</strong>
+        <strong class="calc-title"><i data-icon="dumbbell" data-size="18"></i> Plate Loader</strong>
+        <p style="font-size:12.5px; color:var(--muted);">Plates per side on an Olympic barbell.</p>
         <div class="calc-row">
           <div class="meta-field"><label>Target Total Weight (kg)</label><input type="number" id="plateTargetWeight" placeholder="80" oninput="computePlates()"></div>
           <div class="meta-field"><label>Bar Weight (kg)</label><input type="number" id="plateBarWeight" value="20" oninput="computePlates()"></div>
@@ -716,35 +793,35 @@
     <section id="view-settings" class="app-view">
       <div class="settings-card">
         <div class="settings-row" style="flex-direction:column; align-items:flex-start; gap:10px;">
-          <span style="font-weight:750;">🎨 Theme Accent</span>
+          <span class="settings-title"><i data-icon="palette" data-size="16"></i> Theme Accent</span>
           <select id="themeSelect" class="machine-dropdown" style="width:100%;" onchange="changeTheme(this.value)">
-            <option value="cyan">⚡ Neon Cyan</option>
-            <option value="lime">🟢 Toxic Lime</option>
-            <option value="magenta">🌸 Cyber Magenta</option>
-            <option value="amber">🔥 Solar Amber</option>
+            <option value="cyan">Neon Cyan</option>
+            <option value="lime">Toxic Lime</option>
+            <option value="magenta">Cyber Magenta</option>
+            <option value="amber">Solar Amber</option>
           </select>
         </div>
       </div>
       <div class="settings-card">
-        <button class="btn btn-secondary" onclick="restoreAllHiddenExercises()">♻️ Restore All Removed Exercises &amp; Default Days</button>
+        <button class="btn btn-secondary" onclick="restoreAllHiddenExercises()"><i data-icon="reset"></i> Restore All Removed Exercises &amp; Default Days</button>
       </div>
       <div class="settings-card">
-        <label class="settings-row"><span>🔊 Enable Rest Timer Beeps</span><input type="checkbox" id="soundToggle" checked onchange="saveSettings()"></label>
+        <label class="settings-row"><span class="settings-title"><i data-icon="volume" data-size="16"></i> Rest Timer Beeps</span><input type="checkbox" id="soundToggle" checked onchange="saveSettings()"></label>
       </div>
       <div class="settings-card">
-        <label class="settings-row"><span>📳 Haptic Vibration</span><input type="checkbox" id="vibeToggle" checked onchange="saveSettings()"></label>
+        <label class="settings-row"><span class="settings-title"><i data-icon="vibrate" data-size="16"></i> Haptic Vibration</span><input type="checkbox" id="vibeToggle" checked onchange="saveSettings()"></label>
       </div>
       <div class="settings-card">
         <div class="settings-row" style="flex-direction:column; align-items:flex-start; gap:10px;">
-          <div class="range-label"><span>🕒 Rest Timer Multiplier</span><span id="restMultiplierValue" style="color:var(--accent)">1.00x</span></div>
+          <div class="range-label"><span class="settings-title"><i data-icon="clock" data-size="16"></i> Rest Timer Multiplier</span><span id="restMultiplierValue" style="color:var(--accent)">1.00x</span></div>
           <input type="range" id="restMultiplier" min="0.5" max="2.0" step="0.25" value="1" oninput="updateRestMultiplierLabel(); saveSettings();" style="width:100%;">
         </div>
       </div>
       <div class="settings-card" style="gap:16px;">
-        <div style="font-size:15px; font-weight:800;">💾 Backup &amp; Sync</div>
-        <button class="btn btn-primary" onclick="exportFullBackup()">📤 Export Full Backup</button>
+        <div class="settings-title" style="font-size:15px; font-weight:800;"><i data-icon="archive" data-size="18"></i> Backup</div>
+        <button class="btn btn-primary" onclick="exportFullBackup()"><i data-icon="download"></i> Export Full Backup</button>
         <label style="display:flex; flex-direction:column; gap:8px; font-size:13.5px; color:var(--muted);">
-          <span>📥 Import Backup (JSON)</span>
+          <span class="settings-title"><i data-icon="upload" data-size="16"></i> Import Backup (JSON)</span>
           <input type="file" id="importBackupInput" class="settings-file" accept=".json,application/json" onchange="importBackupFile(this)">
         </label>
       </div>
@@ -753,9 +830,8 @@
     <!-- PROFILE VIEW -->
     <section id="view-profile" class="app-view">
       <div class="settings-card" style="gap: 16px;">
-        <div class="analytics-header" style="justify-content:space-between; align-items:center;">
-          <span>👤 User Profile &amp; Biometrics</span>
-          <span class="brand-badge" id="profileSyncBadge">Local Active</span>
+        <div class="analytics-header">
+          <span><i data-icon="user" data-size="20"></i> Profile &amp; Biometrics</span>
         </div>
         
         <div class="avatar-upload-container">
@@ -764,7 +840,7 @@
           </div>
           <div style="display: flex; flex-direction: column; gap: 6px;">
             <label class="btn-xs" style="width: fit-content; cursor: pointer; color: var(--accent); border-color: var(--accent-glow);">
-              📷 Upload Avatar
+              <i data-icon="camera" data-size="14"></i> Upload Avatar
               <input type="file" id="avatarFileInput" accept="image/*" style="display: none;" onchange="handleAvatarUpload(this)" />
             </label>
             <span style="font-size: 11px; color: var(--muted);">Initials are automatically generated from your name if no photo is uploaded.</span>
@@ -773,22 +849,22 @@
 
         <div class="calc-row">
           <div class="meta-field">
-            <label>👤 Full Name</label>
+            <label><i data-icon="user" data-size="13"></i> Full Name</label>
             <input type="text" id="profileFullName" class="input-field" placeholder="Your name" style="text-align: left; padding: 12px;" oninput="saveProfileTab()" />
           </div>
           <div class="meta-field">
-            <label>🎂 Age (Years)</label>
+            <label><i data-icon="cake" data-size="13"></i> Age (Years)</label>
             <input type="number" id="profileTabAge" class="input-field" placeholder="23" step="1" oninput="saveProfileTab()" />
           </div>
         </div>
 
         <div class="calc-row">
           <div class="meta-field">
-            <label>⚖️ Body Weight (kg)</label>
+            <label><i data-icon="scale" data-size="13"></i> Body Weight (kg)</label>
             <input type="number" id="profileTabWeight" class="input-field" placeholder="72.5" step="0.1" oninput="saveProfileTab()" />
           </div>
           <div class="meta-field">
-            <label>📏 Height (cm)</label>
+            <label><i data-icon="ruler" data-size="13"></i> Height (cm)</label>
             <input type="number" id="profileTabHeight" class="input-field" placeholder="175" step="1" oninput="saveProfileTab()" />
           </div>
         </div>
@@ -803,33 +879,38 @@
 
         <div class="calc-result-box" id="profileSummaryBox" style="font-size: 13.5px; text-align: left; padding: 14px; display: flex; flex-direction: column; gap: 6px;">
           <span id="profileBmiResult" style="color: var(--accent);">BMI: --</span>
-          <span id="profileBmrResult" style="color: var(--lime);">Estimated BMR: -- kcal/day</span>
+          <span id="profileBmrResult" style="color: var(--text);">Estimated BMR: -- kcal/day</span>
         </div>
 
         <div style="display: flex; gap: 12px; flex-wrap: wrap;">
-          <button class="btn btn-primary" onclick="showToast('✅ Profile saved successfully!', 'success')">💾 Save Profile</button>
-          <button class="btn btn-secondary" onclick="exportFullBackup()">📥 Export Backup</button>
+          <button class="btn btn-primary" onclick="showToast('✅ Profile saved successfully!', 'success')"><i data-icon="save"></i> Save Profile</button>
+          <button class="btn btn-secondary" onclick="exportFullBackup()"><i data-icon="download"></i> Export Backup</button>
         </div>
       </div>
 
       <div class="settings-card" style="gap: 14px;">
-        <div style="font-size: 15px; font-weight: 800;">🔒 Cloud Account &amp; Session</div>
+        <div class="settings-title" style="font-size: 15px; font-weight: 800;"><i data-icon="lock" data-size="18"></i> Cloud Account &amp; Sync</div>
+        <div class="sync-status-row">
+          <span class="sync-dot" data-state="synced" id="profileSyncDot"></span>
+          <span id="syncStatusText">Synced</span>
+          <button class="btn-xs" id="manualSyncBtn" onclick="pullFromCloud(true)" style="margin-left:auto;"><i data-icon="refresh" data-size="14"></i> <span class="btn-label">Sync now</span></button>
+        </div>
         <div class="meta-field">
           <label>Cloud Sync Status</label>
           <input type="text" id="profileEmailField" class="input-field" readonly style="text-align: left; padding: 12px; color: var(--muted);" value="Connected via Supabase Auth" />
         </div>
-        <button class="btn btn-danger" onclick="handleSignOut()" style="justify-content: center; margin-top: 4px;">🚪 Log Out of Account</button>
+        <button class="btn btn-danger" onclick="handleSignOut()" style="justify-content: center; margin-top: 4px;"><i data-icon="log-out"></i> Log Out of Account</button>
       </div>
     </section>
   </main>
 </div>
 
 <nav class="bottom-nav" id="bottomNav">
-  <button class="bottom-tab active" data-tab="workout"><span class="bottom-tab-icon">⚡</span><span>Workout</span></button>
-  <button class="bottom-tab" data-tab="nutrition"><span class="bottom-tab-icon">🥗</span><span>Nutrition</span></button>
-  <button class="bottom-tab" data-tab="analytics"><span class="bottom-tab-icon">📊</span><span>Analytics</span></button>
-  <button class="bottom-tab" data-tab="tools"><span class="bottom-tab-icon">🧮</span><span>Tools</span></button>
-  <button class="bottom-tab" data-tab="settings"><span class="bottom-tab-icon">⚙</span><span>Settings</span></button>
+  <button class="bottom-tab active" data-tab="workout"><span class="bottom-tab-icon"><i data-icon="dumbbell" data-size="21"></i></span><span>Workout</span></button>
+  <button class="bottom-tab" data-tab="nutrition"><span class="bottom-tab-icon"><i data-icon="salad" data-size="21"></i></span><span>Nutrition</span></button>
+  <button class="bottom-tab" data-tab="analytics"><span class="bottom-tab-icon"><i data-icon="chart" data-size="21"></i></span><span>Analytics</span></button>
+  <button class="bottom-tab" data-tab="tools"><span class="bottom-tab-icon"><i data-icon="calculator" data-size="21"></i></span><span>Tools</span></button>
+  <button class="bottom-tab" data-tab="settings"><span class="bottom-tab-icon"><i data-icon="settings" data-size="21"></i></span><span>Settings</span></button>
 </nav>
 
 <div class="rest-modal" id="restModal">
@@ -844,8 +925,8 @@
 <div class="modal-overlay" id="microcycleModalOverlay" onclick="if(event.target===this) closeMicrocycleModal()">
   <div class="modal-content" style="max-width: 480px;">
     <div class="modal-header">
-      <h2>📅 Customize Weekly Microcycle</h2>
-      <button class="btn-xs" onclick="closeMicrocycleModal()">✕</button>
+      <h2><i data-icon="calendar" data-size="20"></i> Weekly Microcycle</h2>
+      <button class="btn-xs" onclick="closeMicrocycleModal()" aria-label="Close"><i data-icon="x" data-size="16"></i></button>
     </div>
     <div class="modal-body" style="gap: 12px;">
       <p style="font-size: 13px; color: var(--muted);">Assign a workout day or rest day to each day of the week:</p>
@@ -862,8 +943,8 @@
 <div class="modal-overlay" id="addDayModalOverlay" onclick="if(event.target===this) closeAddDayModal()">
   <div class="modal-content" style="max-width: 480px;">
     <div class="modal-header">
-      <h2>🏋 Add New Workout Day</h2>
-      <button class="btn-xs" onclick="closeAddDayModal()">✕</button>
+      <h2><i data-icon="dumbbell" data-size="20"></i> Add Workout Day</h2>
+      <button class="btn-xs" onclick="closeAddDayModal()" aria-label="Close"><i data-icon="x" data-size="16"></i></button>
     </div>
     <form id="addDayForm" onsubmit="handleSaveCustomDay(event)" autocomplete="off" style="display: flex; flex-direction: column; gap: 14px;">
       <div class="meta-field">
@@ -890,8 +971,8 @@
 <div class="modal-overlay" id="addSecModalOverlay" onclick="if(event.target===this) closeAddSecModal()">
   <div class="modal-content" style="max-width: 440px;">
     <div class="modal-header">
-      <h2>📑 Add New Workout Section</h2>
-      <button class="btn-xs" onclick="closeAddSecModal()">✕</button>
+      <h2><i data-icon="list-plus" data-size="20"></i> Add Section</h2>
+      <button class="btn-xs" onclick="closeAddSecModal()" aria-label="Close"><i data-icon="x" data-size="16"></i></button>
     </div>
     <form id="addSecForm" onsubmit="handleSaveNewSection(event)" autocomplete="off" style="display: flex; flex-direction: column; gap: 14px;">
       <div class="meta-field">
@@ -905,10 +986,10 @@
       <div class="meta-field">
         <label>Accent Tag Color</label>
         <select id="secColorSelect" class="machine-dropdown" style="width:100%;">
-          <option value="blue">🔵 Neon Cyan / Blue</option>
-          <option value="green">🟢 Lime Green</option>
-          <option value="red">🔴 Hot Coral / Pink</option>
-          <option value="amber">🟡 Amber Gold</option>
+          <option value="blue">Cyan / Blue</option>
+          <option value="green">Green</option>
+          <option value="red">Coral</option>
+          <option value="amber">Amber</option>
         </select>
       </div>
       <div class="modal-footer" style="margin-top: 8px;">
@@ -923,8 +1004,8 @@
 <div class="modal-overlay" id="addExModalOverlay" onclick="if(event.target===this) closeAddExModal()">
   <div class="modal-content" style="max-width: 480px;">
     <div class="modal-header">
-      <h2>➕ Add Custom Exercise</h2>
-      <button class="btn-xs" onclick="closeAddExModal()">✕</button>
+      <h2><i data-icon="plus" data-size="20"></i> Add Exercise</h2>
+      <button class="btn-xs" onclick="closeAddExModal()" aria-label="Close"><i data-icon="x" data-size="16"></i></button>
     </div>
     <form id="addExForm" onsubmit="handleSaveCustomExercise(event)" autocomplete="off" style="display: flex; flex-direction: column; gap: 14px;">
       <div class="meta-field">
@@ -974,8 +1055,8 @@
 <div class="modal-overlay" id="addVarModalOverlay" onclick="if(event.target===this) closeAddVarModal()">
   <div class="modal-content" style="max-width: 440px;">
     <div class="modal-header">
-      <h2 id="addVarModalTitle">➕ Add Equipment Variation</h2>
-      <button class="btn-xs" onclick="closeAddVarModal()">✕</button>
+      <h2 id="addVarModalTitle">Add Equipment Variation</h2>
+      <button class="btn-xs" onclick="closeAddVarModal()" aria-label="Close"><i data-icon="x" data-size="16"></i></button>
     </div>
     <form id="addVarForm" onsubmit="handleSaveNewVariation(event)" autocomplete="off" style="display: flex; flex-direction: column; gap: 14px;">
       <div class="meta-field">
@@ -1002,8 +1083,8 @@
 <div class="modal-overlay" id="presetModalOverlay" onclick="if(event.target===this) closePresetModal()">
   <div class="modal-content" style="max-width: 540px;">
     <div class="modal-header">
-      <h2 id="presetModalTitle">⚙️ Edit Preset</h2>
-      <button class="btn-xs" onclick="closePresetModal()">✕</button>
+      <h2 id="presetModalTitle">Edit Preset</h2>
+      <button class="btn-xs" onclick="closePresetModal()" aria-label="Close"><i data-icon="x" data-size="16"></i></button>
     </div>
     <div class="modal-body">
       <p style="font-size:13px; color:var(--muted);">Customize default sets for this equipment variation. These values will load automatically when starting a session or resetting a day.</p>
@@ -1014,8 +1095,8 @@
         </table>
       </div>
       <div style="display:flex; gap:10px; margin-top:4px;">
-        <button class="btn-xs" onclick="addPresetRow()">➕ Add Set</button>
-        <button class="btn-xs" onclick="removePresetRow()">➖ Remove Set</button>
+        <button class="btn-xs" onclick="addPresetRow()"><i data-icon="plus" data-size="14"></i> Add Set</button>
+        <button class="btn-xs" onclick="removePresetRow()"><i data-icon="minus" data-size="14"></i> Remove Set</button>
       </div>
     </div>
     <div class="modal-footer">
@@ -1029,7 +1110,7 @@
   <div class="modal-content" style="max-width: 780px;">
     <div class="modal-header">
       <h2>Workout Session History</h2>
-      <button class="btn-xs" onclick="closeHistoryModal()">✕</button>
+      <button class="btn-xs" onclick="closeHistoryModal()" aria-label="Close"><i data-icon="x" data-size="16"></i></button>
     </div>
     <div class="modal-body">
       <div class="history-filter-bar">
@@ -1037,15 +1118,15 @@
           <option value="">All Days / Splits</option>
         </select>
         <select id="historyExerciseSelect" class="machine-dropdown" onchange="renderHistoryForSelectedExercise(this.value)" style="padding: 10px;">
-          <option value="">📈 View Progression Graph...</option>
+          <option value="">View progression graph…</option>
         </select>
       </div>
       <div id="historyListContainer" style="display:flex; flex-direction:column; gap:12px; margin-top:6px;"></div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-danger" onclick="clearWorkoutHistory()">🗑️ Clear Logs</button>
-      <button class="btn btn-info" onclick="exportHistoryCSV()">📥 Export CSV</button>
-      <button class="btn btn-primary" onclick="exportHistoryJSON()">📦 Export JSON</button>
+      <button class="btn btn-danger" onclick="clearWorkoutHistory()"><i data-icon="trash"></i> Clear Logs</button>
+      <button class="btn btn-info" onclick="exportHistoryCSV()"><i data-icon="download"></i> Export CSV</button>
+      <button class="btn btn-primary" onclick="exportHistoryJSON()"><i data-icon="package"></i> Export JSON</button>
     </div>
   </div>
 </div>

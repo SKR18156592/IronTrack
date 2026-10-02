@@ -7,7 +7,8 @@ import { renderScheduleRibbon } from './render/schedule.js';
 import { computeTDEE } from './render/tools.js';
 import { activeDay, renderAll, switchDayView, updateProgress, updateSessionStats } from './render/workout.js';
 import { getL, setL } from './storage.js';
-import { currentUser, pullFromCloud, supabaseClient } from './sync.js';
+import { currentUser, isSyncDirty, pullFromCloud, supabaseClient } from './sync.js';
+import { icon } from './icons.js';
 
 // ==========================================
 // TOAST NOTIFICATIONS & NETWORK TRACKER
@@ -27,16 +28,23 @@ export function showToast(message, type = 'success') {
 }
 
 export function updateOnlineStatus() {
-  const statusEl = document.getElementById('netStatus');
-  if (!statusEl) return;
-  if (navigator.onLine) {
-    statusEl.className = 'net-status online';
-    statusEl.title = 'Online & Connected';
-    if (currentUser && supabaseClient) pullFromCloud();
-  } else {
-    statusEl.className = 'net-status offline';
-    statusEl.title = 'Offline Mode Active';
-  }
+  updateSyncIndicator();
+  if (navigator.onLine && currentUser && supabaseClient) pullFromCloud();
+}
+
+// The dot on the header avatar (and on the profile screen): synced, waiting to upload, offline,
+// or signed out (data stays on this device).
+export function updateSyncIndicator() {
+  let state, label;
+  if (!currentUser || !supabaseClient) { state = 'local'; label = 'Not signed in: data stays on this device'; }
+  else if (!navigator.onLine) { state = 'offline'; label = 'Offline: changes are saved on this device'; }
+  else if (isSyncDirty()) { state = 'pending'; label = 'Changes waiting to sync'; }
+  else { state = 'synced'; label = 'All changes synced'; }
+  document.querySelectorAll('.sync-dot').forEach(dot => { dot.dataset.state = state; dot.title = label; });
+  const text = document.getElementById('syncStatusText');
+  if (text) text.textContent = label;
+  const btn = document.getElementById('profileToggleBtn');
+  if (btn) btn.setAttribute('aria-label', `Profile. ${label}`);
 }
 
 export function refreshAllUI() {
@@ -99,7 +107,7 @@ export function toggleEditMode() {
   const on = document.body.classList.toggle('edit-mode');
   const btn = document.getElementById('editModeBtn');
   if (btn) {
-    btn.textContent = on ? '✓ Done' : '✏️ Edit';
+    btn.innerHTML = `${icon(on ? 'check' : 'pencil', 14)} <span class="edit-toggle-label">${on ? 'Done' : 'Edit'}</span>`;
     btn.setAttribute('aria-pressed', String(on));
   }
 }

@@ -3,6 +3,7 @@ import { WORKOUT } from '../model.js';
 import { esc, getJ, getL, setJ } from '../storage.js';
 import { HISTORY_KEY, HISTORY_TOMBSTONES_KEY, currentUser, pushToCloud, supabaseClient } from '../sync.js';
 import { refreshAllUI, showToast } from '../ui.js';
+import { icon } from '../icons.js';
 
 export function populateHistoryDayFilter() {
   const select = document.getElementById('historyDayFilter');
@@ -68,7 +69,7 @@ export function populateHistoryExerciseDropdown() {
     }
   });
 
-  let html = `<option value="">📈 View Progression Graph...</option>`;
+  let html = `<option value="">View progression graph…</option>`;
   exerciseSet.forEach(name => {
     html += `<option value="${esc(name)}">${esc(name)}</option>`;
   });
@@ -159,8 +160,8 @@ export function renderHistoryForSelectedExercise(exerciseName) {
   modal.innerHTML = `
     <div class="modal-content" style="max-width: 620px;">
       <div class="modal-header">
-        <h2>📈 Progression: ${esc(exerciseName)}</h2>
-        <button class="btn-xs" onclick="this.closest('.modal-overlay').remove()">✕</button>
+        <h2>${icon('trend', 20)} Progression: ${esc(exerciseName)}</h2>
+        <button class="btn-xs" aria-label="Close" onclick="this.closest('.modal-overlay').remove()">${icon('x', 16)}</button>
       </div>
       <div class="modal-body">
         <div class="svg-chart-wrap">${chartSvg}</div>
@@ -220,7 +221,7 @@ export function renderHistory() {
           }
         });
 
-        const prBadge = hitPr ? `<span class="log-pr-badge">🏆 PR Hit</span>` : '';
+        const prBadge = hitPr ? `<span class="log-pr-badge">${icon('trophy', 12)} PR</span>` : '';
 
         return `
           <div class="log-exercise-row">
@@ -238,8 +239,8 @@ export function renderHistory() {
 
     div.innerHTML = `
       <div class="log-item-header" onclick="toggleLogAccordion(this)">
-        <span>📅 ${esc(h.date)} • Day ${esc(h.day)}: ${esc(h.dayTitle)}</span>
-        <span>⏱️ ${esc(h.duration)} ▾</span>
+        <span class="log-item-title">${icon('calendar', 14)} ${esc(h.date)} • Day ${esc(h.day)}: ${esc(String(h.dayTitle).replace(/^\s*⚡\s*/u, ''))}</span>
+        <span class="log-item-meta">${icon('timer', 14)} ${esc(h.duration)} ${icon('chevron-down', 14)}</span>
       </div>
       <div class="log-item-body">
         <div style="font-size: 11.5px; color: var(--muted); margin-top: 6px;">Body Weight: ${esc(h.bodyWeight)}kg | Energy: ${esc(h.energy)}/10 | Sleep: ${esc(h.sleep)}hrs</div>

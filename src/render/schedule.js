@@ -3,6 +3,7 @@ import { WORKOUT, getMicrocycle, rebuildWorkoutDatabase, setMicrocycle } from '.
 import { populateHistoryDayFilter } from './history.js';
 import { activeDay, captureCurrentFormValues, renderAll, restoreFormValues, switchDayView } from './workout.js';
 import { esc, getJ, safeId, setJ } from '../storage.js';
+import { icon } from '../icons.js';
 import { pushToCloud } from '../sync.js';
 import { showToast } from '../ui.js';
 
@@ -24,12 +25,11 @@ export function renderScheduleRibbon() {
 
     if (item.type === 'workout' && item.dayNum) {
       liftCount++;
-      const dot = item.dayNum == 1 ? '🔴' : item.dayNum == 2 ? '🔵' : item.dayNum == 3 ? '🟢' : '🟣';
       const label = WORKOUT[item.dayNum] ? WORKOUT[item.dayNum].title.replace('⚡ ', '').split('•')[0].trim() : `Day ${item.dayNum}`;
       return `
         <div class="sched-item ${todayClass}" onclick="switchDayView('${safeId(item.dayNum)}', true)">
           <span class="sched-day-name">${esc(item.day)}</span>
-          <span class="sched-dot">${dot}</span>
+          <span class="sched-dot lift"></span>
           <span class="sched-label" style="color:var(--accent)" title="${esc(label)}">${esc(label)}</span>
         </div>
       `;
@@ -38,7 +38,7 @@ export function renderScheduleRibbon() {
       return `
         <div class="sched-item ${todayClass}" onclick="notifyRestDay('${safeId(item.full)}')">
           <span class="sched-day-name">${esc(item.day)}</span>
-          <span class="sched-dot">⚪</span>
+          <span class="sched-dot"></span>
           <span class="sched-label" style="color:var(--muted)">Rest</span>
         </div>
       `;
@@ -70,10 +70,10 @@ export function openMicrocycleModal() {
     <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(15,23,42,0.8); padding:10px 14px; border-radius:10px; border:1px solid rgba(255,255,255,0.08);">
       <span style="font-weight:700; font-size:14px;">${esc(item.full)}</span>
       <select class="machine-dropdown" id="microcycle_select_${idx}" style="min-width:180px; padding:8px 12px; font-size:13px;">
-        <option value="rest" ${item.type === 'rest' ? 'selected' : ''}>⚪ Rest Day</option>
+        <option value="rest" ${item.type === 'rest' ? 'selected' : ''}>Rest Day</option>
         ${workoutDays.map(d => `
           <option value="${d}" ${item.type === 'workout' && String(item.dayNum) === String(d) ? 'selected' : ''}>
-            ⚡ Day ${d}: ${esc(WORKOUT[d].title.replace('⚡ ', ''))}
+            Day ${d}: ${esc(WORKOUT[d].title.replace('⚡ ', ''))}
           </option>
         `).join('')}
       </select>
@@ -110,19 +110,17 @@ export function renderDayNav() {
   if (!container) return;
   const days = Object.keys(WORKOUT);
 
-  let html = days.map((d, index) => {
+  let html = days.map((d) => {
     const cfg = WORKOUT[d];
-    const dot = index % 4 === 0 ? '🔴' : index % 4 === 1 ? '🔵' : index % 4 === 2 ? '🟢' : '🟣';
     return `
       <button class="nav-btn day-${d} ${String(d) === String(activeDay) ? 'active' : ''}" onclick="switchDayView('${d}', true)">
-        <span>${dot}</span>
         <span>Day ${d}</span>
         <span style="font-size: 11px; opacity: 0.75; font-weight: 500;">(${esc(cfg.title.replace('⚡ ', '').split('•')[0].trim())})</span>
       </button>
     `;
   }).join('');
 
-  html += `<button class="nav-btn-add edit-only" onclick="openAddDayModal()">➕ Add Day</button>`;
+  html += `<button class="nav-btn-add edit-only" onclick="openAddDayModal()">${icon('plus', 14)} Add Day</button>`;
   container.innerHTML = html;
 }
 

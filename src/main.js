@@ -8,6 +8,7 @@ import { restoreSessionDraft, watchSessionForm } from './session-draft.js';
 import { getJ, getL } from './storage.js';
 import { currentUser, pullFromCloud, startSessionSync, supabaseClient } from './sync.js';
 import { showTab, unlockAudio, updateOnlineStatus } from './ui.js';
+import { hydrateIcons } from './icons.js';
 import * as ui from './ui.js';
 import * as sync from './sync.js';
 import * as analytics from './render/analytics.js';
@@ -49,6 +50,7 @@ setInterval(() => {
 }, 30000);
 
 function init() {
+  hydrateIcons();
   loadSettings();
   loadProfileData();
   loadProfileTabUI();

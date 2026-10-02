@@ -40,7 +40,7 @@ export function populateSectionDropdown(dayNum) {
   
   const sections = WORKOUT[dayNum].sections || [];
   let html = sections.map(s => `<option value="${esc(s.title)}">${esc(s.title)}</option>`).join('');
-  html += `<option value="__NEW__">➕ Create New Custom Section...</option>`;
+  html += `<option value="__NEW__">+ Create new section…</option>`;
   select.innerHTML = html;
   
   // Preserve or set the initial section value without firing unexpected form resets
@@ -114,7 +114,7 @@ export function openAddVarModal(category) {
   activeAddVarCategory = category;
   const ex = FLAT_EXERCISES.find(e => e.category === category);
   if (!ex) return;
-  document.getElementById('addVarModalTitle').textContent = `➕ Add Variation: ${ex.title}`;
+  document.getElementById('addVarModalTitle').textContent = `Add Variation: ${ex.title}`;
   document.getElementById('addVarForm').reset();
   document.getElementById('addVarModalOverlay').classList.add('active');
 }
@@ -223,7 +223,7 @@ export function openPresetModal(category) {
   const varObj = ex.variations.find(v => v.value === variationValue) || ex.variations[0];
 
   activePresetModalData = { category, variationValue };
-  document.getElementById('presetModalTitle').textContent = `⚙️ Edit Preset: ${ex.title} (${varObj.label})`;
+  document.getElementById('presetModalTitle').textContent = `Edit Preset: ${ex.title} (${varObj.label})`;
 
   const stored = getPreset(category, variationValue);
   const sets = (stored && stored.length) ? stored : varObj.defaultSets;
