@@ -529,6 +529,7 @@
 
       <div id="dayViews"></div>
 
+      <!-- Action bar with 📑 Add Section placed directly beside ➕ Add Exercise -->
       <div class="bottom-bar">
         <button class="btn btn-secondary" onclick="openHistoryModal()">📋 Log History</button>
         <button class="btn btn-info" onclick="openAddExModal()">➕ Add Exercise</button>
@@ -661,7 +662,7 @@
         </div>
       </div>
       <div class="settings-card">
-        <button class="btn btn-secondary" onclick="restoreAllHiddenExercises()">♻️️ Restore All Removed Exercises &amp; Default Days</button>
+        <button class="btn btn-secondary" onclick="restoreAllHiddenExercises()">♻️ Restore All Removed Exercises &amp; Default Days</button>
       </div>
       <div class="settings-card">
         <label class="settings-row"><span>🔊 Enable Rest Timer Beeps</span><input type="checkbox" id="soundToggle" checked onchange="saveSettings()"></label>
@@ -978,7 +979,7 @@
       <div id="historyListContainer" style="display:flex; flex-direction:column; gap:12px; margin-top:6px;"></div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-danger" onclick="clearWorkoutHistory()">🗑️️ Clear Logs</button>
+      <button class="btn btn-danger" onclick="clearWorkoutHistory()">🗑️ Clear Logs</button>
       <button class="btn btn-info" onclick="exportHistoryCSV()">📥 Export CSV</button>
       <button class="btn btn-primary" onclick="exportHistoryJSON()">📦 Export JSON</button>
     </div>
@@ -1036,7 +1037,7 @@ const NUTRITION_PLANS = {
         ]
       },
       {
-        title: '🍽 Lunch',
+        title: '🍽️ Lunch',
         summary: '708 kcal • 62.2g Protein',
         items: [
           { name: 'Ghee (3g)', cals: 25, p: 0, c: 0, f: 2.9 },
@@ -1416,9 +1417,18 @@ async function pushToCloud() {
       updated_at: new Date().toISOString()
     };
 
-    const { error } = await supabaseClient
+    let { error } = await supabaseClient
       .from('user_sync')
       .upsert(payload, { onConflict: 'user_id' });
+
+    // Fallback if Supabase does not have custom_sections column yet
+    if (error && error.message && error.message.includes('custom_sections')) {
+      delete payload.custom_sections;
+      const res = await supabaseClient
+        .from('user_sync')
+        .upsert(payload, { onConflict: 'user_id' });
+      error = res.error;
+    }
 
     if (error) {
       console.error('Cloud push error:', error);
@@ -2409,7 +2419,7 @@ function openPresetModal(category) {
   const varObj = ex.variations.find(v => v.value === variationValue) || ex.variations[0];
 
   activePresetModalData = { category, variationValue };
-  document.getElementById('presetModalTitle').textContent = `⚙️️ Edit Preset: ${ex.title} (${varObj.label})`;
+  document.getElementById('presetModalTitle').textContent = `⚙️ Edit Preset: ${ex.title} (${varObj.label})`;
 
   const stored = getPreset(category, variationValue);
   const sets = (stored && stored.length) ? stored : varObj.defaultSets;
@@ -2686,7 +2696,7 @@ function renderExerciseCard(ex, idx) {
       <select class="machine-dropdown" id="${ex.category}Select" onchange="onVariationChange('${ex.category}', '${ex.prefix}', this)">
         ${options}
       </select>
-      <button class="btn-xs" title="Move Up" onclick="reorderEquipment('${ex.category}', -1)">⬆️️</button>
+      <button class="btn-xs" title="Move Up" onclick="reorderEquipment('${ex.category}', -1)">⬆</button>
       <button class="btn-xs" title="Move Down" onclick="reorderEquipment('${ex.category}', 1)">⬇️</button>
       <button class="btn-xs" style="color:var(--accent); border-color:var(--accent-glow);" onclick="openAddVarModal('${ex.category}')">➕ Add Var</button>
       <button class="btn-xs" style="color:var(--lime); border-color:rgba(57,255,20,0.35);" onclick="openPresetModal('${ex.category}')">⚙️ Preset</button>
@@ -3776,7 +3786,7 @@ function restoreAllHiddenExercises() {
   rebuildWorkoutDatabase();
   renderAll();
   switchDayView('1');
-  showToast('♻️ All exercises & default days restored!', 'success');
+  showToast('♻️️ All exercises & default days restored!', 'success');
 }
 
 function showCelebration() {
