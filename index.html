@@ -6,6 +6,13 @@
   <meta name="theme-color" content="#0a0a0f" />
   <meta name="description" content="IronTrack - Progressive overload workout tracker & nutrition planner" />
   <title>IronTrack • Ultimate Workout Hub</title>
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="icon" href="/logo.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+  <meta name="apple-mobile-web-app-title" content="IronTrack" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet" />
@@ -4101,6 +4108,15 @@ function init() {
 
 window.ironStart = Date.now();
 init();
+
+// ==========================================
+// PWA: SERVICE WORKER REGISTRATION
+// ==========================================
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(err => console.warn('Service worker registration failed:', err));
+  });
+}
 </script>
 </body>
 </html>
