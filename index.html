@@ -18,7 +18,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
   <!-- Supabase CDN Client -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2"></script>
   <style>
     :root {
       --bg: #050608;
@@ -1008,6 +1008,7 @@ try {
 } catch(e) { console.warn('Supabase initialization fallback active'); }
 
 let isSignUpMode = false;
+let isSigningOut = false;
 let currentUser = null;
 let syncChannel = null;
 
@@ -1280,6 +1281,7 @@ async function handleSignOut() {
     const discard = confirm('Some changes have not reached the cloud yet (you may be offline).\n\nSign out anyway and discard them from this device?');
     if (!discard) return;
   }
+  isSigningOut = true;
   if (syncChannel && supabaseClient) {
     supabaseClient.removeChannel(syncChannel);
     syncChannel = null;
@@ -1341,6 +1343,7 @@ const SYNC_DIRTY_KEY = 'irontrack_sync_dirty';      // '1' while local edits hav
 const SYNC_OWNER_KEY = 'irontrack_owner';           // user id the local iron_* data belongs to
 const SYNC_STAMP_KEY = 'irontrack_last_synced_at';  // updated_at of the last row we pushed or applied
 const SESSION_DRAFT_KEY = 'irontrack_session_draft'; // in-progress workout form; device-local, never synced
+const SYNCED_KEYS_KEY = 'irontrack_synced_keys';     // iron_* keys in the last snapshot we pushed or applied
 const PUSH_DEBOUNCE_MS = 800;
 let pushTimer = null;
 let pushInFlight = null;
@@ -1355,7 +1358,7 @@ function clearLocalUserData() {
     if (key && key.startsWith('iron_')) keys.push(key);
   }
   keys.forEach(k => localStorage.removeItem(k));
-  [SYNC_DIRTY_KEY, SYNC_OWNER_KEY, SYNC_STAMP_KEY, SESSION_DRAFT_KEY].forEach(k => localStorage.removeItem(k));
+  [SYNC_DIRTY_KEY, SYNC_OWNER_KEY, SYNC_STAMP_KEY, SESSION_DRAFT_KEY, SYNCED_KEYS_KEY].forEach(k => localStorage.removeItem(k));
 }
 
 // Never let one account's local data leak into another account on a shared device.
@@ -1423,6 +1426,7 @@ async function pullFromCloud(showIndicator = false) {
     if (data.updated_at) setL(SYNC_STAMP_KEY, data.updated_at);
     refreshAllUI();
     loadProfileTabUI();
+    shrinkStoredAvatar();
     // e.g. sessions logged here before signing in: upload them too.
     if (hasUnsyncedHistory) pushToCloud();
     finish(true, 'Data synchronized successfully!');
@@ -1487,13 +1491,24 @@ function refreshHistoryUI() {
   renderMuscleRecoveryHeatmap();
 }
 
+// Keys local_storage_backup never overwrites: device-local, or synced through their own logic.
+const BACKUP_SKIP_KEYS = new Set(['iron_active_day', 'iron_profile_avatar', HISTORY_KEY, HISTORY_TOMBSTONES_KEY]);
+
 // Applies a cloud row locally. Returns true if this device has history the cloud lacks.
 function applyCloudRow(data) {
-  if (data.local_storage_backup && typeof data.local_storage_backup === 'object') {
-    for (const k in data.local_storage_backup) {
-      if (!k.startsWith('iron_') || k === 'iron_active_day' || k === HISTORY_KEY || k === HISTORY_TOMBSTONES_KEY) continue;
-      setL(k, data.local_storage_backup[k]);
+  const backup = data.local_storage_backup;
+  if (backup && typeof backup === 'object') {
+    for (const k in backup) {
+      if (!k.startsWith('iron_') || BACKUP_SKIP_KEYS.has(k)) continue;
+      setL(k, backup[k]);
     }
+    // A key that was in the last snapshot we synced but is gone from the cloud was deleted on
+    // another device. (Keys we have never synced are new here and are kept.)
+    const cloudKeys = new Set(Object.keys(backup));
+    getJ(SYNCED_KEYS_KEY, []).forEach(k => {
+      if (k.startsWith('iron_') && !BACKUP_SKIP_KEYS.has(k) && !cloudKeys.has(k)) localStorage.removeItem(k);
+    });
+    setJ(SYNCED_KEYS_KEY, [...cloudKeys]);
   }
 
   if (Array.isArray(data.microcycle_config)) setJ('iron_microcycle_config', data.microcycle_config);
@@ -1640,6 +1655,7 @@ async function uploadSnapshot() {
       if (!result.written) continue; // the row changed under us: merge again and retry
 
       setL(SYNC_STAMP_KEY, updatedAt);
+      setJ(SYNCED_KEYS_KEY, Object.keys(payload.local_storage_backup));
       // Only clear the flag if nothing was edited while this upload was running.
       if (seq === localEditSeq) localStorage.removeItem(SYNC_DIRTY_KEY);
 
@@ -1696,12 +1712,12 @@ document.addEventListener('visibilitychange', () => {
   }
 });
 
-// Change this at the bottom of the script:
+// Fallback in case a realtime event is missed.
 setInterval(() => {
   if (currentUser && supabaseClient && navigator.onLine) {
     pullFromCloud(false);
   }
-}, 30000); // Change from 5000ms (5s) to 30000ms (30s), or remove entirely since you already have Supabase Realtime active!
+}, 30000);
 
 // ==========================================
 // 2. THEME ENGINE & WORKOUT DATABASE
@@ -2443,9 +2459,17 @@ let workoutStartTime = null;
 let workoutTimerInterval = null;
 
 const getL = (k, def) => { try { const v = localStorage.getItem(k); return v === null ? def : v; } catch(e){ return def; } };
-const setL = (k, v) => { try { localStorage.setItem(k, v); } catch(e){} };
+// Writes return false on failure (almost always the ~5 MB localStorage quota) and warn the user.
+let lastStorageWarningAt = 0;
+function reportStorageFailure(err) {
+  console.error('localStorage write failed:', err);
+  if (Date.now() - lastStorageWarningAt < 10000) return;
+  lastStorageWarningAt = Date.now();
+  showToast('⚠️ Device storage is full: recent changes were not saved. Export a full backup from Settings.', 'error');
+}
+const setL = (k, v) => { try { localStorage.setItem(k, v); return true; } catch(e){ reportStorageFailure(e); return false; } };
 const getJ = (k, def) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : def; } catch(e){ return def; } };
-const setJ = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){} };
+const setJ = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch(e){ reportStorageFailure(e); return false; } };
 
 // Escape text before it goes into an innerHTML template.
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
@@ -3467,7 +3491,10 @@ function finishCurrentDayWorkout() {
 
   const history = getJ('iron_workout_history', []);
   history.unshift(record);
-  setJ('iron_workout_history', history);
+  if (!setJ('iron_workout_history', history)) {
+    showToast('❌ Session NOT saved: device storage is full. Export a full backup from Settings to free space.', 'error');
+    return;
+  }
   pushToCloud();
   clearSessionDraft();
   lastFinishedRecord = record;
@@ -3921,18 +3948,57 @@ function syncCalculatorToProfile() {
   pushToCloud();
 }
 
+// The avatar is stored in localStorage and the sync row, so it is downscaled to a small JPEG first.
+const AVATAR_MAX_PX = 256;
+const AVATAR_MAX_CHARS = 80000;
+
+function shrinkImageDataUrl(dataUrl) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, AVATAR_MAX_PX / Math.max(img.width, img.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(img.width * scale));
+      canvas.height = Math.max(1, Math.round(img.height * scale));
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#0a0a0f'; // JPEG has no transparency
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL('image/jpeg', 0.85));
+    };
+    img.onerror = () => reject(new Error('Unsupported image'));
+    img.src = dataUrl;
+  });
+}
+
 function handleAvatarUpload(input) {
   if (input.files && input.files[0]) {
     const reader = new FileReader();
-    reader.onload = function(e) {
-      const base64Img = e.target.result;
-      setL('iron_profile_avatar', base64Img);
-      updateAvatarDisplay(base64Img);
+    reader.onload = async function(e) {
+      let small;
+      try { small = await shrinkImageDataUrl(e.target.result); }
+      catch (err) { showToast('❌ That image format is not supported. Try a JPEG or PNG.', 'error'); return; }
+      if (!setL('iron_profile_avatar', small)) return;
+      updateAvatarDisplay(small);
       showToast('📷 Avatar uploaded successfully!', 'success');
       pushToCloud();
     };
     reader.readAsDataURL(input.files[0]);
   }
+  input.value = '';
+}
+
+// Avatars saved before downscaling existed can be megabytes: shrink them once.
+async function shrinkStoredAvatar() {
+  const avatar = getL('iron_profile_avatar', '');
+  if (!avatar || avatar.length <= AVATAR_MAX_CHARS) return;
+  try {
+    const small = await shrinkImageDataUrl(avatar);
+    if (small.length < avatar.length && setL('iron_profile_avatar', small)) {
+      updateAvatarDisplay(small);
+      pushToCloud();
+    }
+  } catch (e) { console.warn('Could not shrink stored avatar:', e); }
 }
 
 function updateAvatarDisplay(imgSrcOrNull) {
@@ -4354,6 +4420,7 @@ function init() {
   loadSettings();
   loadProfileData();
   loadProfileTabUI();
+  shrinkStoredAvatar();
   rebuildWorkoutDatabase();
   renderAll();
   renderScheduleRibbon();
@@ -4410,6 +4477,11 @@ function init() {
         pullFromCloud();
         subscribeToRealtimeSync();
       } else { updateUserSessionUI(null); }
+    });
+    // Signed out in another tab, or the session could not be refreshed: in-memory state is stale.
+    // Local data is kept (an unsynced edit uploads after the next sign-in to the same account).
+    supabaseClient.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_OUT' && currentUser && !isSigningOut) window.location.reload();
     });
   }
 }

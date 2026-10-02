@@ -1,4 +1,4 @@
-const CACHE_NAME = 'irontrack-v2';
+const CACHE_NAME = 'irontrack-v3';
 const SHELL_ASSETS = [
   '/',
   '/index.html',
@@ -12,7 +12,7 @@ const SHELL_ASSETS = [
 ];
 // Third-party scripts/styles index.html needs to boot. Must match the URLs in index.html exactly.
 const CDN_ASSETS = [
-  'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2',
+  'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2',
   'https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js',
   'https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap'
 ];
