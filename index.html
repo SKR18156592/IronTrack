@@ -109,10 +109,6 @@
       box-shadow: 0 18px 45px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.08);
       transition: border-color .25s ease, box-shadow .25s ease, transform .25s ease;
     }
-    .exercise-card:hover, .calc-box:hover, .analytics-card:hover, .settings-card:hover, .nutrition-card:hover {
-      border-color: var(--accent-glow);
-      box-shadow: 0 22px 55px rgba(0,0,0,0.6), 0 0 25px var(--accent-dim);
-    }
 
     .schedule-card { padding: 18px 20px; display: flex; flex-direction: column; gap: 14px; }
     .schedule-header { display: flex; justify-content: space-between; align-items: center; font-size: 11.5px; text-transform: uppercase; letter-spacing: 1px; font-weight: 800; color: var(--muted); flex-wrap: wrap; gap: 6px; }
@@ -482,7 +478,7 @@
         <div class="schedule-ribbon" id="scheduleRibbon"></div>
       </div>
 
-      <!-- Pill-based Intuitive Day Navigation -->
+      <!-- Pill-based Intuitive Day Navigation with top-level ➕ Add Day only -->
       <div style="display: flex; flex-direction: column; gap: 8px;">
         <div style="display: flex; justify-content: space-between; align-items: center;">
           <span style="font-size: 11px; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px;">Workout Days</span>
@@ -529,7 +525,7 @@
 
       <div id="dayViews"></div>
 
-      <!-- Action bar with 📑 Add Section placed directly beside ➕ Add Exercise -->
+      <!-- Bottom action bar containing ➕ Add Exercise and 📑 Add Section side by side -->
       <div class="bottom-bar">
         <button class="btn btn-secondary" onclick="openHistoryModal()">📋 Log History</button>
         <button class="btn btn-info" onclick="openAddExModal()">➕ Add Exercise</button>
@@ -1332,6 +1328,7 @@ async function pullFromCloud(showIndicator = false) {
     if (data) {
       let updated = false;
 
+      // Extract raw local storage backup first to guarantee no loss
       if (data.local_storage_backup && typeof data.local_storage_backup === 'object') {
         for (const k in data.local_storage_backup) {
           setL(k, data.local_storage_backup[k]);
@@ -1373,7 +1370,7 @@ async function pullFromCloud(showIndicator = false) {
 
     if (syncBtn && showIndicator) {
       syncBtn.textContent = '✅ Synced';
-      setTimeout(() => { syncBtn.textContent = '☁️ Sync'; }, 2000);
+      setTimeout(() => { syncBtn.textContent = '☁️️ Sync'; }, 2000);
     }
     if (showIndicator) showToast('Data synchronized successfully!', 'success');
   } catch (err) {
@@ -1421,13 +1418,20 @@ async function pushToCloud() {
       .from('user_sync')
       .upsert(payload, { onConflict: 'user_id' });
 
-    // Fallback if Supabase does not have custom_sections column yet
-    if (error && error.message && error.message.includes('custom_sections')) {
-      delete payload.custom_sections;
-      const res = await supabaseClient
-        .from('user_sync')
-        .upsert(payload, { onConflict: 'user_id' });
-      error = res.error;
+    // Fallback if Supabase database lacks specific new column definitions
+    if (error && error.message) {
+      const problematicCols = ['custom_sections', 'custom_days', 'hidden_days', 'microcycle_config'];
+      let modified = false;
+      problematicCols.forEach(col => {
+        if (error.message.includes(col)) {
+          delete payload[col];
+          modified = true;
+        }
+      });
+      if (modified) {
+        const retry = await supabaseClient.from('user_sync').upsert(payload, { onConflict: 'user_id' });
+        error = retry.error;
+      }
     }
 
     if (error) {
@@ -2419,7 +2423,7 @@ function openPresetModal(category) {
   const varObj = ex.variations.find(v => v.value === variationValue) || ex.variations[0];
 
   activePresetModalData = { category, variationValue };
-  document.getElementById('presetModalTitle').textContent = `⚙️ Edit Preset: ${ex.title} (${varObj.label})`;
+  document.getElementById('presetModalTitle').textContent = `⚙ Edit Preset: ${ex.title} (${varObj.label})`;
 
   const stored = getPreset(category, variationValue);
   const sets = (stored && stored.length) ? stored : varObj.defaultSets;
@@ -2817,7 +2821,7 @@ function applyVariation(category, prefix, variation, fillRows=true) {
   if (prev) {
     const str = formatPreset(sourceSets);
     prev.style.display = str ? 'inline-flex' : 'none';
-    prev.textContent = '⏮️ ' + sourceLabel + ': ' + str;
+    prev.textContent = '⏮️️ ' + sourceLabel + ': ' + str;
   }
 }
 
@@ -3373,7 +3377,7 @@ function renderHistoryForSelectedExercise(exerciseName) {
     const w = 520, h = 260, pad = 40, chartW = w - pad * 2, chartH = h - pad * 2;
     chartSvg = `<svg class="plate-svg" viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg">`;
     for (let i = 0; i <= 4; i++) {
-      const y = pad + (i * chartH / 4);
+      const y = pad + chartH - (i * chartH / 4);
       chartSvg += `<line x1="${pad}" y1="${y}" x2="${w - pad}" y2="${y}" class="chart-grid" />`;
       chartSvg += `<text x="${pad - 8}" y="${y + 4}" text-anchor="end" class="chart-label">${(maxW - (i * maxW / 4)).toFixed(0)}</text>`;
     }
