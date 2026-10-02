@@ -1291,13 +1291,19 @@ function updateUserSessionUI(user) {
 }
 
 function refreshAllUI() {
+  // If the user is currently editing an exercise or modal, don't destroy their selection
+  const isModalOpen = document.getElementById('addExModalOverlay')?.classList.contains('active');
+  
   rebuildWorkoutDatabase();
-  renderAll();
-  renderScheduleRibbon();
   
   const storedDay = getL('iron_active_day');
   const targetDay = (storedDay && WORKOUT[storedDay]) ? storedDay : (WORKOUT[activeDay] ? activeDay : Object.keys(WORKOUT)[0] || '1');
-  switchDayView(targetDay, false);
+
+  if (!isModalOpen) {
+    renderAll();
+    renderScheduleRibbon();
+    switchDayView(targetDay, false);
+  }
 
   renderHistory();
   updateProgress();
@@ -2244,24 +2250,22 @@ function updateRestMultiplierLabel() {
 }
 
 function openAddExModal() {
-  // 1. Reset the form FIRST
-  document.getElementById('addExForm').reset();
+  const form = document.getElementById('addExForm');
+  if (form) form.reset();
 
-  // 2. Populate the days dropdown
   populateDayDropdown();
 
-  // 3. Set the target day to the current active day (e.g. Day 3)
+  // Explicitly select activeDay and populate its sections
+  const targetDay = String(activeDay || '1');
   const exDaySelect = document.getElementById('exDay');
   if (exDaySelect) {
-    exDaySelect.value = String(activeDay);
-    // 4. Populate sections specifically for that day
-    populateSectionDropdown(String(activeDay));
+    exDaySelect.value = targetDay;
   }
+  populateSectionDropdown(targetDay);
 
-  // 5. Clear fields and show modal
-  document.getElementById('exTitle').value = '';
-  document.getElementById('exTarget').value = '';
-  document.getElementById('exVarLabel').value = '';
+  const customField = document.getElementById('customSectionNameField');
+  if (customField) customField.style.display = 'none';
+
   document.getElementById('addExModalOverlay').classList.add('active');
 }
 function closeAddExModal() { document.getElementById('addExModalOverlay').classList.remove('active'); document.getElementById('addExForm').reset(); }
@@ -2805,7 +2809,13 @@ function renderAll() {
   const days = Object.keys(WORKOUT);
   container.innerHTML = days.map(d => renderDay(d)).join('');
   renderDayNav();
-  populateDayDropdown();
+  
+  // Only repopulate if the modal is closed to preserve user input
+  const isAddOpen = document.getElementById('addExModalOverlay')?.classList.contains('active');
+  if (!isAddOpen) {
+    populateDayDropdown();
+  }
+
   populateHistoryDayFilter();
   populateHistoryExerciseDropdown();
   populateCompoundSelect();
