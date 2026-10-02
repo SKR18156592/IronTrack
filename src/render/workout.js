@@ -7,6 +7,7 @@ import { clearSessionDraft, hasSessionDraft, saveSessionDraft } from '../session
 import { esc, getJ, getL, isSafeId, setJ, setL } from '../storage.js';
 import { pushToCloud } from '../sync.js';
 import { fireConfetti, playBeep, showToast } from '../ui.js';
+import { icon } from '../icons.js';
 
 export let activeDay = '1';
 let restInterval = null;
@@ -102,7 +103,7 @@ function setRowCells(prefix, n, s, rest) {
   return `<td class="set-num-cell"><button type="button" class="set-num-btn" onclick="toggleSetDetails(this)" aria-label="Set ${n}: tag and RIR" aria-expanded="false">${n}</button></td>
     <td><div class="stepper"><button type="button" class="stepper-btn" onclick="stepValue('${prefix}_w_${n}', -2.5)" aria-label="Less weight">−</button><input type="number" inputmode="decimal" class="input-field set-weight" id="${prefix}_w_${n}" value="${esc(wVal)}" placeholder="kg" oninput="checkStartWorkoutTimer()"><button type="button" class="stepper-btn" onclick="stepValue('${prefix}_w_${n}', 2.5)" aria-label="More weight">+</button></div></td>
     <td><div class="stepper"><button type="button" class="stepper-btn" onclick="stepValue('${prefix}_r_${n}', -1)" aria-label="Fewer reps">−</button><input type="number" inputmode="numeric" class="input-field set-reps" id="${prefix}_r_${n}" value="${esc(rVal)}" placeholder="reps" oninput="checkStartWorkoutTimer()"><button type="button" class="stepper-btn" onclick="stepValue('${prefix}_r_${n}', 1)" aria-label="More reps">+</button></div></td>
-    <td class="set-done-cell"><button type="button" class="check-btn" onclick="toggleSet(this, ${rest})" aria-label="Set ${n} done">✓</button></td>
+    <td class="set-done-cell"><button type="button" class="check-btn" onclick="toggleSet(this, ${rest})" aria-label="Set ${n} done">${icon('check', 20)}</button></td>
     <td class="set-extra">
       <label>Tag <select class="set-tag" id="${prefix}_t_${n}">${tagOptions}</select></label>
       <label>RIR <input type="number" inputmode="numeric" class="input-field set-rir" id="${prefix}_ri_${n}" value="${esc(rir)}"></label>
@@ -123,15 +124,37 @@ export function getSupersetDecorations(category) {
   const prev = getPreviousCategory(category);
   const isSecond = linked && prev === linked;
   const cls = linked ? 'superset' : '';
-  const badge = isSecond ? `<span class="superset-badge">⛓ Superset</span>` : '';
+  const badge = isSecond ? `<span class="superset-badge">${icon('link', 12)} Superset</span>` : '';
   return { linked, isSecond, cls, badge };
 }
 export function getSupersetBtn(category) {
   const linked = getLinkedCategory(category);
-  if (linked) return `<button class="btn-xs btn-superset active edit-only" onclick="toggleSuperset('${category}')">⛓ Unlink Superset</button>`;
+  if (linked) return `<button class="btn-xs btn-superset active edit-only" onclick="toggleSuperset('${category}')">${icon('link', 14)} Unlink Superset</button>`;
   const next = getNextCategory(category);
   if (!next) return '';
-  return `<button class="btn-xs btn-superset edit-only" onclick="toggleSuperset('${category}')">⛓ Superset with next</button>`;
+  return `<button class="btn-xs btn-superset edit-only" onclick="toggleSuperset('${category}')">${icon('link', 14)} Superset with next</button>`;
+}
+
+// The catalog stores setup as '⚙️ Setup: …' and cue as '💡 …', and the cue often repeats the setup.
+// Show the setup as one line; the cue (when it adds something) sits behind the ⓘ button.
+export function exerciseInfo(varObj) {
+  const setup = String(varObj.setup || '').replace(/^\s*⚙️?\s*Setup:\s*/u, '').trim();
+  const cue = String(varObj.cue || '').replace(/^\s*💡\s*/u, '').trim();
+  const norm = (t) => t.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const repeats = setup && cue && (norm(setup).includes(norm(cue)) || norm(cue).includes(norm(setup)));
+  const line = setup || cue;
+  const extra = setup && cue && !repeats ? cue : '';
+  return { setup: line, cue: extra, more: Boolean(extra) || line.length > 48 };
+}
+
+function prevLine(label, sets) {
+  const str = formatPreset(sets);
+  return str ? `${icon('history', 13)} ${esc(label)}: ${esc(str)}` : '';
+}
+
+export function toggleExInfo(btn) {
+  const open = btn.closest('.ex-info').classList.toggle('open');
+  btn.setAttribute('aria-expanded', String(open));
 }
 
 export function renderExerciseCard(ex, idx) {
@@ -146,6 +169,7 @@ export function renderExerciseCard(ex, idx) {
   const sets = (storedPreset && storedPreset.length) ? storedPreset : activeVarObj.defaultSets;
   const dec = getSupersetDecorations(ex.category);
   const supBtn = getSupersetBtn(ex.category);
+  const info = exerciseInfo(activeVarObj);
 
   return `
   <div class="exercise-card ${idx===1 ? 'highlight' : ''} ${dec.cls}" data-category="${ex.category}" data-prefix="${ex.prefix}" data-exercise-type="${esc(ex.exerciseType)}" data-rest="${ex.rest}">
@@ -160,27 +184,25 @@ export function renderExerciseCard(ex, idx) {
       </div>
     </div>
     <div class="machine-selector-wrapper">
-      <div class="machine-label">🏋️ Equipment:</div>
+      <label class="machine-label" for="${ex.category}Select">${icon('dumbbell', 15)} Equipment</label>
       <select class="machine-dropdown" id="${ex.category}Select" onchange="onVariationChange('${ex.category}', '${ex.prefix}', this)">
         ${options}
       </select>
       <div class="equip-tools edit-only">
-        <button class="btn-xs" title="Move Up" onclick="reorderEquipment('${ex.category}', -1)">⬆</button>
-        <button class="btn-xs" title="Move Down" onclick="reorderEquipment('${ex.category}', 1)">⬇️</button>
-        <button class="btn-xs" style="color:var(--accent); border-color:var(--accent-glow);" onclick="openAddVarModal('${ex.category}')">➕ Add Var</button>
-        <button class="btn-xs" style="color:var(--lime); border-color:rgba(57,255,20,0.35);" onclick="openPresetModal('${ex.category}')">⚙ Preset</button>
-        <button class="btn-xs" style="color:#fca5a5; border-color:rgba(239,68,68,0.35);" onclick="removeEquipment('${ex.category}')">🗑</button>
+        <button class="btn-xs" title="Move equipment up" aria-label="Move equipment up" onclick="reorderEquipment('${ex.category}', -1)">${icon('arrow-up', 14)}</button>
+        <button class="btn-xs" title="Move equipment down" aria-label="Move equipment down" onclick="reorderEquipment('${ex.category}', 1)">${icon('arrow-down', 14)}</button>
+        <button class="btn-xs" onclick="openAddVarModal('${ex.category}')">${icon('plus', 14)} Variation</button>
+        <button class="btn-xs" onclick="openPresetModal('${ex.category}')">${icon('settings', 14)} Preset</button>
+        <button class="btn-xs btn-xs-danger" title="Remove equipment" aria-label="Remove equipment" onclick="removeEquipment('${ex.category}')">${icon('trash', 14)}</button>
       </div>
     </div>
-    <div class="ex-meta-info">
-      <div class="info-row">
-        <span class="info-pill setup" id="${ex.prefix}SetupBadge">${esc(activeVarObj.setup)}</span>
-        <span class="info-pill prev" id="${ex.prefix}PrevBadge">⏮️️ Preset: ${esc(formatPreset(sets))}</span>
+    <div class="ex-info">
+      <div class="ex-info-line">
+        <span class="ex-setup" id="${ex.prefix}SetupBadge">${esc(info.setup)}</span>
+        <button type="button" class="info-btn" id="${ex.prefix}InfoBtn" onclick="toggleExInfo(this)" aria-expanded="false" aria-label="Setup details and cues" ${info.more ? '' : 'hidden'}>${icon('info', 16)}</button>
       </div>
-      <div class="info-row">
-        <span class="info-pill cue" id="${ex.prefix}CueBadge">${esc(activeVarObj.cue)}</span>
-        <span class="info-pill overload" id="${ex.prefix}OverloadBadge" style="display:none;"></span>
-      </div>
+      <div class="ex-cue" id="${ex.prefix}CueBadge">${esc(info.cue)}</div>
+      <div class="ex-prev" id="${ex.prefix}PrevBadge">${prevLine(storedPreset && storedPreset.length ? 'Preset' : 'Default', sets)}</div>
     </div>
     <div class="sets-table-wrap">
       <table class="sets-table" id="table_${ex.prefix}">
@@ -189,12 +211,12 @@ export function renderExerciseCard(ex, idx) {
       </table>
     </div>
     <div class="ex-actions-bar">
-      <button class="btn-xs" onclick="addSetRow('table_${ex.prefix}', '${ex.prefix}', ${ex.rest})">➕ Add Set</button>
-      <button class="btn-xs" onclick="removeSetRow('table_${ex.prefix}')">➖ Remove Set</button>
-      <button class="btn-xs edit-only" onclick="reorderExercise('${ex.category}', -1)">⬆ Up</button>
-      <button class="btn-xs edit-only" onclick="reorderExercise('${ex.category}', 1)">⬇️ Down</button>
+      <button class="btn-xs" onclick="addSetRow('table_${ex.prefix}', '${ex.prefix}', ${ex.rest})">${icon('plus', 14)} Add Set</button>
+      <button class="btn-xs" onclick="removeSetRow('table_${ex.prefix}')">${icon('minus', 14)} Remove Set</button>
+      <button class="btn-xs edit-only" onclick="reorderExercise('${ex.category}', -1)">${icon('arrow-up', 14)} Up</button>
+      <button class="btn-xs edit-only" onclick="reorderExercise('${ex.category}', 1)">${icon('arrow-down', 14)} Down</button>
       ${supBtn}
-      <button class="btn-xs edit-only" style="color:#fca5a5; border-color:rgba(239,68,68,0.35);" onclick="removeExercise('${ex.category}')">🗑 Remove Exercise</button>
+      <button class="btn-xs btn-xs-danger edit-only" onclick="removeExercise('${ex.category}')">${icon('trash', 14)} Remove Exercise</button>
     </div>
   </div>`;
 }
@@ -209,13 +231,13 @@ export function renderDay(dayNum) {
       <div class="category-header-row">
         <div class="category-tag tag-${sec.color || 'blue'}" id="${sec.tag}">${sidx+1}. ${esc(displayTitle)} (<span class="set-count">0</span> Working Sets)</div>
         <div class="section-actions edit-only">
-          <button class="btn-xs" title="Move Section Up" onclick="reorderSection('${dayNum}', ${sidx}, -1)">⬆ Up</button>
-          <button class="btn-xs" title="Move Section Down" onclick="reorderSection('${dayNum}', ${sidx}, 1)">⬇ Down</button>
-          <button class="btn-xs" style="color:var(--coral); border-color:rgba(255,77,77,0.35);" title="Remove Section" onclick="removeSection('${dayNum}', ${sidx})">🗑️</button>
+          <button class="btn-xs" title="Move section up" onclick="reorderSection('${dayNum}', ${sidx}, -1)">${icon('arrow-up', 14)} Up</button>
+          <button class="btn-xs" title="Move section down" onclick="reorderSection('${dayNum}', ${sidx}, 1)">${icon('arrow-down', 14)} Down</button>
+          <button class="btn-xs btn-xs-danger" title="Remove section" aria-label="Remove section" onclick="removeSection('${dayNum}', ${sidx})">${icon('trash', 14)}</button>
         </div>
       </div>`;
       if (!sec.exercises || sec.exercises.length === 0) {
-        html += `<div style="padding:16px; text-align:center; color:var(--muted); font-size:12.5px; background:rgba(15,23,42,0.4); border-radius:var(--radius-sm); border:1px dashed var(--card-border);">No exercises yet in this section. Tap ✏️ Edit, then Add Exercise.</div>`;
+        html += `<div style="padding:16px; text-align:center; color:var(--muted); font-size:12.5px; background:rgba(15,23,42,0.4); border-radius:var(--radius-sm); border:1px dashed var(--card-border);">No exercises yet in this section. Tap Edit, then Add Exercise.</div>`;
       } else {
         sec.exercises.forEach((ex, eidx) => { html += renderExerciseCard(ex, eidx+1); });
       }
@@ -257,8 +279,11 @@ export function applyVariation(category, prefix, variation, fillRows=true) {
   const cue = document.getElementById(prefix + 'CueBadge');
   const prev = document.getElementById(prefix + 'PrevBadge');
 
-  if (setup) { setup.style.display = varObj.setup ? 'inline-flex' : 'none'; setup.textContent = varObj.setup; }
-  if (cue) { cue.style.display = varObj.cue ? 'inline-flex' : 'none'; cue.textContent = varObj.cue; }
+  const info = exerciseInfo(varObj);
+  if (setup) setup.textContent = info.setup;
+  if (cue) cue.textContent = info.cue;
+  const infoBtn = document.getElementById(prefix + 'InfoBtn');
+  if (infoBtn) infoBtn.hidden = !info.more;
 
   const storedPreset = getPreset(category, variation);
   const defaultSets = varObj.defaultSets;
@@ -296,11 +321,7 @@ export function applyVariation(category, prefix, variation, fillRows=true) {
     }
   }
 
-  if (prev) {
-    const str = formatPreset(sourceSets);
-    prev.style.display = str ? 'inline-flex' : 'none';
-    prev.textContent = '⏮️ ' + sourceLabel + ': ' + str;
-  }
+  if (prev) prev.innerHTML = prevLine(sourceLabel, sourceSets);
 }
 
 export function onVariationChange(category, prefix, select) {
@@ -346,7 +367,7 @@ export function switchDayView(day, resetSession = false) {
   if (!cfg) return;
   const badge = document.getElementById('currentDayBadge');
   badge.textContent = cfg.badge || `Day ${activeDay} Focus`;
-  document.getElementById('currentDayTitle').textContent = cfg.title;
+  document.getElementById('currentDayTitle').textContent = cfg.title.replace(/^\s*⚡\s*/u, '');
   document.getElementById('currentDaySub').textContent = cfg.sub;
   updateSectionWorkingSetCounts();
   updateProgress();
@@ -440,6 +461,10 @@ export function updateProgress() {
 export function toggleSet(btn, restSeconds) {
   checkStartWorkoutTimer();
   btn.classList.toggle('completed');
+  if (btn.classList.contains('completed')) {
+    btn.classList.add('just-completed');
+    setTimeout(() => btn.classList.remove('just-completed'), 600);
+  }
   updateProgress();
   if (btn.classList.contains('completed')) {
     const card = btn.closest('.exercise-card');
@@ -549,9 +574,9 @@ export function showCelebration() {
   if (!overlay) return;
   overlay.innerHTML = `
     <div class="celebration-badge pr">
-      <span>🎉 Workout Saved Successfully!</span>
+      <span>${icon('trophy', 22)} Workout saved!</span>
       <p style="font-size:13px; color:var(--muted); font-weight:600;">Download your cyberpunk stats card to share your accomplishment.</p>
-      <button class="btn btn-primary" onclick="shareLastWorkout()">📸 Download Share Card</button>
+      <button class="btn btn-primary" onclick="shareLastWorkout()">${icon('share')} Download Share Card</button>
       <button class="btn btn-secondary" onclick="document.getElementById('celebrationOverlay').classList.remove('active')">Close</button>
     </div>
   `;

@@ -94,20 +94,21 @@ export async function shrinkStoredAvatar() {
   } catch (e) { console.warn('Could not shrink stored avatar:', e); }
 }
 
+// Renders the avatar (photo or initials) on the profile screen and on the header button.
 export function updateAvatarDisplay(imgSrcOrNull) {
-  const container = document.getElementById('avatarPreviewContainer');
-  const initialsEl = document.getElementById('avatarInitials');
-  if (!container) return;
-
+  let face;
   if (imgSrcOrNull && /^data:image\/(png|jpe?g|gif|webp);base64,[A-Za-z0-9+/=]+$/.test(imgSrcOrNull)) {
-    container.innerHTML = `<img src="${imgSrcOrNull}" alt="Avatar" />`;
+    face = `<img src="${imgSrcOrNull}" alt="" />`;
   } else {
-    const name = document.getElementById('profileFullName')?.value || 'User';
-    const parts = name.trim().split(' ');
-    let initials = parts.length > 1 ? (parts[0][0] + parts[parts.length - 1][0]) : name.slice(0, 2);
-    initials = initials.toUpperCase();
-    container.innerHTML = `<span id="avatarInitials">${esc(initials)}</span>`;
+    const name = (document.getElementById('profileFullName')?.value || getL('iron_profile_name', '') || '').trim();
+    const parts = name.split(/\s+/).filter(Boolean);
+    const initials = (parts.length > 1 ? parts[0][0] + parts[parts.length - 1][0] : name.slice(0, 2)) || '?';
+    face = `<span id="avatarInitials">${esc(initials.toUpperCase())}</span>`;
   }
+  const container = document.getElementById('avatarPreviewContainer');
+  if (container) container.innerHTML = face;
+  const header = document.getElementById('headerAvatar');
+  if (header) header.innerHTML = face.replace(' id="avatarInitials"', '');
 }
 
 export function loadProfileTabUI() {

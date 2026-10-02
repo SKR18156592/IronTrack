@@ -18,8 +18,6 @@ export function getMuscleGroup(category) {
 }
 
 export const MUSCLE_GROUP_ORDER = ['chest','back','legs','shoulders','arms'];
-export const MUSCLE_GROUP_COLOR = { chest:'#ff007f', back:'#00f3ff', legs:'#39ff14', shoulders:'#ff4d4d', arms:'#fbbf24' };
-export const MUSCLE_GROUP_ICON = { chest:'🏋️', back:'🔁', legs:'🦵', shoulders:'🎯', arms:'💪' };
 
 export function getExerciseTitle(category) { const ex = FLAT_EXERCISES.find(e => e.category === category); return ex ? ex.title : category; }
 export function getRestForCategory(category) { const ex = FLAT_EXERCISES.find(e => e.category === category); return ex ? ex.rest : 75; }

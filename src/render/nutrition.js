@@ -1,5 +1,5 @@
 import { NUTRITION_PLANS } from '../data/nutrition.js';
-import { getL } from '../storage.js';
+import { esc, getL } from '../storage.js';
 
 let currentDietMode = 'rest';
 export function setDietMode(mode) {
@@ -40,7 +40,7 @@ export function renderNutritionPlan() {
   container.innerHTML = plan.meals.map(meal => `
     <div class="meal-box">
       <div class="meal-header-row">
-        <div class="meal-title">${meal.title}</div>
+        <div class="meal-title">${esc(meal.title.replace(/^\p{Extended_Pictographic}\uFE0F?\s*/u, ''))}</div>
         <div class="meal-badge-summary">${meal.summary}</div>
       </div>
       <div class="food-grid">

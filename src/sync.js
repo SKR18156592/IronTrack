@@ -2,7 +2,7 @@ import { mergeHistories } from './history-merge.js';
 import { getMicrocycle } from './model.js';
 import { loadProfileTabUI, shrinkStoredAvatar } from './render/profile.js';
 import { getJ, getL, setJ, setL } from './storage.js';
-import { refreshAllUI, refreshHistoryUI, showToast } from './ui.js';
+import { refreshAllUI, refreshHistoryUI, showToast, updateSyncIndicator } from './ui.js';
 
 // ==========================================
 // SUPABASE CLIENT & AUTH CONFIGURATION
@@ -122,6 +122,7 @@ export function updateUserSessionUI(user) {
     overlay.classList.add('active');
     userBar.style.display = 'none';
   }
+  updateSyncIndicator();
 }
 
 // ---- Sync bookkeeping. These keys are outside the iron_ namespace so they are never synced themselves.
@@ -167,14 +168,16 @@ export async function pullFromCloud(showIndicator = false) {
   if (!currentUser || !supabaseClient) return;
   const syncBtn = document.getElementById('manualSyncBtn');
   const finish = (ok, message) => {
-    if (syncBtn && showIndicator) {
-      syncBtn.textContent = ok ? '✅ Synced' : '❌ Error';
-      setTimeout(() => { syncBtn.textContent = '☁️ Sync'; }, 2000);
+    const label = syncBtn && syncBtn.querySelector('.btn-label');
+    if (label && showIndicator) {
+      label.textContent = ok ? 'Synced' : 'Sync failed';
+      setTimeout(() => { label.textContent = 'Sync now'; }, 2000);
     }
     if (showIndicator) showToast(message, ok ? 'success' : 'error');
   };
   try {
-    if (syncBtn && showIndicator) syncBtn.textContent = '⏳ Syncing...';
+    const syncLabel = syncBtn && syncBtn.querySelector('.btn-label');
+    if (syncLabel && showIndicator) syncLabel.textContent = 'Syncing…';
 
     // Local edits that have not been uploaded yet win: upload them instead of overwriting them.
     if (isSyncDirty() || pushTimer || pushInFlight) {
@@ -328,6 +331,7 @@ export function pushToCloud() {
   if (!currentUser || !supabaseClient) return;
   localEditSeq++;
   setL(SYNC_DIRTY_KEY, '1');
+  updateSyncIndicator();
   clearTimeout(pushTimer);
   pushTimer = setTimeout(() => { pushTimer = null; flushPush(); }, PUSH_DEBOUNCE_MS);
 }
@@ -460,6 +464,7 @@ export async function uploadSnapshot() {
     return false;
   } finally {
     if (historyChanged) refreshHistoryUI();
+    updateSyncIndicator();
   }
 }
 
