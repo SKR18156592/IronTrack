@@ -22,18 +22,29 @@ at the gym, and track progress over time. Your data syncs across devices through
 
 | Layer | Used |
 |---|---|
-| App | Vanilla HTML, CSS, and JavaScript in a single `index.html` (no framework) |
+| App | Vanilla HTML, CSS, and JavaScript as ES modules (no framework) |
 | Libraries | `@supabase/supabase-js@2`, `canvas-confetti` (loaded from jsDelivr) |
 | Local storage | `localStorage` (keys prefixed `iron_`) |
 | Backend | Supabase: Auth (email and password), Postgres, Realtime |
 | Offline | Service worker (`public/sw.js`) + web app manifest |
-| Tooling | Vite (dev server and static build only) |
+| Tooling | Vite (dev server and bundling), Vitest + happy-dom (unit tests) |
 
 ## Project structure
 
 ```text
 irontrack-pwa/
-├── index.html                 # The entire app: markup, styles, and logic
+├── index.html                 # Markup and styles; loads src/main.js
+├── src/
+│   ├── main.js                # Startup, event listeners, service worker registration
+│   ├── sync.js                # Supabase client, auth, upload/download, realtime
+│   ├── history-merge.js       # Pure workout-history merge (by session id + tombstones)
+│   ├── session-draft.js       # In-progress workout draft (survives reloads)
+│   ├── model.js               # Workout split built from the catalog + local customizations
+│   ├── storage.js             # localStorage helpers, escaping
+│   ├── ui.js                  # Toasts, tabs, theme, sounds, full UI refresh
+│   ├── data/                  # Built-in exercise catalog and nutrition plans
+│   └── render/                # One module per screen or feature
+├── tests/                     # Vitest unit tests
 ├── public/
 │   ├── sw.js                  # Service worker: offline caching
 │   ├── manifest.webmanifest   # PWA manifest
@@ -67,7 +78,7 @@ method the app uses. If "Confirm email" is on, new users must confirm their addr
 
 ### 3. Point the app at your project
 
-Set `SUPABASE_URL` and `SUPABASE_ANON_KEY` at the top of the `<script>` block in `index.html`
+Set `SUPABASE_URL` and `SUPABASE_ANON_KEY` at the top of `src/sync.js`
 (**Project Settings → API**). The anon key is public by design: Row-Level Security protects the
 data, so never put the `service_role` key here.
 
@@ -78,6 +89,7 @@ npm install
 npm run dev       # dev server
 npm run build     # static build into dist/
 npm run preview   # serve the build locally
+npm test          # unit tests
 ```
 
 ## How it works
@@ -103,7 +115,8 @@ offline. When you're signed in, the data is mirrored to your `user_sync` row:
 
 ### Offline caching
 
-The service worker caches the app shell, icons, and the CDN scripts and fonts on install:
+The service worker caches the app shell, icons, and the CDN scripts and fonts on install. The
+bundled JavaScript has hashed file names, so after loading, the page sends those URLs to the worker to cache.
 
 - **Page loads:** network-first, falling back to the cached `index.html`.
 - **Other assets:** stale-while-revalidate.
@@ -127,9 +140,17 @@ Pages, …):
 
 - **Build command:** `npm run build`
 - **Publish directory:** `dist`
-- **Environment variables:** none needed. The Supabase settings live in `index.html`.
+- **Environment variables:** none needed. The Supabase settings live in `src/sync.js`.
 
 Serve the site from the domain root: the service worker and manifest use root-relative paths (`/sw.js`, `/`).
+
+## Code notes
+
+- The markup uses inline `onclick`/`onchange` handlers, so `src/main.js` copies the exported
+  functions of the UI-facing modules onto `window`. Any new function called from a handler must
+  be exported from one of those modules.
+- Modules import each other freely, so don't call another module's functions while a module is
+  still loading. Do that work in `init()` in `src/main.js` instead.
 
 ## Limitations
 

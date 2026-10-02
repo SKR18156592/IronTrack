@@ -1,4 +1,4 @@
-const CACHE_NAME = 'irontrack-v3';
+const CACHE_NAME = 'irontrack-v4';
 const SHELL_ASSETS = [
   '/',
   '/index.html',
@@ -40,6 +40,10 @@ self.addEventListener('activate', (event) => {
 
 const isCacheable = (res) => res && (res.ok || res.type === 'opaque');
 
+// Hosts often send Vary (e.g. Vary: Origin); module scripts are requested with an Origin header the
+// cached request lacked, so a Vary-respecting lookup would miss and the app would not load offline.
+const MATCH_OPTS = { ignoreVary: true };
+
 const putInCache = (request, res) =>
   caches.open(CACHE_NAME).then((cache) => cache.put(request, res));
 
@@ -63,7 +67,7 @@ self.addEventListener('fetch', (event) => {
           return res;
         })
         .catch(() =>
-          caches.match('/index.html').then((r) => r || caches.match('/'))
+          caches.match('/index.html', MATCH_OPTS).then((r) => r || caches.match('/', MATCH_OPTS))
         )
     );
     return;
@@ -71,7 +75,7 @@ self.addEventListener('fetch', (event) => {
 
   // Static assets: stale-while-revalidate
   event.respondWith(
-    caches.match(request).then((cached) => {
+    caches.match(request, MATCH_OPTS).then((cached) => {
       const fetchPromise = fetch(request)
         .then((res) => {
           if (isCacheable(res)) event.waitUntil(putInCache(request, res.clone()));
@@ -83,9 +87,20 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
-// Allow the page to trigger a skipWaiting
 self.addEventListener('message', (event) => {
+  // Allow the page to trigger a skipWaiting
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
+  }
+  // The page sends the app's own asset URLs (hashed bundle names are not known here).
+  if (event.data && event.data.type === 'CACHE_URLS' && Array.isArray(event.data.urls)) {
+    const urls = event.data.urls.filter((u) => {
+      try { return new URL(u).origin === self.location.origin; } catch (e) { return false; }
+    });
+    event.waitUntil(
+      caches.open(CACHE_NAME).then((cache) =>
+        Promise.all(urls.map((u) => caches.match(u, MATCH_OPTS).then((hit) => hit || cache.add(u).catch(() => {}))))
+      )
+    );
   }
 });
