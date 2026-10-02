@@ -92,6 +92,18 @@ export function haptic(ms=15) {
   if (vibe && vibe.checked && navigator.vibrate) navigator.vibrate(ms);
 }
 
+// Edit mode shows the controls for restructuring the plan (reorder, remove, add exercises, sections,
+// days); outside it the workout screen only shows what you need while lifting. Not persisted:
+// the app always opens ready to log.
+export function toggleEditMode() {
+  const on = document.body.classList.toggle('edit-mode');
+  const btn = document.getElementById('editModeBtn');
+  if (btn) {
+    btn.textContent = on ? '✓ Done' : '✏️ Edit';
+    btn.setAttribute('aria-pressed', String(on));
+  }
+}
+
 export function showTab(tab) {
   const profileActive = document.getElementById('view-profile').classList.contains('active');
   if (tab !== 'profile' && profileActive) {

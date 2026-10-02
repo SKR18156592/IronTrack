@@ -108,7 +108,7 @@
     .app-view.active { display: flex; animation: viewIn .4s cubic-bezier(0.16, 1, 0.3, 1); }
     @keyframes viewIn { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
 
-    .schedule-card, .header-card, .exercise-card, .modal-content, .rest-modal, .log-item, .heatmap-card, .calc-box, .settings-card, .placeholder-card, .stat-bar, .nutrition-card {
+    .schedule-card, .header-card, .exercise-card, .modal-content, .rest-modal, .log-item, .heatmap-card, .calc-box, .settings-card, .placeholder-card, .nutrition-card {
       background: var(--card);
       border: 1px solid var(--card-border);
       border-radius: var(--radius-md);
@@ -184,20 +184,58 @@
 
     .header-card { padding: 24px; border-radius: var(--radius-lg); position: relative; overflow: hidden; }
     .header-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, #ff007f, var(--accent), var(--lime)); opacity: .9; }
-    .header-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; margin-bottom: 18px; }
+    .header-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
     .title-group h1 { font-size: 26px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 4px; }
     .title-group p { color: var(--muted); font-size: 14px; }
     .badge-day { display: inline-block; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .8px; padding: 4px 10px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.12); background: var(--accent-dim); color: var(--accent); }
     .timer-badge { font-family: 'JetBrains Mono', monospace; font-size: 20px; font-weight: 700; background: var(--card-solid); border: 1px solid var(--accent-glow); padding: 8px 16px; border-radius: var(--radius-sm); color: var(--accent); box-shadow: 0 0 16px var(--accent-glow); }
 
-    .stat-bar {
-      position: sticky; top: 12px; z-index: 40;
-      display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;
-      padding: 12px 18px; border-radius: var(--radius-md);
+    /* Session bar: timer + progress, pinned while scrolling through the exercises */
+    .session-bar {
+      position: sticky; top: calc(env(safe-area-inset-top, 0px) + 8px); z-index: 40;
+      display: flex; flex-direction: column; gap: 8px;
+      padding: 10px 14px; border-radius: var(--radius-md);
       background: var(--card-solid); backdrop-filter: blur(20px);
-      border: 1px solid rgba(255,255,255,0.1); margin-bottom: 16px;
+      border: 1px solid rgba(255,255,255,0.1);
       box-shadow: 0 8px 30px rgba(0,0,0,0.5), 0 0 20px var(--accent-dim);
     }
+    .session-bar-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .session-timer { font-family: 'JetBrains Mono', monospace; font-size: 17px; font-weight: 700; color: var(--accent); white-space: nowrap; text-shadow: 0 0 10px var(--accent-glow); }
+    .session-progress-text { font-size: 12.5px; font-weight: 700; color: var(--muted); white-space: nowrap; }
+    .session-bar .progress-bar-bg { height: 6px; }
+
+    /* Weekly microcycle, collapsed to one line of day dots */
+    .week-strip { display: block; padding: 12px 16px; }
+    .week-strip > summary { list-style: none; display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); }
+    .week-strip > summary::-webkit-details-marker { display: none; }
+    .week-title { white-space: nowrap; }
+    .week-dots { display: flex; gap: 4px; flex: 1; justify-content: center; min-width: 0; }
+    .week-dot { width: 20px; height: 20px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 9.5px; font-weight: 800; color: var(--muted); background: rgba(148, 163, 184, 0.12); border: 1px solid transparent; letter-spacing: 0; }
+    .week-dot.lift { background: var(--accent-dim); color: var(--accent); border-color: var(--accent-glow); }
+    .week-dot.today { box-shadow: 0 0 0 2px var(--bg), 0 0 0 3.5px var(--accent); }
+    .week-count { white-space: nowrap; font-size: 10.5px; }
+    .week-chevron { transition: transform .2s; font-size: 12px; }
+    .week-strip[open] .week-chevron { transform: rotate(180deg); }
+    .week-strip[open] > summary { margin-bottom: 14px; }
+    .week-edit { margin-top: 12px; }
+
+    /* Session details (date, body weight, energy, sleep, notes), collapsed by default */
+    .session-details { margin-top: 14px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.06); }
+    .session-details > summary { list-style: none; cursor: pointer; display: flex; align-items: baseline; gap: 8px; font-size: 13px; font-weight: 700; color: var(--text); min-height: 28px; white-space: nowrap; }
+    .session-details > summary::-webkit-details-marker { display: none; }
+    .session-details > summary::after { content: '▾'; margin-left: auto; color: var(--muted); transition: transform .2s; }
+    .session-details[open] > summary::after { transform: rotate(180deg); }
+    .session-details-hint { font-size: 11.5px; font-weight: 500; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+    .session-details[open] > summary { margin-bottom: 12px; }
+    .session-details .session-meta { margin-bottom: 10px; }
+
+    /* Edit mode: plan-restructuring controls only appear after tapping Edit */
+    body:not(.edit-mode) .edit-only { display: none !important; }
+    .edit-toggle { flex-shrink: 0; }
+    .edit-toggle[aria-pressed="true"] { background: var(--accent); color: #031317; border-color: var(--accent); box-shadow: 0 0 16px var(--accent-glow); }
+    body.edit-mode .exercise-card { outline: 1px dashed var(--accent-glow); outline-offset: -6px; }
+    .equip-tools { display: flex; gap: 8px; flex-wrap: wrap; }
+    .title-badges { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
     .stat-pill { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .6px; }
     .stat-pill strong { font-family: 'JetBrains Mono', monospace; color: var(--accent); font-size: 17px; text-shadow: 0 0 10px var(--accent-glow); }
     .stat-pill.lime strong { color: var(--lime); text-shadow: 0 0 10px var(--lime-glow); }
@@ -250,23 +288,43 @@
     .info-pill.prev { font-family: 'JetBrains Mono', monospace; background: var(--lime-dim); color: #7fff7f; border-color: rgba(57,255,20,0.2); }
     .info-pill.overload { background: rgba(236, 72, 153, 0.16); color: #f472b6; border-color: rgba(236,72,153,0.35); font-weight: 800; }
 
-    .sets-table-wrap { overflow-x: auto; width: 100%; border-radius: var(--radius-sm); border: 1px solid rgba(255,255,255,0.06); background: rgba(10, 13, 22, 0.5); padding: 4px; }
-    .sets-table { width: 100%; border-collapse: collapse; min-width: 460px; }
-    .sets-table th { text-align: left; font-size: 10px; text-transform: uppercase; color: var(--muted); padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.08); white-space: nowrap; letter-spacing: .5px; }
-    .sets-table td { padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.04); vertical-align: middle; text-align: center; }
-    .sets-table th:first-child, .sets-table td:first-child { text-align: left; padding-left: 10px; }
-    .sets-table tr:last-child td { border-bottom: none; }
-    .set-num-cell { font-family: 'JetBrains Mono', monospace; font-weight: 700; color: var(--accent); width: 32px; text-align: left; padding-left: 10px; }
+    /* Sets: one compact grid row per set (number · weight · reps · done); tapping the number
+       reveals tag + RIR on a second line. Fits a phone screen without sideways scrolling. */
+    .sets-table-wrap { width: 100%; border-radius: var(--radius-sm); border: 1px solid rgba(255,255,255,0.06); background: rgba(10, 13, 22, 0.5); padding: 2px 8px; }
+    .sets-table, .sets-table thead, .sets-table tbody { display: block; width: 100%; }
+    .sets-table tr { display: grid; grid-template-columns: 30px minmax(0, 1.15fr) minmax(0, 1fr) 44px; align-items: center; column-gap: 6px; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
+    .sets-table thead tr { padding: 8px 0; border-bottom-color: rgba(255,255,255,0.08); }
+    .sets-table tbody tr:last-child { border-bottom: none; }
+    .sets-table th, .sets-table td { display: block; padding: 0; border: none; text-align: center; }
+    .sets-table th { font-size: 10px; text-transform: uppercase; color: var(--muted); white-space: nowrap; letter-spacing: .5px; font-weight: 700; }
+    .sets-table th:first-child { text-align: left; }
+    .set-num-btn { position: relative; width: 30px; height: 40px; border-radius: 8px; border: 1px solid transparent; background: none; color: var(--accent); font-family: 'JetBrains Mono', monospace; font-size: 15px; font-weight: 700; cursor: pointer; padding: 0 0 6px; }
+    .set-num-btn::after { content: '▾'; position: absolute; left: 50%; bottom: 2px; transform: translateX(-50%); font-size: 8px; color: var(--muted); }
+    .sets-table tr.expanded .set-num-btn { background: var(--accent-dim); border-color: var(--accent-glow); }
+    .sets-table tr.expanded .set-num-btn::after { content: '▴'; }
+    /* Non-working sets are colour-coded on the set number */
+    .sets-table tr:has(.set-tag option[value="Warmup"]:checked) .set-num-btn { color: #fbbf24; }
+    .sets-table tr:has(.set-tag option[value="Drop Set"]:checked) .set-num-btn { color: #f472b6; }
+    .sets-table tr:has(.set-tag option[value="Failure"]:checked) .set-num-btn { color: #f87171; }
+    .sets-table td.set-extra { display: none; grid-column: 2 / -1; gap: 12px; padding-top: 8px; align-items: center; }
+    .sets-table tr.expanded td.set-extra { display: flex; }
+    .set-extra label { display: flex; align-items: center; gap: 6px; font-size: 10.5px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; }
+    .set-extra .set-tag { min-width: 104px; }
+    .set-extra .set-rir { width: 52px; height: 38px; }
     
     .input-field { width: 100%; min-width: 48px; background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 8px; border-radius: 8px; font-family: 'JetBrains Mono', monospace; font-size: 13.5px; font-weight: 600; text-align: center; outline: none; transition: all .2s; }
     .input-field::placeholder { color: var(--muted); opacity: .45; font-size: 11px; font-weight: 500; font-family: 'Plus Jakarta Sans', sans-serif; }
     .input-field:focus { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-glow); }
 
-    .stepper { display: inline-flex; align-items: center; gap: 3px; justify-content: center; width: 100%; }
-    .stepper-btn { width: 32px; height: 38px; border: 1px solid var(--card-border); background: rgba(15, 23, 42, 0.9); color: var(--text); border-radius: 8px; font-size: 16px; line-height: 1; font-weight: 700; cursor: pointer; transition: all .2s; display: flex; align-items: center; justify-content: center; user-select: none; flex-shrink: 0; }
+    .stepper { display: flex; align-items: center; gap: 3px; justify-content: center; width: 100%; max-width: 190px; margin: 0 auto; }
+    .stepper-btn { width: 30px; height: 40px; border: 1px solid var(--card-border); background: rgba(15, 23, 42, 0.9); color: var(--text); border-radius: 8px; font-size: 16px; line-height: 1; font-weight: 700; cursor: pointer; transition: all .2s; display: flex; align-items: center; justify-content: center; user-select: none; flex-shrink: 0; }
     .stepper-btn:hover { background: var(--accent-dim); color: var(--accent); border-color: var(--accent); box-shadow: 0 0 8px var(--accent-dim); }
     .stepper-btn:active { transform: scale(0.92); }
-    .stepper .input-field { width: 54px; height: 38px; padding: 4px; font-size: 13px; }
+    .stepper .input-field { flex: 1; min-width: 0; width: auto; height: 40px; padding: 4px 2px; font-size: 14px; }
+    /* Spinner arrows steal width from small number inputs; the steppers replace them. */
+    .sets-table input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
+    .sets-table input[type="number"]::-webkit-inner-spin-button,
+    .sets-table input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 
     .set-tag {
       width: 100%; min-width: 90px; height: 38px; padding: 4px 8px;
@@ -276,7 +334,7 @@
     }
     .set-tag:focus { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-glow); }
     
-    .check-btn { width: 38px; height: 38px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.15); background: rgba(15, 23, 42, 0.95); color: var(--muted); font-size: 16px; font-weight: 700; cursor: pointer; transition: all .25s ease; display: flex; align-items: center; justify-content: center; margin: 0 auto; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+    .check-btn { width: 44px; height: 44px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.15); background: rgba(15, 23, 42, 0.95); color: var(--muted); font-size: 16px; font-weight: 700; cursor: pointer; transition: all .25s ease; display: flex; align-items: center; justify-content: center; margin: 0 auto; box-shadow: 0 4px 12px rgba(0,0,0,0.3); font-size: 18px; }
     .check-btn:hover { background: var(--accent-dim); color: var(--accent); border-color: var(--accent); transform: scale(1.08); box-shadow: 0 0 16px var(--accent-glow); }
     .check-btn.completed { background: var(--lime); color: #051a03; border-color: var(--lime); box-shadow: 0 0 20px var(--lime-glow), inset 0 0 0 1px #fff; animation: popCheck .35s cubic-bezier(0.16, 1, 0.3, 1); }
     @keyframes popCheck { 0% { transform: scale(1); } 50% { transform: scale(1.25); } 100% { transform: scale(1); } }
@@ -300,6 +358,12 @@
         padding: 12px 8px;
         font-size: 13px;
       }
+      .bottom-bar .btn-primary { grid-column: 1 / -1; }
+    }
+    @media (max-width: 480px) {
+      .exercise-card { padding: 16px; }
+      .header-card { padding: 18px; }
+      .week-count { display: none; } /* the dots already show lift vs rest days */
     }
 
     .btn { padding: 12px 20px; font-weight: 700; font-size: 13.5px; border-radius: var(--radius-sm); border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: all .25s ease; min-height: 48px; box-shadow: 0 6px 18px rgba(0,0,0,0.35); }
@@ -476,60 +540,55 @@
 
   <main class="app-views">
     <section id="view-workout" class="app-view active">
-      <div class="schedule-card">
-        <div class="schedule-header">
-          <span>🔄 Weekly Microcycle</span>
-          <div style="display:flex; align-items:center; gap:8px;">
-            <span id="microcycleSummary">3 Lift Days • 4 Rest Days</span>
-            <button class="btn-xs" style="color:var(--accent); border-color:var(--accent-glow);" onclick="openMicrocycleModal()">⚙️ Edit Microcycle</button>
-          </div>
-        </div>
+      <details class="schedule-card week-strip">
+        <summary class="week-summary">
+          <span class="week-title">This week</span>
+          <span class="week-dots" id="weekDots"></span>
+          <span class="week-count" id="microcycleSummary">3 lift • 4 rest</span>
+          <span class="week-chevron" aria-hidden="true">▾</span>
+        </summary>
         <div class="schedule-ribbon" id="scheduleRibbon"></div>
-      </div>
+        <button class="btn-xs week-edit" style="color:var(--accent); border-color:var(--accent-glow);" onclick="openMicrocycleModal()">⚙️ Edit Microcycle</button>
+      </details>
 
-      <!-- Pill-based Intuitive Day Navigation with top-level ➕ Add Day only -->
-      <div style="display: flex; flex-direction: column; gap: 8px;">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-          <span style="font-size: 11px; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px;">Workout Days</span>
-          <span style="font-size: 11.5px; color: var(--muted);">Tap pill to switch</span>
-        </div>
-        <div class="day-nav-wrapper" id="dayNavContainer"></div>
-      </div>
+      <div class="day-nav-wrapper" id="dayNavContainer"></div>
 
       <div class="header-card">
         <div class="header-top">
           <div class="title-group">
-            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+            <div class="title-badges">
               <span class="badge-day" id="currentDayBadge">Day 1 Focus</span>
-              <button class="btn-xs" id="deleteSplitBtn" style="color: var(--coral); border-color: rgba(255, 77, 77, 0.35); padding: 3px 8px; font-size: 10.5px;" onclick="deleteCurrentSplit()">🗑️ Delete Day</button>
+              <button class="btn-xs edit-only" id="deleteSplitBtn" style="color: var(--coral); border-color: rgba(255, 77, 77, 0.35); padding: 3px 8px; font-size: 10.5px;" onclick="deleteCurrentSplit()">🗑️ Delete Day</button>
             </div>
             <h1 id="currentDayTitle">⚡ Chest • Shoulders • Biceps</h1>
             <p id="currentDaySub">Push Hypertrophy &amp; Arm Specialization</p>
           </div>
-          <div class="timer-badge">⏱️ <span id="timeElapsed">00:00:00</span></div>
+          <button class="btn-xs edit-toggle" id="editModeBtn" aria-pressed="false" onclick="toggleEditMode()">✏️ Edit</button>
         </div>
 
-        <div class="stat-bar" id="statBar">
-          <div class="stat-pill">Sets: <strong id="statsSets">0</strong></div>
-          <div class="stat-pill lime">Tonnage: <strong id="statsTonnage">0 kg</strong></div>
-        </div>
+        <details class="session-details">
+          <summary>📝 Session details <span class="session-details-hint">date, body weight, energy, sleep, notes</span></summary>
+          <div class="session-meta">
+            <div class="meta-field"><label>📅 Date</label><input type="date" id="sessionDate" /></div>
+            <div class="meta-field"><label>⚖️ Weight (kg)</label><input type="number" id="bodyWeight" placeholder="72.5" step="0.1" oninput="saveProfileData()" /></div>
+            <div class="meta-field"><label>🔥 Energy (1-10)</label><input type="number" id="energyLevel" min="1" max="10" placeholder="8" /></div>
+            <div class="meta-field"><label>💤 Sleep (hrs)</label><input type="number" id="sleepHours" placeholder="7.5" step="0.5" /></div>
+          </div>
+          <div class="meta-field">
+            <label>📝 Session Notes &amp; Mood</label>
+            <textarea id="sessionNotes" rows="2" placeholder="e.g., Felt strong today, great sleep or nagging shoulder stiffness..."></textarea>
+          </div>
+        </details>
+      </div>
 
-        <div class="session-meta">
-          <div class="meta-field"><label>📅 Date</label><input type="date" id="sessionDate" /></div>
-          <div class="meta-field"><label>⚖️ Weight (kg)</label><input type="number" id="bodyWeight" placeholder="72.5" step="0.1" oninput="saveProfileData()" /></div>
-          <div class="meta-field"><label>🔥 Energy (1-10)</label><input type="number" id="energyLevel" min="1" max="10" placeholder="8" /></div>
-          <div class="meta-field"><label>💤 Sleep (hrs)</label><input type="number" id="sleepHours" placeholder="7.5" step="0.5" /></div>
+      <!-- Stays pinned while scrolling through the exercises -->
+      <div class="session-bar" id="statBar">
+        <div class="session-bar-row">
+          <span class="session-timer">⏱️ <span id="timeElapsed">00:00:00</span></span>
+          <span class="session-progress-text" id="progressText">0 / 0 sets</span>
+          <span class="stat-pill lime"><strong id="statsTonnage">0 kg</strong></span>
         </div>
-        
-        <div class="meta-field" style="margin-top: 10px;">
-          <label>📝 Session Notes &amp; Mood</label>
-          <textarea id="sessionNotes" rows="2" placeholder="e.g., Felt strong today, great sleep or nagging shoulder stiffness..."></textarea>
-        </div>
-
-        <div class="progress-wrapper" style="margin-top: 12px;">
-          <div class="progress-header"><span>Current Session Progress</span><span id="progressText">0 / 0 Sets (0%)</span></div>
-          <div class="progress-bar-bg"><div class="progress-bar-fill" id="progressBar"></div></div>
-        </div>
+        <div class="progress-bar-bg"><div class="progress-bar-fill" id="progressBar"></div></div>
       </div>
 
       <div id="dayViews"></div>
@@ -537,8 +596,8 @@
       <!-- Bottom action bar -->
       <div class="bottom-bar">
         <button class="btn btn-secondary" onclick="openHistoryModal()">📋 Log History</button>
-        <button class="btn btn-info" onclick="openAddExModal()">➕ Add Exercise</button>
-        <button class="btn btn-warning" onclick="openAddSecModal()">📑 Add Section</button>
+        <button class="btn btn-info edit-only" onclick="openAddExModal()">➕ Add Exercise</button>
+        <button class="btn btn-warning edit-only" onclick="openAddSecModal()">📑 Add Section</button>
         <button class="btn btn-secondary" onclick="resetCurrentDayForm()">🔄 Reset Day</button>
         <button class="btn btn-primary" onclick="finishCurrentDayWorkout()">💾 Save Session</button>
       </div>

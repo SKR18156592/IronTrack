@@ -46,7 +46,16 @@ export function renderScheduleRibbon() {
   }).join('');
 
   if (summaryEl) {
-    summaryEl.textContent = `${liftCount} Lift Days • ${restCount} Rest Days`;
+    summaryEl.textContent = `${liftCount} lift • ${restCount} rest`;
+  }
+
+  const dots = document.getElementById('weekDots');
+  if (dots) {
+    dots.innerHTML = cycle.map(item => {
+      const lift = item.type === 'workout' && item.dayNum;
+      const today = item.full.toLowerCase() === todayName.toLowerCase();
+      return `<span class="week-dot ${lift ? 'lift' : ''} ${today ? 'today' : ''}" title="${esc(item.full)}: ${lift ? 'lift' : 'rest'}">${esc(item.day.charAt(0))}</span>`;
+    }).join('');
   }
 }
 
@@ -113,7 +122,7 @@ export function renderDayNav() {
     `;
   }).join('');
 
-  html += `<button class="nav-btn-add" onclick="openAddDayModal()">➕ Add Day</button>`;
+  html += `<button class="nav-btn-add edit-only" onclick="openAddDayModal()">➕ Add Day</button>`;
   container.innerHTML = html;
 }
 

@@ -89,25 +89,34 @@ export function formatPreset(sets) {
   }).join(', ');
 }
 
-export function renderSetRows(prefix, sets, rest) {
-  let html = '';
-  for (let i = 1; i <= sets.length; i++) {
-    const s = sets[i-1] || {};
-    const tag = s.tag || 'Working';
-    const rir = s.rir == null ? 1 : s.rir;
-    const wVal = s.weight === 0 ? '0' : (s.weight === '' || s.weight == null ? '' : s.weight);
-    const rVal = s.reps == null ? '' : s.reps;
+const SET_TAGS = ['Warmup', 'Working', 'Drop Set', 'Failure'];
 
-    html += `<tr>
-      <td class="set-num-cell">${i}</td>
-      <td><div class="stepper"><button class="stepper-btn" onclick="stepValue('${prefix}_w_${i}', -2.5)">−</button><input type="number" class="input-field set-weight" id="${prefix}_w_${i}" value="${esc(wVal)}" placeholder="kg" oninput="checkStartWorkoutTimer()"><button class="stepper-btn" onclick="stepValue('${prefix}_w_${i}', 2.5)">+</button></div></td>
-      <td><div class="stepper"><button class="stepper-btn" onclick="stepValue('${prefix}_r_${i}', -1)">−</button><input type="number" class="input-field set-reps" id="${prefix}_r_${i}" value="${esc(rVal)}" placeholder="reps" oninput="checkStartWorkoutTimer()"><button class="stepper-btn" onclick="stepValue('${prefix}_r_${i}', 1)">+</button></div></td>
-      <td><select class="set-tag" id="${prefix}_t_${i}"><option value="Warmup" ${tag==='Warmup'?'selected':''}>Warmup</option><option value="Working" ${tag==='Working'?'selected':''}>Working</option><option value="Drop Set" ${tag==='Drop Set'?'selected':''}>Drop Set</option><option value="Failure" ${tag==='Failure'?'selected':''}>Failure</option></select></td>
-      <td><input type="number" class="input-field set-rir" id="${prefix}_ri_${i}" value="${esc(rir)}"></td>
-      <td><button class="check-btn" onclick="toggleSet(this, ${rest})">✓</button></td>
-    </tr>`;
-  }
-  return html;
+// Cells of one set row: number (tap for tag/RIR) · weight · reps · done, plus the tag/RIR panel
+// that wraps onto its own line when the row is expanded. `s` is a preset/default set or {}.
+function setRowCells(prefix, n, s, rest) {
+  const tag = s.tag || 'Working';
+  const rir = s.rir == null ? 1 : s.rir;
+  const wVal = s.weight === 0 ? '0' : (s.weight === '' || s.weight == null ? '' : s.weight);
+  const rVal = s.reps == null ? '' : s.reps;
+  const tagOptions = SET_TAGS.map(t => `<option value="${t}" ${t === tag ? 'selected' : ''}>${t}</option>`).join('');
+  return `<td class="set-num-cell"><button type="button" class="set-num-btn" onclick="toggleSetDetails(this)" aria-label="Set ${n}: tag and RIR" aria-expanded="false">${n}</button></td>
+    <td><div class="stepper"><button type="button" class="stepper-btn" onclick="stepValue('${prefix}_w_${n}', -2.5)" aria-label="Less weight">−</button><input type="number" inputmode="decimal" class="input-field set-weight" id="${prefix}_w_${n}" value="${esc(wVal)}" placeholder="kg" oninput="checkStartWorkoutTimer()"><button type="button" class="stepper-btn" onclick="stepValue('${prefix}_w_${n}', 2.5)" aria-label="More weight">+</button></div></td>
+    <td><div class="stepper"><button type="button" class="stepper-btn" onclick="stepValue('${prefix}_r_${n}', -1)" aria-label="Fewer reps">−</button><input type="number" inputmode="numeric" class="input-field set-reps" id="${prefix}_r_${n}" value="${esc(rVal)}" placeholder="reps" oninput="checkStartWorkoutTimer()"><button type="button" class="stepper-btn" onclick="stepValue('${prefix}_r_${n}', 1)" aria-label="More reps">+</button></div></td>
+    <td class="set-done-cell"><button type="button" class="check-btn" onclick="toggleSet(this, ${rest})" aria-label="Set ${n} done">✓</button></td>
+    <td class="set-extra">
+      <label>Tag <select class="set-tag" id="${prefix}_t_${n}">${tagOptions}</select></label>
+      <label>RIR <input type="number" inputmode="numeric" class="input-field set-rir" id="${prefix}_ri_${n}" value="${esc(rir)}"></label>
+    </td>`;
+}
+
+export function renderSetRows(prefix, sets, rest) {
+  return sets.map((s, i) => `<tr>${setRowCells(prefix, i + 1, s || {}, rest)}</tr>`).join('');
+}
+
+export function toggleSetDetails(btn) {
+  const tr = btn.closest('tr');
+  const open = tr.classList.toggle('expanded');
+  btn.setAttribute('aria-expanded', String(open));
 }
 export function getSupersetDecorations(category) {
   const linked = getLinkedCategory(category);
@@ -119,10 +128,10 @@ export function getSupersetDecorations(category) {
 }
 export function getSupersetBtn(category) {
   const linked = getLinkedCategory(category);
-  if (linked) return `<button class="btn-xs btn-superset active" onclick="toggleSuperset('${category}')">⛓ Unlink Superset</button>`;
+  if (linked) return `<button class="btn-xs btn-superset active edit-only" onclick="toggleSuperset('${category}')">⛓ Unlink Superset</button>`;
   const next = getNextCategory(category);
   if (!next) return '';
-  return `<button class="btn-xs btn-superset" onclick="toggleSuperset('${category}')">⛓ Superset with next</button>`;
+  return `<button class="btn-xs btn-superset edit-only" onclick="toggleSuperset('${category}')">⛓ Superset with next</button>`;
 }
 
 export function renderExerciseCard(ex, idx) {
@@ -155,11 +164,13 @@ export function renderExerciseCard(ex, idx) {
       <select class="machine-dropdown" id="${ex.category}Select" onchange="onVariationChange('${ex.category}', '${ex.prefix}', this)">
         ${options}
       </select>
-      <button class="btn-xs" title="Move Up" onclick="reorderEquipment('${ex.category}', -1)">⬆</button>
-      <button class="btn-xs" title="Move Down" onclick="reorderEquipment('${ex.category}', 1)">⬇️</button>
-      <button class="btn-xs" style="color:var(--accent); border-color:var(--accent-glow);" onclick="openAddVarModal('${ex.category}')">➕ Add Var</button>
-      <button class="btn-xs" style="color:var(--lime); border-color:rgba(57,255,20,0.35);" onclick="openPresetModal('${ex.category}')">⚙ Preset</button>
-      <button class="btn-xs" style="color:#fca5a5; border-color:rgba(239,68,68,0.35);" onclick="removeEquipment('${ex.category}')">🗑</button>
+      <div class="equip-tools edit-only">
+        <button class="btn-xs" title="Move Up" onclick="reorderEquipment('${ex.category}', -1)">⬆</button>
+        <button class="btn-xs" title="Move Down" onclick="reorderEquipment('${ex.category}', 1)">⬇️</button>
+        <button class="btn-xs" style="color:var(--accent); border-color:var(--accent-glow);" onclick="openAddVarModal('${ex.category}')">➕ Add Var</button>
+        <button class="btn-xs" style="color:var(--lime); border-color:rgba(57,255,20,0.35);" onclick="openPresetModal('${ex.category}')">⚙ Preset</button>
+        <button class="btn-xs" style="color:#fca5a5; border-color:rgba(239,68,68,0.35);" onclick="removeEquipment('${ex.category}')">🗑</button>
+      </div>
     </div>
     <div class="ex-meta-info">
       <div class="info-row">
@@ -173,17 +184,17 @@ export function renderExerciseCard(ex, idx) {
     </div>
     <div class="sets-table-wrap">
       <table class="sets-table" id="table_${ex.prefix}">
-        <thead><tr><th>Set</th><th>Weight</th><th>Reps</th><th>Tag</th><th>RIR</th><th>Done</th></tr></thead>
+        <thead><tr><th>Set</th><th>Weight (kg)</th><th>Reps</th><th aria-label="Done"></th></tr></thead>
         <tbody>${renderSetRows(ex.prefix, sets, ex.rest)}</tbody>
       </table>
     </div>
     <div class="ex-actions-bar">
       <button class="btn-xs" onclick="addSetRow('table_${ex.prefix}', '${ex.prefix}', ${ex.rest})">➕ Add Set</button>
       <button class="btn-xs" onclick="removeSetRow('table_${ex.prefix}')">➖ Remove Set</button>
-      <button class="btn-xs" onclick="reorderExercise('${ex.category}', -1)">⬆ Up</button>
-      <button class="btn-xs" onclick="reorderExercise('${ex.category}', 1)">⬇️ Down</button>
+      <button class="btn-xs edit-only" onclick="reorderExercise('${ex.category}', -1)">⬆ Up</button>
+      <button class="btn-xs edit-only" onclick="reorderExercise('${ex.category}', 1)">⬇️ Down</button>
       ${supBtn}
-      <button class="btn-xs" style="color:#fca5a5; border-color:rgba(239,68,68,0.35);" onclick="removeExercise('${ex.category}')">🗑 Remove Exercise</button>
+      <button class="btn-xs edit-only" style="color:#fca5a5; border-color:rgba(239,68,68,0.35);" onclick="removeExercise('${ex.category}')">🗑 Remove Exercise</button>
     </div>
   </div>`;
 }
@@ -197,14 +208,14 @@ export function renderDay(dayNum) {
     html += `<div class="category-section">
       <div class="category-header-row">
         <div class="category-tag tag-${sec.color || 'blue'}" id="${sec.tag}">${sidx+1}. ${esc(displayTitle)} (<span class="set-count">0</span> Working Sets)</div>
-        <div class="section-actions">
+        <div class="section-actions edit-only">
           <button class="btn-xs" title="Move Section Up" onclick="reorderSection('${dayNum}', ${sidx}, -1)">⬆ Up</button>
           <button class="btn-xs" title="Move Section Down" onclick="reorderSection('${dayNum}', ${sidx}, 1)">⬇ Down</button>
           <button class="btn-xs" style="color:var(--coral); border-color:rgba(255,77,77,0.35);" title="Remove Section" onclick="removeSection('${dayNum}', ${sidx})">🗑️</button>
         </div>
       </div>`;
       if (!sec.exercises || sec.exercises.length === 0) {
-        html += `<div style="padding:16px; text-align:center; color:var(--muted); font-size:12.5px; background:rgba(15,23,42,0.4); border-radius:var(--radius-sm); border:1px dashed var(--card-border);">No exercises yet in this section. Tap 'Add Exercise' below!</div>`;
+        html += `<div style="padding:16px; text-align:center; color:var(--muted); font-size:12.5px; background:rgba(15,23,42,0.4); border-radius:var(--radius-sm); border:1px dashed var(--card-border);">No exercises yet in this section. Tap ✏️ Edit, then Add Exercise.</div>`;
       } else {
         sec.exercises.forEach((ex, eidx) => { html += renderExerciseCard(ex, eidx+1); });
       }
@@ -312,14 +323,8 @@ export function addSetRow(tableId, prefix, rest, update=true) {
   const table = document.getElementById(tableId);
   if (!table) return;
   const tbody = table.querySelector('tbody');
-  const n = tbody.children.length + 1;
   const tr = document.createElement('tr');
-  tr.innerHTML = `<td class="set-num-cell">${n}</td>
-    <td><div class="stepper"><button class="stepper-btn" onclick="stepValue('${prefix}_w_${n}', -2.5)">−</button><input type="number" class="input-field set-weight" id="${prefix}_w_${n}" placeholder="kg" oninput="checkStartWorkoutTimer()"><button class="stepper-btn" onclick="stepValue('${prefix}_w_${n}', 2.5)">+</button></div></td>
-    <td><div class="stepper"><button class="stepper-btn" onclick="stepValue('${prefix}_r_${n}', -1)">−</button><input type="number" class="input-field set-reps" id="${prefix}_r_${n}" placeholder="reps" oninput="checkStartWorkoutTimer()"><button class="stepper-btn" onclick="stepValue('${prefix}_r_${n}', 1)">+</button></div></td>
-    <td><select class="set-tag" id="${prefix}_t_${n}"><option value="Warmup">Warmup</option><option value="Working" selected>Working</option><option value="Drop Set">Drop Set</option><option value="Failure">Failure</option></select></td>
-    <td><input type="number" class="input-field set-rir" id="${prefix}_ri_${n}" value="1"></td>
-    <td><button class="check-btn" onclick="toggleSet(this, ${rest})">✓</button></td>`;
+  tr.innerHTML = setRowCells(prefix, tbody.children.length + 1, {}, rest);
   tbody.appendChild(tr);
   if (update) { updateSectionWorkingSetCounts(); updateProgress(); }
 }
@@ -422,7 +427,7 @@ export function updateSessionStats() {
 export function updateProgress() {
   const { total, completed } = getDaySetCounts(activeDay);
   const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
-  document.getElementById('progressText').textContent = `${completed} / ${total} Sets (${pct}%)`;
+  document.getElementById('progressText').textContent = `${completed} / ${total} sets`;
   document.getElementById('progressBar').style.width = Math.min(pct, 100) + '%';
   updateSessionStats();
   if (completed === total && total > 0 && !confettiFired) {
