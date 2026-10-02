@@ -1490,11 +1490,12 @@ document.addEventListener('visibilitychange', () => {
   }
 });
 
+// Change this at the bottom of the script:
 setInterval(() => {
   if (currentUser && supabaseClient && navigator.onLine) {
     pullFromCloud(false);
   }
-}, 5000);
+}, 30000); // Change from 5000ms (5s) to 30000ms (30s), or remove entirely since you already have Supabase Realtime active!
 
 // ==========================================
 // 2. THEME ENGINE & WORKOUT DATABASE
