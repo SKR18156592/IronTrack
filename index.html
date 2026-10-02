@@ -2601,15 +2601,18 @@ function reorderExercise(category, direction) {
   const newExIdx = targetExIdx + direction;
   if (newExIdx < 0 || newExIdx >= section.exercises.length) return;
 
+  // Swap elements
   const temp = section.exercises[targetExIdx];
   section.exercises[targetExIdx] = section.exercises[newExIdx];
   section.exercises[newExIdx] = temp;
 
-  const orderKey = `iron_order_${targetDay}_${targetSecIdx}`;
-  setJ(orderKey, section.exercises.map(e => e.category));
+  // Save by day + section title so index shifting doesn't break it
+  const orderKey = `iron_order_${targetDay}_${section.title.replace(/\s+/g, '_')}`;
+  const orderedCats = section.exercises.map(e => e.category);
+  setJ(orderKey, orderedCats);
 
   const allOrders = getJ('iron_all_exercise_orders', {});
-  allOrders[orderKey] = section.exercises.map(e => e.category);
+  allOrders[orderKey] = orderedCats;
   setJ('iron_all_exercise_orders', allOrders);
   pushToCloud();
 
