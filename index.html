@@ -2275,10 +2275,13 @@ function populateDayDropdown() {
 function populateSectionDropdown(dayNum) {
   const select = document.getElementById('exSectionSelect');
   if (!select || !WORKOUT[dayNum]) return;
-  const sections = WORKOUT[dayNum].sections;
+  
+  const sections = WORKOUT[dayNum].sections || [];
   let html = sections.map(s => `<option value="${s.title}">${s.title}</option>`).join('');
   html += `<option value="__NEW__">➕ Create New Custom Section...</option>`;
   select.innerHTML = html;
+  
+  // Preserve or set the initial section value without firing unexpected form resets
   handleSectionSelectChange(select.value);
 }
 
@@ -2298,7 +2301,8 @@ function handleSectionSelectChange(val) {
 
 function handleSaveCustomExercise(e) {
   e.preventDefault();
-  const day = String(document.getElementById('exDay').value);
+  const daySelect = document.getElementById('exDay');
+  const day = String(daySelect.value);
   const secSelectVal = document.getElementById('exSectionSelect').value;
   const customSecName = document.getElementById('exCustomSection').value.trim();
   const sectionTitle = secSelectVal === '__NEW__' ? (customSecName || 'Custom Section') : secSelectVal;
@@ -2322,22 +2326,27 @@ function handleSaveCustomExercise(e) {
     varLabel, 
     scheme, 
     rest, 
-    day: String(day), 
+    day: day, 
     sectionTitle 
   };
 
   const customList = getJ('iron_custom_exercises', []);
   customList.push(newEx);
   setJ('iron_custom_exercises', customList);
+  
+  // Persist the selected day so UI refreshes don't fall back to Day 1
+  setL('iron_active_day', day);
+  activeDay = day;
+
   pushToCloud();
 
   closeAddExModal();
   rebuildWorkoutDatabase();
   renderAll();
   
-  // Switch directly to the day the exercise was added to
+  // Explicitly activate the day view
   switchDayView(day, false);
-  showToast(`✨ Custom exercise added to Day ${day}!`, 'success');
+  showToast(`✨ Added "${title}" to Day ${day} (${sectionTitle})!`, 'success');
 }
 
 function openAddVarModal(category) {
