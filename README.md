@@ -23,20 +23,16 @@
 
 ```text
 irontrack-pwa/
-├── public/              # PWA manifest, icons, and service worker assets
-├── src/
-│   ├── components/      # Modular React UI components
-│   ├── hooks/           # Custom hooks (e.g., useSyncWorkouts for realtime sync)
-│   ├── stores/          # Supabase client and data access helpers
-│   ├── AuthContext.jsx  # Authentication provider & state management
-│   ├── App.jsx          # Root application layout and routing
-│   └── main.jsx         # Application entry point
-├── supabase/schema.sql  # Database schema, RLS policies, and realtime triggers
-├── vite.config.js       # Vite build & PWA configurations
-├── tailwind.config.js   # Custom design system & theme tokens
-└── index.html           # Document root & iOS PWA metadata
-
+├── index.html           # The entire app: markup, styles, and logic (Supabase via CDN)
+├── public/              # PWA manifest, icons, and service worker
+├── supabase/schema.sql  # Legacy normalized schema (not used by index.html; see note below)
+├── package.json         # Vite dev server & build only
+└── README.md
 ```
+
+> **Note:** the app syncs through a single `user_sync` table (one row per user) that is
+> not yet defined in `supabase/schema.sql`. Do not run `schema.sql` against production:
+> it recreates the `supabase_realtime` publication and drops `user_sync` from realtime.
 
 ---
 
@@ -58,13 +54,8 @@ cd IronTrack
 ```
 
 
-2. **Configure environment variables:**
-Create a `.env` file in the root directory based on your environment template:
-```env
-VITE_SUPABASE_URL=https://your-project.supabase.co
-VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
-
-```
+2. **Configure Supabase:**
+Set `SUPABASE_URL` and `SUPABASE_ANON_KEY` near the top of the `<script>` block in `index.html`.
 
 
 3. **Install dependencies:**
@@ -75,13 +66,13 @@ npm install
 
 
 4. **Initialize the Database:**
-* Navigate to your [Supabase Dashboard](https://www.google.com/search?q=https://app.supabase.com&utm_source=gemini).
-* Open the **SQL Editor**, create a **New Query**, and paste the contents of `supabase/schema.sql`. Run the script to set up tables, security policies, and triggers.
+* In your [Supabase Dashboard](https://supabase.com/dashboard), create a `user_sync` table keyed by `user_id`, with RLS restricting each row to `auth.uid()`, and add it to the `supabase_realtime` publication.
+* Do **not** run `supabase/schema.sql` (see the note above).
 
 
 5. **Configure Authentication Providers:**
 * Go to **Authentication > Providers** in your Supabase dashboard.
-* Enable **Email** (and/or Magic Link) and **Phone** authentication as required.
+* Enable **Email** (email + password is the only sign-in method the app uses).
 
 
 6. **Run the development server:**
