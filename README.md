@@ -1,118 +1,147 @@
+# IronTrack PWA 🏋️‍♂️
 
+IronTrack is an installable, offline-first workout tracker. Plan a weekly training split, log sets
+at the gym, and track progress over time. Your data syncs across devices through Supabase.
 
----
+## Features
 
-# IronTrack PWA 🏋️‍♂️💪
+- **Workout planner:** an editable weekly microcycle, custom days and sections, custom exercises
+  and equipment variations, saved set presets, supersets, and reordering throughout.
+- **Session logging:** weight, reps, set tag, and RIR per set, with a rest timer (beeps and
+  haptics), session timer, notes, and a progress bar. An in-progress session is saved on the
+  device, so it survives a reload or the OS closing the app.
+- **History & analytics:** session log, per-exercise history, estimated 1RM trends, volume per
+  muscle group, a muscle recovery heatmap, and a shareable stats card.
+- **Tools:** TDEE, 1RM, and plate calculators, plus a rest-day and workout-day nutrition plan.
+- **Offline-first:** everything works without a connection. Changes sync when you're back online.
+- **Multi-device sync:** sign in with email and password, and changes reach your other devices via
+  Supabase Realtime.
+- **Backup:** export history as JSON or CSV, or export and import a full backup.
 
-**IronTrack** is a production-ready, cross-platform workout tracking application designed for performance and reliability. Built with a modern tech stack centered around **React 18**, **Vite 5**, **Tailwind CSS**, and **Supabase**, it functions as a fully installable Progressive Web App (PWA) supporting offline usage and real-time multi-device synchronization across iOS, Android, macOS, Windows, and Linux.
+## Tech stack
 
----
+| Layer | Used |
+|---|---|
+| App | Vanilla HTML, CSS, and JavaScript in a single `index.html` (no framework) |
+| Libraries | `@supabase/supabase-js@2`, `canvas-confetti` (loaded from jsDelivr) |
+| Local storage | `localStorage` (keys prefixed `iron_`) |
+| Backend | Supabase: Auth (email and password), Postgres, Realtime |
+| Offline | Service worker (`public/sw.js`) + web app manifest |
+| Tooling | Vite (dev server and static build only) |
 
-## 🚀 Key Features
-
-* **Robust Authentication:** Secure access supporting Email/Password, Email Magic Links, and SMS OTP phone fallback via Supabase Auth.
-* **Real-Time Synchronization:** Seamless, instant data syncing across multiple active devices powered by [Supabase Realtime](https://github.com/SKR18156592/IronTrack?utm_source=gemini).
-* **Offline-First Architecture:** Integrated service worker and custom caching strategy ensuring uninterrupted usage even without network connectivity.
-* **Modern Cyberpunk UI:** A responsive, mobile-first interface meticulously crafted for high-visibility and ease of use in gym environments.
-* **Full CRUD Capabilities:** Efficiently manage custom workouts, log exercises, and track sets with high precision.
-* **Enterprise-Grade Security:** Row-Level Security (RLS) rigorously enforced on all database tables to protect user privacy.
-
----
-
-## 🏗️ Project Architecture
+## Project structure
 
 ```text
 irontrack-pwa/
-├── index.html           # The entire app: markup, styles, and logic (Supabase via CDN)
-├── public/              # PWA manifest, icons, and service worker
-├── supabase/user_sync.sql  # Table + RLS the app syncs through (safe to re-run)
-├── supabase/schema.sql  # Legacy normalized schema (not used by index.html; see note below)
-├── package.json         # Vite dev server & build only
-└── README.md
+├── index.html                 # The entire app: markup, styles, and logic
+├── public/
+│   ├── sw.js                  # Service worker: offline caching
+│   ├── manifest.webmanifest   # PWA manifest
+│   └── *.png, *.svg           # App icons
+├── supabase/
+│   └── user_sync.sql          # The table, RLS policies, and realtime setup the app uses
+└── package.json               # Vite scripts
 ```
 
-> **Note:** the app syncs through a single `user_sync` table (one row per user), defined in
-> `supabase/user_sync.sql`. Do not run `schema.sql` against production:
-> it recreates the `supabase_realtime` publication and drops `user_sync` from realtime.
-
----
-
-## 🛠️ Getting Started & Local Setup
+## Getting started
 
 ### Prerequisites
 
-* **Node.js** (v18+ recommended)
-* **npm** or **yarn**
-* A configured **Supabase** project
+- Node.js 18+
+- A [Supabase](https://supabase.com/dashboard) project
 
-### Installation Steps
+### 1. Set up the database
 
-1. **Clone the repository:**
-```bash
-git clone https://github.com/SKR18156592/IronTrack.git
-cd IronTrack
+In the Supabase dashboard, open **SQL Editor** and run `supabase/user_sync.sql`. It:
 
-```
+- creates the `user_sync` table (one row per user), or adds any missing columns to an existing one
+- enables Row-Level Security so each signed-in user can only read and write their own row
+- adds the table to the `supabase_realtime` publication
 
+The script is idempotent, so it's safe to re-run.
 
-2. **Configure Supabase:**
-Set `SUPABASE_URL` and `SUPABASE_ANON_KEY` near the top of the `<script>` block in `index.html`.
+### 2. Enable email sign-in
 
+Under **Authentication → Providers**, enable **Email**. Email and password is the only sign-in
+method the app uses. If "Confirm email" is on, new users must confirm their address before signing in.
 
-3. **Install dependencies:**
+### 3. Point the app at your project
+
+Set `SUPABASE_URL` and `SUPABASE_ANON_KEY` at the top of the `<script>` block in `index.html`
+(**Project Settings → API**). The anon key is public by design: Row-Level Security protects the
+data, so never put the `service_role` key here.
+
+### 4. Run it
+
 ```bash
 npm install
-
+npm run dev       # dev server
+npm run build     # static build into dist/
+npm run preview   # serve the build locally
 ```
 
+## How it works
 
-4. **Initialize the Database:**
-* In your [Supabase Dashboard](https://supabase.com/dashboard), open the **SQL Editor** and run `supabase/user_sync.sql`. It creates (or upgrades) the `user_sync` table, enables RLS so each user can only access their own row, and adds the table to realtime. It is safe to re-run.
-* Do **not** run `supabase/schema.sql` (see the note above).
+### Data and sync
 
+`localStorage` is the source of truth. The app reads and writes it directly, so it works fully
+offline. When you're signed in, the data is mirrored to your `user_sync` row:
 
-5. **Configure Authentication Providers:**
-* Go to **Authentication > Providers** in your Supabase dashboard.
-* Enable **Email** (email + password is the only sign-in method the app uses).
+- **Upload:** every edit marks the data as unsynced and schedules an upload (debounced by 800 ms).
+  Before writing, the app reads the cloud row, merges workout history by session ID, and writes only
+  if the row hasn't changed since it read it. Otherwise it merges again and retries. Sessions
+  logged on two devices while they were out of sync are both kept. Deleted sessions are recorded as
+  tombstones so they don't reappear.
+- **Download:** the app pulls on startup, on sign-in, on focus, when the app becomes visible, when the
+  device comes back online, every 30 seconds, and whenever Realtime reports a change. Unsynced local
+  edits are uploaded first, so they're never overwritten.
+- **Conflicts:** workout history is merged. All other data (settings, presets, custom exercises) is
+  last-write-wins at the row level. Deletions sync too: a key that disappears from the cloud row
+  is removed on other devices.
+- **Shared devices:** signing out, or signing in as a different user, clears the previous account's
+  local data.
 
+### Offline caching
 
-6. **Run the development server:**
-```bash
-npm run dev
+The service worker caches the app shell, icons, and the CDN scripts and fonts on install:
 
-```
+- **Page loads:** network-first, falling back to the cached `index.html`.
+- **Other assets:** stale-while-revalidate.
+- **Supabase requests:** never cached.
 
+When changing a CDN URL in `index.html`, update `CDN_ASSETS` in `public/sw.js` to match. When
+changing cached assets, bump `CACHE_NAME` in `public/sw.js`.
 
+## Installing the app
 
----
+PWA install requires HTTPS (or `localhost`).
 
-## 📱 Installing as a Progressive Web App (PWA)
+- **iOS (Safari):** Share → **Add to Home Screen**
+- **Android (Chrome):** menu → **Install app**
+- **Desktop (Chrome / Edge):** the install icon in the address bar
 
-IronTrack can be installed natively onto your device for a standalone, app-like experience:
+## Deployment
 
-* **iOS (Safari):** Open the application URL, tap the **Share** button, and select **Add to Home Screen**.
-* **Android (Chrome):** Open the application URL, open the browser menu (three dots), and select **Install App** or **Add to Home Screen**.
-* **Desktop (Chrome / Edge):** Click the install icon located directly in the address bar.
+The build is a static site, so any static host works (Vercel, Netlify, Cloudflare Pages, GitHub
+Pages, …):
 
----
+- **Build command:** `npm run build`
+- **Publish directory:** `dist`
+- **Environment variables:** none needed. The Supabase settings live in `index.html`.
 
-## 🌐 Deployment
+Serve the site from the domain root: the service worker and manifest use root-relative paths (`/sw.js`, `/`).
 
-This project is optimized for deployment on modern static hosting platforms:
+## Limitations
 
-* **Vercel:** Import your repository, set the framework preset to **Vite**, and add your Supabase environment variables under project settings.
-* **Netlify:** Connect the GitHub repository, set the build command to `npm run build` with the publish directory `dist`, and inject your environment variables.
+- `localStorage` holds about 5 MB per origin. Profile photos are downscaled to 256 px, but a very
+  long history can still hit that limit. The app then warns that changes weren't saved, and you
+  should export a full backup.
+- Each sync uploads the whole data set, so sync payloads grow with your history.
 
-> **Note:** PWA installation features require an active **HTTPS** connection and a valid service worker registration.
+## License
 
----
+MIT
 
-## 📄 License
-
-Distributed under the [MIT License](https://opensource.org/licenses/MIT?utm_source=gemini). See `LICENSE` for more information.
-
----
-
-## 👤 Author
+## Author
 
 Maintained by **[Suman Kumar Raj](https://github.com/SKR18156592)**.
