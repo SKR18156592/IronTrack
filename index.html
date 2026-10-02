@@ -2084,16 +2084,34 @@ function rebuildWorkoutDatabase() {
   const sectionOrders = getJ('iron_section_orders', {});
 
   customExs.forEach(c => {
-    const dayObj = WORKOUT[c.day];
+    const targetDayKey = String(c.day);
+    const dayObj = WORKOUT[targetDayKey];
     if (dayObj) {
-      let targetSec = dayObj.sections.find(s => s.title === c.sectionTitle);
+      let targetSec = dayObj.sections.find(s => s.title.toLowerCase() === c.sectionTitle.toLowerCase());
       if (!targetSec) {
-        targetSec = { title: c.sectionTitle, tag: 'cus_sec_' + Math.random().toString(36).substring(2, 7), color: 'blue', exercises: [] };
+        targetSec = { 
+          title: c.sectionTitle, 
+          tag: `d${targetDayKey}_tag_` + Math.random().toString(36).substring(2, 7), 
+          color: 'blue', 
+          exercises: [] 
+        };
         dayObj.sections.push(targetSec);
       }
       targetSec.exercises.push({
-        category: c.category, prefix: c.prefix, title: c.title, target: c.target, scheme: c.scheme, rest: c.rest, exerciseType: c.exerciseType,
-        variations: [{ value: 'custom_var', label: c.varLabel, setup: 'Custom setup', cue: 'Maintain form', defaultSets: [[20, 10, 2, 'Working'], [20, 10, 1, 'Working']] }]
+        category: c.category, 
+        prefix: c.prefix, 
+        title: c.title, 
+        target: c.target, 
+        scheme: c.scheme, 
+        rest: c.rest, 
+        exerciseType: c.exerciseType,
+        variations: [{ 
+          value: 'custom_var', 
+          label: c.varLabel, 
+          setup: 'Custom setup', 
+          cue: 'Maintain form', 
+          defaultSets: [[20, 10, 2, 'Working'], [20, 10, 1, 'Working']] 
+        }]
       });
     }
   });
@@ -2229,10 +2247,11 @@ function openAddExModal() {
   populateDayDropdown();
   const exDaySelect = document.getElementById('exDay');
   if (exDaySelect) {
-    exDaySelect.value = activeDay;
-    populateSectionDropdown(activeDay);
+    exDaySelect.value = String(activeDay);
+    populateSectionDropdown(String(activeDay));
   }
   document.getElementById('addExForm').reset();
+  if (exDaySelect) exDaySelect.value = String(activeDay);
   document.getElementById('exTitle').value = '';
   document.getElementById('exTarget').value = '';
   document.getElementById('exVarLabel').value = '';
@@ -2272,7 +2291,7 @@ function handleSectionSelectChange(val) {
 
 function handleSaveCustomExercise(e) {
   e.preventDefault();
-  const day = document.getElementById('exDay').value;
+  const day = String(document.getElementById('exDay').value);
   const secSelectVal = document.getElementById('exSectionSelect').value;
   const customSecName = document.getElementById('exCustomSection').value.trim();
   const sectionTitle = secSelectVal === '__NEW__' ? (customSecName || 'Custom Section') : secSelectVal;
@@ -2287,7 +2306,19 @@ function handleSaveCustomExercise(e) {
   const prefix = 'cp_' + Math.random().toString(36).substring(2, 7);
   const rest = exerciseType === 'compound' ? 150 : 75;
 
-  const newEx = { category, prefix, title, target, exerciseType, varLabel, scheme, rest, day, sectionTitle };
+  const newEx = { 
+    category, 
+    prefix, 
+    title, 
+    target, 
+    exerciseType, 
+    varLabel, 
+    scheme, 
+    rest, 
+    day: String(day), 
+    sectionTitle 
+  };
+
   const customList = getJ('iron_custom_exercises', []);
   customList.push(newEx);
   setJ('iron_custom_exercises', customList);
@@ -2296,8 +2327,10 @@ function handleSaveCustomExercise(e) {
   closeAddExModal();
   rebuildWorkoutDatabase();
   renderAll();
-  switchDayView(activeDay, false);
-  showToast('✨ Custom exercise added!', 'success');
+  
+  // Switch directly to the day the exercise was added to
+  switchDayView(day, false);
+  showToast(`✨ Custom exercise added to Day ${day}!`, 'success');
 }
 
 function openAddVarModal(category) {
