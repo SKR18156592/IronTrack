@@ -793,7 +793,7 @@
 <div class="modal-overlay" id="addDayModalOverlay" onclick="if(event.target===this) closeAddDayModal()">
   <div class="modal-content" style="max-width: 480px;">
     <div class="modal-header">
-      <h2>🏋️️ Add New Workout Day</h2>
+      <h2>🏋️ Add New Workout Day</h2>
       <button class="btn-xs" onclick="closeAddDayModal()">✕</button>
     </div>
     <form id="addDayForm" onsubmit="handleSaveCustomDay(event)" autocomplete="off" style="display: flex; flex-direction: column; gap: 14px;">
@@ -974,7 +974,7 @@
       <div id="historyListContainer" style="display:flex; flex-direction:column; gap:12px; margin-top:6px;"></div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-danger" onclick="clearWorkoutHistory()">🗑️️ Clear Logs</button>
+      <button class="btn btn-danger" onclick="clearWorkoutHistory()">🗑️ Clear Logs</button>
       <button class="btn btn-info" onclick="exportHistoryCSV()">📥 Export CSV</button>
       <button class="btn btn-primary" onclick="exportHistoryJSON()">📦 Export JSON</button>
     </div>
@@ -1032,7 +1032,7 @@ const NUTRITION_PLANS = {
         ]
       },
       {
-        title: '🍽️ Lunch',
+        title: '🍽️️ Lunch',
         summary: '708 kcal • 62.2g Protein',
         items: [
           { name: 'Ghee (3g)', cals: 25, p: 0, c: 0, f: 2.9 },
@@ -1294,8 +1294,12 @@ function refreshAllUI() {
   rebuildWorkoutDatabase();
   renderAll();
   renderScheduleRibbon();
-  const savedDay = getL('iron_active_day');
-  if (savedDay && WORKOUT[savedDay]) switchDayView(savedDay);
+  
+  // Preserve current active day
+  const storedDay = getL('iron_active_day');
+  const targetDay = (storedDay && WORKOUT[storedDay]) ? storedDay : (WORKOUT[activeDay] ? activeDay : Object.keys(WORKOUT)[0] || '1');
+  switchDayView(targetDay, false); // false = do not reset ongoing workout/timer
+
   renderHistory();
   renderSnapshotsList();
   updateProgress();
@@ -1327,9 +1331,11 @@ async function pullFromCloud(showIndicator = false) {
     if (data) {
       let updated = false;
 
-      // Extract raw local storage backup first to guarantee no data loss
+      // Extract raw local storage backup first to guarantee zero loss
       if (data.local_storage_backup && typeof data.local_storage_backup === 'object') {
         for (const k in data.local_storage_backup) {
+          // Never overwrite current day pointer from another device's local state
+          if (k === 'iron_active_day') continue;
           setL(k, data.local_storage_backup[k]);
         }
         updated = true;
@@ -1459,6 +1465,7 @@ function subscribeToRealtimeSync() {
         if (payload.new) {
           if (payload.new.local_storage_backup && typeof payload.new.local_storage_backup === 'object') {
             for (const k in payload.new.local_storage_backup) {
+              if (k === 'iron_active_day') continue; // Preserve user's local active day
               setL(k, payload.new.local_storage_backup[k]);
             }
           }
@@ -1483,7 +1490,7 @@ function subscribeToRealtimeSync() {
 
           refreshAllUI();
           loadProfileTabUI();
-          showToast('📥 Automatically synced from mobile!', 'info');
+          showToast('📥 Live sync updated from another device!', 'info');
         }
       }
     )
@@ -1772,7 +1779,7 @@ function renderScheduleRibbon() {
       const dot = item.dayNum == 1 ? '🔴' : item.dayNum == 2 ? '🔵' : item.dayNum == 3 ? '🟢' : '🟣';
       const label = WORKOUT[item.dayNum] ? WORKOUT[item.dayNum].title.replace('⚡ ', '').split('•')[0].trim() : `Day ${item.dayNum}`;
       return `
-        <div class="sched-item ${todayClass}" onclick="switchDayView('${item.dayNum}')">
+        <div class="sched-item ${todayClass}" onclick="switchDayView('${item.dayNum}', true)">
           <span class="sched-day-name">${item.day}</span>
           <span class="sched-dot">${dot}</span>
           <span class="sched-label" style="color:var(--accent)" title="${label}">${label}</span>
@@ -1841,7 +1848,6 @@ function saveMicrocycleConfig() {
   showToast('📅 Weekly microcycle updated!', 'success');
 }
 
-// Render dynamic day pills with inline ➕ Add Day button at the top
 function renderDayNav() {
   const container = document.getElementById('dayNavContainer');
   if (!container) return;
@@ -1851,7 +1857,7 @@ function renderDayNav() {
     const cfg = WORKOUT[d];
     const dot = index % 4 === 0 ? '🔴' : index % 4 === 1 ? '🔵' : index % 4 === 2 ? '🟢' : '🟣';
     return `
-      <button class="nav-btn day-${d} ${String(d) === String(activeDay) ? 'active' : ''}" onclick="switchDayView('${d}')">
+      <button class="nav-btn day-${d} ${String(d) === String(activeDay) ? 'active' : ''}" onclick="switchDayView('${d}', true)">
         <span>${dot}</span>
         <span>Day ${d}</span>
         <span style="font-size: 11px; opacity: 0.75; font-weight: 500;">(${cfg.title.replace('⚡ ', '').split('•')[0].trim()})</span>
@@ -1863,7 +1869,6 @@ function renderDayNav() {
   container.innerHTML = html;
 }
 
-// Custom Workout Days creation
 function openAddDayModal() {
   document.getElementById('addDayForm').reset();
   document.getElementById('addDayModalOverlay').classList.add('active');
@@ -1904,12 +1909,11 @@ function handleSaveCustomDay(e) {
   closeAddDayModal();
   rebuildWorkoutDatabase();
   renderAll();
-  switchDayView(nextDayNum);
+  switchDayView(nextDayNum, true);
   populateHistoryDayFilter();
   showToast(`✨ Added new workout day: Day ${nextDayNum}!`, 'success');
 }
 
-// Add New Section Modal handling
 function openAddSecModal() {
   const sel = document.getElementById('secTargetDay');
   if (sel) {
@@ -1944,11 +1948,10 @@ function handleSaveNewSection(e) {
   closeAddSecModal();
   rebuildWorkoutDatabase();
   renderAll();
-  switchDayView(dayNum);
+  switchDayView(dayNum, false);
   showToast(`📑 Added section: ${name}!`, 'success');
 }
 
-// Custom Workout Day deletion
 function deleteCurrentSplit() {
   const currentKey = String(activeDay);
   const splitTitle = WORKOUT[currentKey] ? WORKOUT[currentKey].title : `Day ${currentKey}`;
@@ -1994,7 +1997,7 @@ function deleteCurrentSplit() {
 
   const remainingDays = Object.keys(WORKOUT);
   const nextDay = remainingDays[0] || '1';
-  switchDayView(nextDay);
+  switchDayView(nextDay, true);
 
   renderAll();
   renderScheduleRibbon();
@@ -2003,7 +2006,6 @@ function deleteCurrentSplit() {
   showToast(`🗑️ Deleted ${splitTitle}`, 'info');
 }
 
-// Remove entire section & its exercises
 function removeSection(dayNum, secIdx) {
   const dayObj = WORKOUT[dayNum];
   if (!dayObj || !dayObj.sections || !dayObj.sections[secIdx]) return;
@@ -2043,7 +2045,7 @@ function removeSection(dayNum, secIdx) {
 
   rebuildWorkoutDatabase();
   renderAll();
-  switchDayView(activeDay);
+  switchDayView(activeDay, false);
   pushToCloud();
   showToast(`🗑️ Removed section: ${secTitle}`, 'info');
 }
@@ -2063,7 +2065,6 @@ function populateHistoryDayFilter() {
 function rebuildWorkoutDatabase() {
   WORKOUT = JSON.parse(JSON.stringify(WORKOUT_BASE));
   
-  // Clean corrupt/undefined section titles in custom exercises
   let customExsCleaned = getJ('iron_custom_exercises', []);
   let hasExChanges = false;
   customExsCleaned = customExsCleaned.filter(c => {
@@ -2075,19 +2076,16 @@ function rebuildWorkoutDatabase() {
   });
   if (hasExChanges) setJ('iron_custom_exercises', customExsCleaned);
 
-  // Filter out any hidden default days
   const hiddenDays = getJ('iron_hidden_days', []);
   hiddenDays.forEach(d => {
     delete WORKOUT[d];
   });
 
-  // Merge custom days
   const customDays = getJ('iron_custom_days', []);
   customDays.forEach(cd => {
     WORKOUT[cd.dayNum] = JSON.parse(JSON.stringify(cd));
   });
 
-  // Merge custom sections into their target days
   const customSecs = getJ('iron_custom_sections', []);
   customSecs.forEach(cs => {
     const dayObj = WORKOUT[cs.day];
@@ -2124,7 +2122,6 @@ function rebuildWorkoutDatabase() {
   });
 
   Object.keys(WORKOUT).forEach(dNum => {
-    // Purge empty or undefined placeholder sections automatically
     WORKOUT[dNum].sections = WORKOUT[dNum].sections.filter(sec => {
       const isBadName = !sec.title || sec.title.toLowerCase() === 'undefined' || sec.title.toLowerCase() === 'null';
       return !(isBadName && (!sec.exercises || sec.exercises.length === 0));
@@ -2205,7 +2202,7 @@ function reorderSection(dayNum, secIdx, direction) {
   const formData = captureCurrentFormValues();
   rebuildWorkoutDatabase();
   renderAll();
-  switchDayView(activeDay);
+  switchDayView(activeDay, false);
   restoreFormValues(formData);
   showToast('🔄 Section reordered!', 'success');
 }
@@ -2322,7 +2319,7 @@ function handleSaveCustomExercise(e) {
   closeAddExModal();
   rebuildWorkoutDatabase();
   renderAll();
-  switchDayView(activeDay);
+  switchDayView(activeDay, false);
   showToast('✨ Custom exercise added!', 'success');
 }
 
@@ -2365,7 +2362,7 @@ function handleSaveNewVariation(e) {
   closeAddVarModal();
   rebuildWorkoutDatabase();
   renderAll();
-  switchDayView(activeDay);
+  switchDayView(activeDay, false);
 
   setChoice(activeAddVarCategory, value);
   const ex = FLAT_EXERCISES.find(e => e.category === activeAddVarCategory);
@@ -2394,7 +2391,7 @@ function reorderEquipment(category, direction) {
   pushToCloud();
 
   renderAll();
-  switchDayView(activeDay);
+  switchDayView(activeDay, false);
   document.getElementById(category + 'Select').value = currentVal;
   applyVariation(category, ex.prefix, currentVal, true);
 }
@@ -2427,7 +2424,7 @@ function removeEquipment(category) {
 
   rebuildWorkoutDatabase();
   renderAll();
-  switchDayView(activeDay);
+  switchDayView(activeDay, false);
   showToast('🗑️ Equipment variation removed.', 'info');
 }
 
@@ -2511,7 +2508,7 @@ function removeExercise(category) {
   pushToCloud();
   rebuildWorkoutDatabase();
   renderAll();
-  switchDayView(activeDay);
+  switchDayView(activeDay, false);
   showToast('🗑️ Exercise removed from day.', 'info');
 }
 
@@ -2589,7 +2586,7 @@ function reorderExercise(category, direction) {
   const formData = captureCurrentFormValues();
   rebuildWorkoutDatabase();
   renderAll();
-  switchDayView(activeDay);
+  switchDayView(activeDay, false);
   restoreFormValues(formData);
 }
 
@@ -2628,7 +2625,9 @@ function renderSetRows(prefix, sets, rest) {
 function getDayExerciseCategories(dayNum) {
   const list = [];
   if (!WORKOUT[dayNum]) return list;
-  WORKOUT[dayNum].sections.forEach(sec => sec.exercises.forEach(ex => list.push(ex.category)));
+  WORKOUT[dayNum].sections.forEach(sec => {
+    if (sec.exercises) sec.exercises.forEach(ex => list.push(ex.category));
+  });
   return list;
 }
 function getNextCategory(category) {
@@ -2683,7 +2682,7 @@ function toggleSuperset(category) {
   }
   setSupersetLinks(links);
   renderAll();
-  switchDayView(activeDay);
+  switchDayView(activeDay, false);
 }
 
 function renderExerciseCard(ex, idx) {
@@ -2720,7 +2719,7 @@ function renderExerciseCard(ex, idx) {
       <button class="btn-xs" title="Move Down" onclick="reorderEquipment('${ex.category}', 1)">⬇️</button>
       <button class="btn-xs" style="color:var(--accent); border-color:var(--accent-glow);" onclick="openAddVarModal('${ex.category}')">➕ Add Var</button>
       <button class="btn-xs" style="color:var(--lime); border-color:rgba(57,255,20,0.35);" onclick="openPresetModal('${ex.category}')">⚙️ Preset</button>
-      <button class="btn-xs" style="color:#fca5a5; border-color:rgba(239,68,68,0.35);" onclick="removeEquipment('${ex.category}')">🗑️</button>
+      <button class="btn-xs" style="color:#fca5a5; border-color:rgba(239,68,68,0.35);" onclick="removeEquipment('${ex.category}')">🗑️️</button>
     </div>
     <div class="ex-meta-info">
       <div class="info-row">
@@ -2744,7 +2743,7 @@ function renderExerciseCard(ex, idx) {
       <button class="btn-xs" onclick="reorderExercise('${ex.category}', -1)">⬆ Up</button>
       <button class="btn-xs" onclick="reorderExercise('${ex.category}', 1)">⬇️ Down</button>
       ${supBtn}
-      <button class="btn-xs" style="color:#fca5a5; border-color:rgba(239,68,68,0.35);" onclick="removeExercise('${ex.category}')">🗑️️ Remove Exercise</button>
+      <button class="btn-xs" style="color:#fca5a5; border-color:rgba(239,68,68,0.35);" onclick="removeExercise('${ex.category}')">🗑️ Remove Exercise</button>
     </div>
   </div>`;
 }
@@ -2759,7 +2758,7 @@ function renderDay(dayNum) {
       <div class="category-header-row">
         <div class="category-tag tag-${sec.color || 'blue'}" id="${sec.tag}">${sidx+1}. ${displayTitle} (<span class="set-count">0</span> Working Sets)</div>
         <div class="section-actions">
-          <button class="btn-xs" title="Move Section Up" onclick="reorderSection('${dayNum}', ${sidx}, -1)">⬆️ Up</button>
+          <button class="btn-xs" title="Move Section Up" onclick="reorderSection('${dayNum}', ${sidx}, -1)">⬆️️ Up</button>
           <button class="btn-xs" title="Move Section Down" onclick="reorderSection('${dayNum}', ${sidx}, 1)">⬇ Down</button>
           <button class="btn-xs" style="color:var(--coral); border-color:rgba(255,77,77,0.35);" title="Remove Section" onclick="removeSection('${dayNum}', ${sidx})">🗑️</button>
         </div>
@@ -2862,7 +2861,7 @@ function addSetRow(tableId, prefix, rest, update=true) {
   if (!table) return;
   const tbody = table.querySelector('tbody');
   const n = tbody.children.length + 1;
-  tr = document.createElement('tr');
+  const tr = document.createElement('tr');
   tr.innerHTML = `<td class="set-num-cell">${n}</td>
     <td><div class="stepper"><button class="stepper-btn" onclick="stepValue('${prefix}_w_${n}', -2.5)">−</button><input type="number" class="input-field set-weight" id="${prefix}_w_${n}" placeholder="kg" oninput="checkStartWorkoutTimer()"><button class="stepper-btn" onclick="stepValue('${prefix}_w_${n}', 2.5)">+</button></div></td>
     <td><div class="stepper"><button class="stepper-btn" onclick="stepValue('${prefix}_r_${n}', -1)">−</button><input type="number" class="input-field set-reps" id="${prefix}_r_${n}" placeholder="reps" oninput="checkStartWorkoutTimer()"><button class="stepper-btn" onclick="stepValue('${prefix}_r_${n}', 1)">+</button></div></td>
@@ -2923,7 +2922,8 @@ function toggleProfileTab() {
   }
 }
 
-function switchDayView(day) {
+// Fixed switchDayView: preserves ongoing workout state unless explicit navigation occurred
+function switchDayView(day, resetSession = false) {
   activeDay = String(day);
   setL('iron_active_day', activeDay);
   document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.toggle('active', btn.classList.contains(`day-${activeDay}`)));
@@ -2938,11 +2938,13 @@ function switchDayView(day) {
   updateProgress();
   confettiFired = false;
   
-  hasStartedWorkout = false;
-  workoutStartTime = null;
-  clearInterval(workoutTimerInterval);
-  document.getElementById('timeElapsed').textContent = "00:00:00";
-  if (document.getElementById('sessionNotes')) document.getElementById('sessionNotes').value = '';
+  if (resetSession) {
+    hasStartedWorkout = false;
+    workoutStartTime = null;
+    clearInterval(workoutTimerInterval);
+    document.getElementById('timeElapsed').textContent = "00:00:00";
+    if (document.getElementById('sessionNotes')) document.getElementById('sessionNotes').value = '';
+  }
 }
 
 function checkStartWorkoutTimer() {
@@ -3395,7 +3397,7 @@ function renderHistoryForSelectedExercise(exerciseName) {
     const w = 520, h = 260, pad = 40, chartW = w - pad * 2, chartH = h - pad * 2;
     chartSvg = `<svg class="plate-svg" viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg">`;
     for (let i = 0; i <= 4; i++) {
-      const y = pad + chartH - (i * chartH / 4);
+      const y = pad + (i * chartH / 4);
       chartSvg += `<line x1="${pad}" y1="${y}" x2="${w - pad}" y2="${y}" class="chart-grid" />`;
       chartSvg += `<text x="${pad - 8}" y="${y + 4}" text-anchor="end" class="chart-label">${(maxW - (i * maxW / 4)).toFixed(0)}</text>`;
     }
@@ -3807,7 +3809,7 @@ function restoreAllHiddenExercises() {
   pushToCloud();
   rebuildWorkoutDatabase();
   renderAll();
-  switchDayView('1');
+  switchDayView('1', true);
   showToast('♻️ All exercises & default days restored!', 'success');
 }
 
@@ -3872,10 +3874,10 @@ function init() {
   });
 
   const savedDay = getL('iron_active_day', '1');
-  if (savedDay && WORKOUT[savedDay]) switchDayView(savedDay);
+  if (savedDay && WORKOUT[savedDay]) switchDayView(savedDay, false);
   else {
     const firstAvailable = Object.keys(WORKOUT)[0] || '1';
-    switchDayView(firstAvailable);
+    switchDayView(firstAvailable, false);
   }
 
   if (supabaseClient) {
