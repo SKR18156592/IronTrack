@@ -2244,14 +2244,21 @@ function updateRestMultiplierLabel() {
 }
 
 function openAddExModal() {
+  // 1. Reset the form FIRST
+  document.getElementById('addExForm').reset();
+
+  // 2. Populate the days dropdown
   populateDayDropdown();
+
+  // 3. Set the target day to the current active day (e.g. Day 3)
   const exDaySelect = document.getElementById('exDay');
   if (exDaySelect) {
     exDaySelect.value = String(activeDay);
+    // 4. Populate sections specifically for that day
     populateSectionDropdown(String(activeDay));
   }
-  document.getElementById('addExForm').reset();
-  if (exDaySelect) exDaySelect.value = String(activeDay);
+
+  // 5. Clear fields and show modal
   document.getElementById('exTitle').value = '';
   document.getElementById('exTarget').value = '';
   document.getElementById('exVarLabel').value = '';
