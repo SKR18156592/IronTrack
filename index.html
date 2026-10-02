@@ -1340,6 +1340,7 @@ function refreshAllUI() {
 const SYNC_DIRTY_KEY = 'irontrack_sync_dirty';      // '1' while local edits have not reached the cloud
 const SYNC_OWNER_KEY = 'irontrack_owner';           // user id the local iron_* data belongs to
 const SYNC_STAMP_KEY = 'irontrack_last_synced_at';  // updated_at of the last row we pushed or applied
+const SESSION_DRAFT_KEY = 'irontrack_session_draft'; // in-progress workout form; device-local, never synced
 const PUSH_DEBOUNCE_MS = 800;
 let pushTimer = null;
 let pushInFlight = null;
@@ -1354,7 +1355,7 @@ function clearLocalUserData() {
     if (key && key.startsWith('iron_')) keys.push(key);
   }
   keys.forEach(k => localStorage.removeItem(k));
-  [SYNC_DIRTY_KEY, SYNC_OWNER_KEY, SYNC_STAMP_KEY].forEach(k => localStorage.removeItem(k));
+  [SYNC_DIRTY_KEY, SYNC_OWNER_KEY, SYNC_STAMP_KEY, SESSION_DRAFT_KEY].forEach(k => localStorage.removeItem(k));
 }
 
 // Never let one account's local data leak into another account on a shared device.
@@ -1418,10 +1419,12 @@ async function pullFromCloud(showIndicator = false) {
       return;
     }
 
-    applyCloudRow(data);
+    const hasUnsyncedHistory = applyCloudRow(data);
     if (data.updated_at) setL(SYNC_STAMP_KEY, data.updated_at);
     refreshAllUI();
     loadProfileTabUI();
+    // e.g. sessions logged here before signing in: upload them too.
+    if (hasUnsyncedHistory) pushToCloud();
     finish(true, 'Data synchronized successfully!');
   } catch (err) {
     console.error('Unexpected sync error:', err);
@@ -1429,10 +1432,66 @@ async function pullFromCloud(showIndicator = false) {
   }
 }
 
+// ---- Workout history is merged by session id, never overwritten, so two devices logging
+// sessions while out of sync both keep their sessions. Deleted sessions are kept as tombstones.
+const HISTORY_KEY = 'iron_workout_history';
+const HISTORY_TOMBSTONES_KEY = 'iron_history_tombstones';
+
+const sessionKey = (rec) => (rec && rec.id) ? String(rec.id) : JSON.stringify(rec);
+const sessionTime = (rec) => {
+  const m = /^session_(\d+)$/.exec((rec && rec.id) || '');
+  return m ? Number(m[1]) : (Date.parse(rec && rec.date) || 0);
+};
+
+function readCloudArray(row, column, key) {
+  if (column && Array.isArray(row[column])) return row[column];
+  const raw = row.local_storage_backup && row.local_storage_backup[key];
+  try {
+    const v = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    return Array.isArray(v) ? v : [];
+  } catch (e) { return []; }
+}
+
+// Merges the cloud row's sessions into local history. Reports what each side was missing.
+function mergeCloudHistory(row) {
+  const cloudHistory = readCloudArray(row, 'history', HISTORY_KEY);
+  const cloudTombstones = readCloudArray(row, null, HISTORY_TOMBSTONES_KEY);
+  const localHistory = getJ(HISTORY_KEY, []);
+  const tombstones = [...new Set([...getJ(HISTORY_TOMBSTONES_KEY, []), ...cloudTombstones])];
+  const deleted = new Set(tombstones);
+
+  const byKey = new Map();
+  [...localHistory, ...cloudHistory].forEach(rec => {
+    const k = sessionKey(rec);
+    if (!deleted.has(k) && !byKey.has(k)) byKey.set(k, rec);
+  });
+  const merged = [...byKey.values()].sort((a, b) => sessionTime(b) - sessionTime(a));
+
+  setJ(HISTORY_TOMBSTONES_KEY, tombstones);
+  setJ(HISTORY_KEY, merged);
+
+  const localKeys = new Set(localHistory.map(sessionKey));
+  const cloudKeys = new Set(cloudHistory.map(sessionKey));
+  return {
+    localChanged: merged.length !== localHistory.length || merged.some(rec => !localKeys.has(sessionKey(rec))),
+    missingFromCloud: merged.some(rec => !cloudKeys.has(sessionKey(rec))) || tombstones.length !== new Set(cloudTombstones).size
+  };
+}
+
+function refreshHistoryUI() {
+  renderHistory();
+  populateHistoryExerciseDropdown();
+  populateCompoundSelect();
+  render1RMTrends();
+  renderMuscleGroupBarChart();
+  renderMuscleRecoveryHeatmap();
+}
+
+// Applies a cloud row locally. Returns true if this device has history the cloud lacks.
 function applyCloudRow(data) {
   if (data.local_storage_backup && typeof data.local_storage_backup === 'object') {
     for (const k in data.local_storage_backup) {
-      if (!k.startsWith('iron_') || k === 'iron_active_day') continue;
+      if (!k.startsWith('iron_') || k === 'iron_active_day' || k === HISTORY_KEY || k === HISTORY_TOMBSTONES_KEY) continue;
       setL(k, data.local_storage_backup[k]);
     }
   }
@@ -1441,7 +1500,6 @@ function applyCloudRow(data) {
   if (Array.isArray(data.custom_days)) setJ('iron_custom_days', data.custom_days);
   if (Array.isArray(data.custom_sections)) setJ('iron_custom_sections', data.custom_sections);
   if (Array.isArray(data.hidden_days)) setJ('iron_hidden_days', data.hidden_days);
-  if (Array.isArray(data.history)) setJ('iron_workout_history', data.history);
   if (Array.isArray(data.custom_exercises)) setJ('iron_custom_exercises', data.custom_exercises);
   if (Array.isArray(data.hidden_exercises)) setJ('iron_hidden_exercises', data.hidden_exercises);
   if (data.custom_variations && typeof data.custom_variations === 'object') setJ('iron_custom_variations', data.custom_variations);
@@ -1461,6 +1519,8 @@ function applyCloudRow(data) {
   if (data.profile_height) setL('iron_profile_height', data.profile_height);
   if (data.profile_sex) setL('iron_profile_sex', data.profile_sex);
   if (data.profile_avatar) setL('iron_profile_avatar', data.profile_avatar);
+
+  return mergeCloudHistory(data).missingFromCloud;
 }
 
 // Called after every local edit. Marks local data as unsynced and schedules one debounced upload.
@@ -1489,82 +1549,116 @@ async function flushPush() {
   return true;
 }
 
+function buildSyncPayload(updatedAt) {
+  const allLocalStorageData = {};
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    // The avatar is sent once, as profile_avatar.
+    if (key && key.startsWith('iron_') && key !== 'iron_profile_avatar') {
+      allLocalStorageData[key] = localStorage.getItem(key);
+    }
+  }
+
+  return {
+    user_id: currentUser.id,
+    microcycle_config: getMicrocycle(),
+    custom_days: getJ('iron_custom_days', []),
+    custom_sections: getJ('iron_custom_sections', []),
+    hidden_days: getJ('iron_hidden_days', []),
+    history: getJ(HISTORY_KEY, []),
+    custom_exercises: getJ('iron_custom_exercises', []),
+    hidden_exercises: getJ('iron_hidden_exercises', []),
+    custom_variations: getJ('iron_custom_variations', {}),
+    hidden_variations: getJ('iron_hidden_variations', {}),
+    var_order: getJ('iron_var_order', {}),
+    exercise_orders: getJ('iron_all_exercise_orders', {}),
+    section_orders: getJ('iron_section_orders', {}),
+    local_storage_backup: allLocalStorageData,
+    profile_name: getL('iron_profile_name', ''),
+    profile_age: getL('iron_profile_age', ''),
+    profile_weight: getL('iron_profile_weight', ''),
+    profile_height: getL('iron_profile_height', ''),
+    profile_sex: getL('iron_profile_sex', ''),
+    profile_avatar: getL('iron_profile_avatar', null),
+    updated_at: updatedAt
+  };
+}
+
+// Writes the row only if it is unchanged since `cloudRow` was read (compare-and-swap on updated_at).
+// Resolves { written: false } when another device wrote first.
+async function writeSyncRow(payload, cloudRow) {
+  if (!cloudRow) {
+    const { error } = await supabaseClient.from('user_sync').insert(payload);
+    if (error && error.code === '23505') return { written: false }; // another device created the row first
+    return { written: !error, error };
+  }
+  let query = supabaseClient.from('user_sync').update(payload).eq('user_id', currentUser.id);
+  query = cloudRow.updated_at ? query.eq('updated_at', cloudRow.updated_at) : query.is('updated_at', null);
+  const { data, error } = await query.select('user_id');
+  return { written: !error && Array.isArray(data) && data.length > 0, error };
+}
+
+const MAX_WRITE_ATTEMPTS = 3;
+
 async function uploadSnapshot() {
   const seq = localEditSeq;
+  let historyChanged = false;
   try {
-    const allLocalStorageData = {};
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      // The avatar is sent once, as profile_avatar.
-      if (key && key.startsWith('iron_') && key !== 'iron_profile_avatar') {
-        allLocalStorageData[key] = localStorage.getItem(key);
+    for (let attempt = 0; attempt < MAX_WRITE_ATTEMPTS; attempt++) {
+      // Read first so sessions logged on another device are merged in, not overwritten.
+      const { data: cloudRow, error: readError } = await supabaseClient
+        .from('user_sync')
+        .select('history, local_storage_backup, updated_at')
+        .eq('user_id', currentUser.id)
+        .maybeSingle();
+      if (readError) {
+        console.error('Cloud read error:', readError);
+        return false;
       }
-    }
+      if (cloudRow && mergeCloudHistory(cloudRow).localChanged) historyChanged = true;
 
-    const updatedAt = new Date().toISOString();
-    const payload = {
-      user_id: currentUser.id,
-      microcycle_config: getMicrocycle(),
-      custom_days: getJ('iron_custom_days', []),
-      custom_sections: getJ('iron_custom_sections', []),
-      hidden_days: getJ('iron_hidden_days', []),
-      history: getJ('iron_workout_history', []),
-      custom_exercises: getJ('iron_custom_exercises', []),
-      hidden_exercises: getJ('iron_hidden_exercises', []),
-      custom_variations: getJ('iron_custom_variations', {}),
-      hidden_variations: getJ('iron_hidden_variations', {}),
-      var_order: getJ('iron_var_order', {}),
-      exercise_orders: getJ('iron_all_exercise_orders', {}),
-      section_orders: getJ('iron_section_orders', {}),
-      local_storage_backup: allLocalStorageData,
-      profile_name: getL('iron_profile_name', ''),
-      profile_age: getL('iron_profile_age', ''),
-      profile_weight: getL('iron_profile_weight', ''),
-      profile_height: getL('iron_profile_height', ''),
-      profile_sex: getL('iron_profile_sex', ''),
-      profile_avatar: getL('iron_profile_avatar', null),
-      updated_at: updatedAt
-    };
+      const updatedAt = new Date().toISOString();
+      const payload = buildSyncPayload(updatedAt);
+      let result = await writeSyncRow(payload, cloudRow);
 
-    let { error } = await supabaseClient
-      .from('user_sync')
-      .upsert(payload, { onConflict: 'user_id' });
-
-    if (error && error.message) {
-      const problematicCols = ['custom_sections', 'custom_days', 'hidden_days', 'microcycle_config'];
-      let modified = false;
-      problematicCols.forEach(col => {
-        if (error.message.includes(col)) {
-          delete payload[col];
-          modified = true;
-        }
-      });
-      if (modified) {
-        const retry = await supabaseClient.from('user_sync').upsert(payload, { onConflict: 'user_id' });
-        error = retry.error;
+      if (result.error && result.error.message) {
+        const problematicCols = ['custom_sections', 'custom_days', 'hidden_days', 'microcycle_config'];
+        let modified = false;
+        problematicCols.forEach(col => {
+          if (result.error.message.includes(col)) {
+            delete payload[col];
+            modified = true;
+          }
+        });
+        if (modified) result = await writeSyncRow(payload, cloudRow);
       }
-    }
 
-    if (error) {
-      console.error('Cloud push error:', error);
-      return false;
-    }
+      if (result.error) {
+        console.error('Cloud push error:', result.error);
+        return false;
+      }
+      if (!result.written) continue; // the row changed under us: merge again and retry
 
-    setL(SYNC_STAMP_KEY, updatedAt);
-    // Only clear the flag if nothing was edited while this upload was running.
-    if (seq === localEditSeq) localStorage.removeItem(SYNC_DIRTY_KEY);
+      setL(SYNC_STAMP_KEY, updatedAt);
+      // Only clear the flag if nothing was edited while this upload was running.
+      if (seq === localEditSeq) localStorage.removeItem(SYNC_DIRTY_KEY);
 
-    if (syncChannel) {
-      syncChannel.send({
-        type: 'broadcast',
-        event: 'iron_sync_ping',
-        payload: { updated_at: updatedAt }
-      });
+      if (syncChannel) {
+        syncChannel.send({
+          type: 'broadcast',
+          event: 'iron_sync_ping',
+          payload: { updated_at: updatedAt }
+        });
+      }
+      return true;
     }
-    return true;
+    console.warn('Cloud push skipped: the row kept changing; will retry on the next sync.');
+    return false;
   } catch (err) {
     console.error('Unexpected push error:', err);
     return false;
+  } finally {
+    if (historyChanged) refreshHistoryUI();
   }
 }
 
@@ -2678,12 +2772,13 @@ function removeExercise(category) {
 
 function captureCurrentFormValues() {
   const data = {};
-  FLAT_EXERCISES.forEach(ex => {
-    const table = document.getElementById('table_' + ex.prefix);
+  document.querySelectorAll('#dayViews .exercise-card').forEach(card => {
+    const prefix = card.dataset.prefix;
+    const table = document.getElementById('table_' + prefix);
     if (table) {
-      data[ex.prefix] = [];
+      data[prefix] = [];
       table.querySelectorAll('tbody tr').forEach(tr => {
-        data[ex.prefix].push({
+        data[prefix].push({
           weight: tr.querySelector('.set-weight')?.value || '',
           reps: tr.querySelector('.set-reps')?.value || '',
           tag: tr.querySelector('.set-tag')?.value || 'Working',
@@ -2698,8 +2793,14 @@ function captureCurrentFormValues() {
 
 function restoreFormValues(data) {
   for (const prefix in data) {
+    if (!isSafeId(prefix) || !Array.isArray(data[prefix])) continue;
     const table = document.getElementById('table_' + prefix);
     if (!table) continue;
+    // Match the row count first: the user may have added or removed sets.
+    const tbody = table.querySelector('tbody');
+    const rest = Number(table.closest('.exercise-card')?.dataset.rest) || 75;
+    while (data[prefix].length && tbody.children.length < data[prefix].length) addSetRow('table_' + prefix, prefix, rest, false);
+    while (data[prefix].length && tbody.children.length > data[prefix].length) tbody.removeChild(tbody.lastElementChild);
     const rows = table.querySelectorAll('tbody tr');
     data[prefix].forEach((s, i) => {
       if (rows[i]) {
@@ -2713,10 +2814,11 @@ function restoreFormValues(data) {
         if (rIn) rIn.value = s.reps;
         if (tIn) tIn.value = s.tag;
         if (riIn) riIn.value = s.rir;
-        if (btn && s.done) btn.classList.add('completed');
+        if (btn) btn.classList.toggle('completed', !!s.done);
       }
     });
   }
+  updateSectionWorkingSetCounts();
   updateProgress();
   updateSessionStats();
 }
@@ -2944,7 +3046,12 @@ function renderDay(dayNum) {
 function renderAll() {
   const container = document.getElementById('dayViews');
   const days = Object.keys(WORKOUT);
+  // A sync or an edit can re-render mid-workout: keep what the user has entered so far.
+  const formData = hasSessionDraft() ? captureCurrentFormValues() : null;
+  const focusedId = container.contains(document.activeElement) ? document.activeElement.id : '';
   container.innerHTML = days.map(d => renderDay(d)).join('');
+  if (formData) restoreFormValues(formData);
+  if (focusedId) document.getElementById(focusedId)?.focus({ preventScroll: true });
   renderDayNav();
   
   // Only repopulate if the modal is closed to preserve user input
@@ -3115,22 +3222,91 @@ function switchDayView(day, resetSession = false) {
     clearInterval(workoutTimerInterval);
     document.getElementById('timeElapsed').textContent = "00:00:00";
     if (document.getElementById('sessionNotes')) document.getElementById('sessionNotes').value = '';
+    if (hasSessionDraft()) saveSessionDraft();
   }
 }
 
 function checkStartWorkoutTimer() {
-  if (!hasStartedWorkout) {
-    hasStartedWorkout = true;
-    workoutStartTime = Date.now();
-    clearInterval(workoutTimerInterval);
-    workoutTimerInterval = setInterval(() => {
-      const elapsed = Math.floor((Date.now() - workoutStartTime) / 1000);
-      const h = String(Math.floor(elapsed / 3600)).padStart(2, '0');
-      const m = String(Math.floor((elapsed % 3600) / 60)).padStart(2, '0');
-      const s = String(elapsed % 60).padStart(2, '0');
-      document.getElementById('timeElapsed').textContent = `${h}:${m}:${s}`;
-    }, 1000);
+  if (!hasStartedWorkout) startWorkoutTimer(Date.now());
+}
+
+function startWorkoutTimer(startTime) {
+  hasStartedWorkout = true;
+  workoutStartTime = startTime;
+  clearInterval(workoutTimerInterval);
+  const tick = () => {
+    const elapsed = Math.max(0, Math.floor((Date.now() - workoutStartTime) / 1000));
+    const h = String(Math.floor(elapsed / 3600)).padStart(2, '0');
+    const m = String(Math.floor((elapsed % 3600) / 60)).padStart(2, '0');
+    const s = String(elapsed % 60).padStart(2, '0');
+    document.getElementById('timeElapsed').textContent = `${h}:${m}:${s}`;
+  };
+  tick();
+  workoutTimerInterval = setInterval(tick, 1000);
+}
+
+// ---- In-progress session draft. The workout form lives only in the DOM until "Save Session",
+// so it is mirrored to localStorage to survive reloads, the OS killing the PWA, and re-renders.
+const SESSION_DRAFT_MAX_AGE_MS = 12 * 60 * 60 * 1000;
+const SESSION_META_FIELDS = ['sessionDate', 'energyLevel', 'sleepHours', 'sessionNotes'];
+let draftSaveTimer = null;
+
+const hasSessionDraft = () => getL(SESSION_DRAFT_KEY, '') !== '';
+
+function saveSessionDraft() {
+  clearTimeout(draftSaveTimer);
+  draftSaveTimer = null;
+  const meta = {};
+  SESSION_META_FIELDS.forEach(id => { const el = document.getElementById(id); if (el) meta[id] = el.value; });
+  setJ(SESSION_DRAFT_KEY, {
+    savedAt: Date.now(),
+    day: activeDay,
+    startTime: hasStartedWorkout ? workoutStartTime : null,
+    meta,
+    sets: captureCurrentFormValues()
+  });
+}
+
+function scheduleSessionDraftSave() {
+  clearTimeout(draftSaveTimer);
+  draftSaveTimer = setTimeout(saveSessionDraft, 300);
+}
+
+function clearSessionDraft() {
+  clearTimeout(draftSaveTimer);
+  draftSaveTimer = null;
+  localStorage.removeItem(SESSION_DRAFT_KEY);
+}
+
+// Call after the day views are rendered. Restores a recent draft, if any.
+function restoreSessionDraft() {
+  const draft = getJ(SESSION_DRAFT_KEY, null);
+  if (!draft || typeof draft !== 'object' || !(Date.now() - draft.savedAt < SESSION_DRAFT_MAX_AGE_MS)) {
+    clearSessionDraft();
+    return;
   }
+  if (draft.day && WORKOUT[draft.day]) switchDayView(draft.day, false);
+  if (draft.meta) SESSION_META_FIELDS.forEach(id => {
+    const el = document.getElementById(id);
+    if (el && typeof draft.meta[id] === 'string') el.value = draft.meta[id];
+  });
+  if (draft.sets && typeof draft.sets === 'object') restoreFormValues(draft.sets);
+  if (Number(draft.startTime) > 0) startWorkoutTimer(Number(draft.startTime));
+}
+
+function watchSessionForm() {
+  const onChange = () => scheduleSessionDraftSave();
+  const dayViews = document.getElementById('dayViews');
+  ['input', 'change', 'click'].forEach(type => dayViews.addEventListener(type, onChange));
+  SESSION_META_FIELDS.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { el.addEventListener('input', onChange); el.addEventListener('change', onChange); }
+  });
+  // Flush pending edits right away when the app is backgrounded (it may be killed after that).
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden' && draftSaveTimer) saveSessionDraft();
+  });
+  window.addEventListener('pagehide', () => { if (draftSaveTimer) saveSessionDraft(); });
 }
 
 function updateSectionWorkingSetCounts() {
@@ -3293,6 +3469,7 @@ function finishCurrentDayWorkout() {
   history.unshift(record);
   setJ('iron_workout_history', history);
   pushToCloud();
+  clearSessionDraft();
   lastFinishedRecord = record;
   showToast('💾 Workout saved & synced!', 'success');
   showCelebration();
@@ -3421,6 +3598,7 @@ function resetCurrentDayForm() {
       }
     });
   }
+  clearSessionDraft();
   updateProgress();
   showToast('🔄 Day reset to saved presets!', 'info');
 }
@@ -4033,7 +4211,10 @@ function closeHistoryModal() { document.getElementById('historyModalOverlay').cl
 
 async function clearWorkoutHistory() {
   if (confirm('Clear workout history?')) {
-    localStorage.removeItem('iron_workout_history');
+    // Tombstone the sessions so the history merge does not bring them back from the cloud.
+    const cleared = getJ(HISTORY_KEY, []).map(sessionKey);
+    setJ(HISTORY_TOMBSTONES_KEY, [...new Set([...getJ(HISTORY_TOMBSTONES_KEY, []), ...cleared])]);
+    localStorage.removeItem(HISTORY_KEY);
     if (currentUser && supabaseClient) pushToCloud();
     renderHistory();
     refreshAllUI();
@@ -4216,6 +4397,9 @@ function init() {
     const firstAvailable = Object.keys(WORKOUT)[0] || '1';
     switchDayView(firstAvailable, false);
   }
+
+  restoreSessionDraft();
+  watchSessionForm();
 
   if (supabaseClient) {
     supabaseClient.auth.getSession().then(({ data: { session } }) => {
