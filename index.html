@@ -1328,7 +1328,7 @@ async function pullFromCloud(showIndicator = false) {
     if (data) {
       let updated = false;
 
-      // Extract raw local storage backup first to guarantee no loss
+      // Extract raw local storage backup first to guarantee no data loss
       if (data.local_storage_backup && typeof data.local_storage_backup === 'object') {
         for (const k in data.local_storage_backup) {
           setL(k, data.local_storage_backup[k]);
@@ -1370,7 +1370,7 @@ async function pullFromCloud(showIndicator = false) {
 
     if (syncBtn && showIndicator) {
       syncBtn.textContent = '✅ Synced';
-      setTimeout(() => { syncBtn.textContent = '☁️️ Sync'; }, 2000);
+      setTimeout(() => { syncBtn.textContent = '☁️ Sync'; }, 2000);
     }
     if (showIndicator) showToast('Data synchronized successfully!', 'success');
   } catch (err) {
@@ -1484,12 +1484,29 @@ function subscribeToRealtimeSync() {
 
           refreshAllUI();
           loadProfileTabUI();
-          showToast('📥 Live update synced from another device!', 'info');
+          showToast('📥 Automatically synced from mobile!', 'info');
         }
       }
     )
     .subscribe();
 }
+
+// Background auto-sync on tab switch / window focus & periodic heartbeat
+window.addEventListener('focus', () => {
+  if (currentUser && supabaseClient) pullFromCloud(false);
+});
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && currentUser && supabaseClient) {
+    pullFromCloud(false);
+  }
+});
+
+setInterval(() => {
+  if (currentUser && supabaseClient && navigator.onLine) {
+    pullFromCloud(false);
+  }
+}, 15000);
 
 // ==========================================
 // 2. THEME ENGINE & WORKOUT DATABASE
@@ -2423,7 +2440,7 @@ function openPresetModal(category) {
   const varObj = ex.variations.find(v => v.value === variationValue) || ex.variations[0];
 
   activePresetModalData = { category, variationValue };
-  document.getElementById('presetModalTitle').textContent = `⚙ Edit Preset: ${ex.title} (${varObj.label})`;
+  document.getElementById('presetModalTitle').textContent = `⚙️ Edit Preset: ${ex.title} (${varObj.label})`;
 
   const stored = getPreset(category, variationValue);
   const sets = (stored && stored.length) ? stored : varObj.defaultSets;
@@ -2821,7 +2838,7 @@ function applyVariation(category, prefix, variation, fillRows=true) {
   if (prev) {
     const str = formatPreset(sourceSets);
     prev.style.display = str ? 'inline-flex' : 'none';
-    prev.textContent = '⏮️️ ' + sourceLabel + ': ' + str;
+    prev.textContent = '⏮️ ' + sourceLabel + ': ' + str;
   }
 }
 
@@ -3790,7 +3807,7 @@ function restoreAllHiddenExercises() {
   rebuildWorkoutDatabase();
   renderAll();
   switchDayView('1');
-  showToast('♻️️ All exercises & default days restored!', 'success');
+  showToast('♻️ All exercises & default days restored!', 'success');
 }
 
 function showCelebration() {
