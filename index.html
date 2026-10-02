@@ -120,7 +120,6 @@
     .sched-dot { font-size: 14px; }
     .sched-label { font-size: 11px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; text-align: center; }
 
-    /* Pill-style Day Bar */
     .day-nav-wrapper {
       display: flex;
       align-items: center;
@@ -761,7 +760,7 @@
   <button class="bottom-tab" data-tab="nutrition"><span class="bottom-tab-icon">🥗</span><span>Nutrition</span></button>
   <button class="bottom-tab" data-tab="analytics"><span class="bottom-tab-icon">📊</span><span>Analytics</span></button>
   <button class="bottom-tab" data-tab="tools"><span class="bottom-tab-icon">🧮</span><span>Tools</span></button>
-  <button class="bottom-tab" data-tab="settings"><span class="bottom-tab-icon">⚙️</span><span>Settings</span></button>
+  <button class="bottom-tab" data-tab="settings"><span class="bottom-tab-icon">⚙️️</span><span>Settings</span></button>
 </nav>
 
 <div class="rest-modal" id="restModal">
@@ -794,7 +793,7 @@
 <div class="modal-overlay" id="addDayModalOverlay" onclick="if(event.target===this) closeAddDayModal()">
   <div class="modal-content" style="max-width: 480px;">
     <div class="modal-header">
-      <h2>🏋️ Add New Workout Day</h2>
+      <h2>🏋️️ Add New Workout Day</h2>
       <button class="btn-xs" onclick="closeAddDayModal()">✕</button>
     </div>
     <form id="addDayForm" onsubmit="handleSaveCustomDay(event)" autocomplete="off" style="display: flex; flex-direction: column; gap: 14px;">
@@ -1335,7 +1334,7 @@ async function pullFromCloud(showIndicator = false) {
       // Extract raw local storage backup first to guarantee zero loss
       if (data.local_storage_backup && typeof data.local_storage_backup === 'object') {
         for (const k in data.local_storage_backup) {
-          if (k === 'iron_active_day') continue; // Never jump user away from current screen
+          if (k === 'iron_active_day') continue;
           setL(k, data.local_storage_backup[k]);
         }
         updated = true;
@@ -1495,7 +1494,7 @@ setInterval(() => {
   if (currentUser && supabaseClient && navigator.onLine) {
     pullFromCloud(false);
   }
-}, 5000);
+}, 5000); // 5-second automatic heartbeat pull
 
 // ==========================================
 // 2. THEME ENGINE & WORKOUT DATABASE
@@ -1606,7 +1605,7 @@ const WORKOUT_BASE = {
           V('db','DB Lateral Raise','Standing, 30° scapular plane','Pulley at wrist height. Raise in scapular plane. 🔥 Dropset on Set 3.',[[8,15,2,'Working'],[8,15,1,'Working'],[5,12,0,'Drop Set']])
         ])
       ]},
-      { title: 'Biceps', tag: 'd1_tag_biceps', color: 'green', exercises: [
+      { title: 'Arms', tag: 'd1_tag_arms', color: 'green', exercises: [
         E('d1_bicepmid','d1_bm','Biceps Mid-Range / Peak','Biceps Short Head','2 × 8–12 | Rest 60–90s | RIR 1–2',75,2,[
           V('cable_straight','Cable Straight Bar','Cable low pulley','Wrists straight; no momentum.',[[35,10,2,'Working'],[35,8,1,'Working']]),
           V('preacher','Machine / Preacher Curl','Upper arms flat on pad','Upper arms flat on pad / elbows pinned. Wrists straight; no momentum.',[[30,10,2,'Working'],[30,8,1,'Working']]),
@@ -1718,13 +1717,6 @@ const WORKOUT_BASE = {
 
 let WORKOUT = JSON.parse(JSON.stringify(WORKOUT_BASE));
 let FLAT_EXERCISES = [];
-
-// Clean legacy "Arms" references in section ordering
-let sectionOrdersInit = getJ('iron_section_orders', {});
-if (sectionOrdersInit['1']) {
-  sectionOrdersInit['1'] = sectionOrdersInit['1'].map(t => t === 'Arms' ? 'Biceps' : t);
-  setJ('iron_section_orders', sectionOrdersInit);
-}
 
 // ==========================================
 // 3. EDITABLE WEEKLY MICROCYCLE LOGIC
@@ -2340,7 +2332,7 @@ function handleSaveNewVariation(e) {
   const newVarObj = {
     value,
     label,
-    setup: setup ? '⚙️️ Setup: ' + setup : '',
+    setup: setup ? '⚙️ Setup: ' + setup : '',
     cue: cue ? '💡 ' + cue : '',
     defaultSets: [[20, 10, 2, 'Working'], [20, 10, 1, 'Working']]
   };
@@ -2716,7 +2708,7 @@ function renderExerciseCard(ex, idx) {
     <div class="ex-meta-info">
       <div class="info-row">
         <span class="info-pill setup" id="${ex.prefix}SetupBadge">${activeVarObj.setup}</span>
-        <span class="info-pill prev" id="${ex.prefix}PrevBadge">⏮️️ Preset: ${formatPreset(sets)}</span>
+        <span class="info-pill prev" id="${ex.prefix}PrevBadge">⏮️ Preset: ${formatPreset(sets)}</span>
       </div>
       <div class="info-row">
         <span class="info-pill cue" id="${ex.prefix}CueBadge">${activeVarObj.cue}</span>
@@ -2853,7 +2845,7 @@ function addSetRow(tableId, prefix, rest, update=true) {
   if (!table) return;
   const tbody = table.querySelector('tbody');
   const n = tbody.children.length + 1;
-  const tr = document.createElement('tr');
+  tr = document.createElement('tr');
   tr.innerHTML = `<td class="set-num-cell">${n}</td>
     <td><div class="stepper"><button class="stepper-btn" onclick="stepValue('${prefix}_w_${n}', -2.5)">−</button><input type="number" class="input-field set-weight" id="${prefix}_w_${n}" placeholder="kg" oninput="checkStartWorkoutTimer()"><button class="stepper-btn" onclick="stepValue('${prefix}_w_${n}', 2.5)">+</button></div></td>
     <td><div class="stepper"><button class="stepper-btn" onclick="stepValue('${prefix}_r_${n}', -1)">−</button><input type="number" class="input-field set-reps" id="${prefix}_r_${n}" placeholder="reps" oninput="checkStartWorkoutTimer()"><button class="stepper-btn" onclick="stepValue('${prefix}_r_${n}', 1)">+</button></div></td>
@@ -2914,6 +2906,7 @@ function toggleProfileTab() {
   }
 }
 
+// Fixed switchDayView: preserves ongoing workout state unless explicit navigation occurred
 function switchDayView(day, resetSession = false) {
   activeDay = String(day);
   setL('iron_active_day', activeDay);
@@ -3492,7 +3485,7 @@ function renderHistory() {
     div.innerHTML = `
       <div class="log-item-header" onclick="toggleLogAccordion(this)">
         <span>📅 ${h.date} • Day ${h.day}: ${h.dayTitle}</span>
-        <span>⏱️️ ${h.duration} ▾</span>
+        <span>⏱️ ${h.duration} ▾</span>
       </div>
       <div class="log-item-body">
         <div style="font-size: 11.5px; color: var(--muted); margin-top: 6px;">Body Weight: ${h.bodyWeight}kg | Energy: ${h.energy}/10 | Sleep: ${h.sleep}hrs</div>
