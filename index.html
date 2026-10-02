@@ -120,7 +120,6 @@
     .sched-dot { font-size: 14px; }
     .sched-label { font-size: 11px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; text-align: center; }
 
-    /* Pill-style Day Bar */
     .day-nav-wrapper {
       display: flex;
       align-items: center;
@@ -794,7 +793,7 @@
 <div class="modal-overlay" id="addDayModalOverlay" onclick="if(event.target===this) closeAddDayModal()">
   <div class="modal-content" style="max-width: 480px;">
     <div class="modal-header">
-      <h2>🏋️ Add New Workout Day</h2>
+      <h2>🏋️️ Add New Workout Day</h2>
       <button class="btn-xs" onclick="closeAddDayModal()">✕</button>
     </div>
     <form id="addDayForm" onsubmit="handleSaveCustomDay(event)" autocomplete="off" style="display: flex; flex-direction: column; gap: 14px;">
@@ -975,7 +974,7 @@
       <div id="historyListContainer" style="display:flex; flex-direction:column; gap:12px; margin-top:6px;"></div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-danger" onclick="clearWorkoutHistory()">🗑️ Clear Logs</button>
+      <button class="btn btn-danger" onclick="clearWorkoutHistory()">🗑️️ Clear Logs</button>
       <button class="btn btn-info" onclick="exportHistoryCSV()">📥 Export CSV</button>
       <button class="btn btn-primary" onclick="exportHistoryJSON()">📦 Export JSON</button>
     </div>
@@ -2745,7 +2744,7 @@ function renderExerciseCard(ex, idx) {
       <button class="btn-xs" onclick="reorderExercise('${ex.category}', -1)">⬆ Up</button>
       <button class="btn-xs" onclick="reorderExercise('${ex.category}', 1)">⬇️ Down</button>
       ${supBtn}
-      <button class="btn-xs" style="color:#fca5a5; border-color:rgba(239,68,68,0.35);" onclick="removeExercise('${ex.category}')">🗑️ Remove Exercise</button>
+      <button class="btn-xs" style="color:#fca5a5; border-color:rgba(239,68,68,0.35);" onclick="removeExercise('${ex.category}')">🗑️️ Remove Exercise</button>
     </div>
   </div>`;
 }
@@ -2765,7 +2764,7 @@ function renderDay(dayNum) {
           <button class="btn-xs" style="color:var(--coral); border-color:rgba(255,77,77,0.35);" title="Remove Section" onclick="removeSection('${dayNum}', ${sidx})">🗑️</button>
         </div>
       </div>`;
-      if (sec.exercises.length === 0) {
+      if (!sec.exercises || sec.exercises.length === 0) {
         html += `<div style="padding:16px; text-align:center; color:var(--muted); font-size:12.5px; background:rgba(15,23,42,0.4); border-radius:var(--radius-sm); border:1px dashed var(--card-border);">No exercises yet in this section. Tap 'Add Exercise' below!</div>`;
       } else {
         sec.exercises.forEach((ex, eidx) => { html += renderExerciseCard(ex, eidx+1); });
@@ -2863,7 +2862,7 @@ function addSetRow(tableId, prefix, rest, update=true) {
   if (!table) return;
   const tbody = table.querySelector('tbody');
   const n = tbody.children.length + 1;
-  const tr = document.createElement('tr');
+  tr = document.createElement('tr');
   tr.innerHTML = `<td class="set-num-cell">${n}</td>
     <td><div class="stepper"><button class="stepper-btn" onclick="stepValue('${prefix}_w_${n}', -2.5)">−</button><input type="number" class="input-field set-weight" id="${prefix}_w_${n}" placeholder="kg" oninput="checkStartWorkoutTimer()"><button class="stepper-btn" onclick="stepValue('${prefix}_w_${n}', 2.5)">+</button></div></td>
     <td><div class="stepper"><button class="stepper-btn" onclick="stepValue('${prefix}_r_${n}', -1)">−</button><input type="number" class="input-field set-reps" id="${prefix}_r_${n}" placeholder="reps" oninput="checkStartWorkoutTimer()"><button class="stepper-btn" onclick="stepValue('${prefix}_r_${n}', 1)">+</button></div></td>
@@ -2964,10 +2963,12 @@ function checkStartWorkoutTimer() {
 function updateSectionWorkingSetCounts() {
   Object.values(WORKOUT).forEach(day => day.sections.forEach(sec => {
     let count = 0;
-    sec.exercises.forEach(ex => {
-      const table = document.getElementById('table_' + ex.prefix);
-      if (table) count += table.querySelectorAll('tbody tr').length;
-    });
+    if (sec.exercises) {
+      sec.exercises.forEach(ex => {
+        const table = document.getElementById('table_' + ex.prefix);
+        if (table) count += table.querySelectorAll('tbody tr').length;
+      });
+    }
     const tag = document.getElementById(sec.tag);
     if (tag) {
       const counter = tag.querySelector('.set-count');
