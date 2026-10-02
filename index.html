@@ -2152,10 +2152,9 @@ function rebuildWorkoutDatabase() {
             return idxA - idxB;
           });
         }
-      });
-
-      const orderKey = `iron_order_${dNum}_${sIdx}`;
-      const savedOrder = getJ(orderKey);
+      })
+      const orderKey = `iron_order_${dNum}_${sec.title.replace(/\s+/g, '_')}`;
+      const savedOrder = getJ(orderKey) || getJ(`iron_order_${dNum}_${sIdx}`);
       if (savedOrder && Array.isArray(savedOrder)) {
         sec.exercises.sort((a, b) => {
           const idxA = savedOrder.indexOf(a.category);
@@ -2166,6 +2165,7 @@ function rebuildWorkoutDatabase() {
           return idxA - idxB;
         });
       }
+
     });
 
     if (sectionOrders[dNum] && Array.isArray(sectionOrders[dNum])) {
