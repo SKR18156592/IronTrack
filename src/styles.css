@@ -2243,6 +2243,36 @@ input[type='range']::-webkit-slider-runnable-track {
 .ex-prev:empty {
   display: none;
 }
+.ex-suggest {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 2px 0 8px;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--card-border);
+  background: rgba(10, 14, 24, 0.6);
+  font-size: 13px;
+}
+.ex-suggest[hidden] {
+  display: none;
+}
+.ex-suggest[data-kind='up'] strong {
+  color: var(--success);
+}
+.ex-suggest[data-kind='down'] strong {
+  color: var(--warning);
+}
+.ex-suggest-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.ex-suggest-why {
+  font-size: 12px;
+  color: var(--muted);
+}
 
 /* ---------- Analytics: recovery figure, legend, empty states ---------- */
 .body-figures {

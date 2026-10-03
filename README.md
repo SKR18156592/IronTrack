@@ -12,7 +12,9 @@ at the gym, and track progress over time. Your data syncs across devices through
 - **Session logging:** weight, reps, set tag, and RIR per set, with a rest timer (beeps and
   haptics), session timer, notes, and a progress bar. One exercise is open at a time and the next
   opens when you finish it. Each set shows what you did last time on the same equipment, and
-  beating it earns a "↑" or "PR" badge. An in-progress session is saved on the
+  beating it earns a "↑" or "PR" badge. Each exercise also suggests today's weight from last time (double
+  progression): once every working set reaches the top of the rep range, add about 2.5%; inside the
+  range, add a rep; most sets short of the range at failure, drop about 5%. "Use" fills it in. An in-progress session is saved on the
   device, so it survives a reload or the OS closing the app.
 - **History & analytics:** session log, per-exercise history, estimated 1RM trends, volume per
   muscle group, a muscle recovery heatmap, and a shareable stats card.
