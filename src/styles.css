@@ -2145,28 +2145,35 @@ input[type='range']::-webkit-slider-runnable-track {
   font-weight: 800;
   color: var(--muted);
 }
-.body-base > * {
+.body-base {
   fill: rgba(148, 163, 184, 0.12);
-  stroke: rgba(148, 163, 184, 0.28);
+  stroke: rgba(148, 163, 184, 0.35);
   stroke-width: 1;
+  stroke-linejoin: round;
 }
-.muscle > * {
+.body-detail {
+  fill: rgba(148, 163, 184, 0.1);
+  stroke: rgba(148, 163, 184, 0.25);
+  stroke-width: 0.6;
+}
+.muscle {
   stroke: rgba(5, 6, 8, 0.6);
-  stroke-width: 1;
+  stroke-width: 0.8;
+  stroke-linejoin: round;
   transition: fill 0.4s ease;
 }
-.muscle[data-status='none'] > * {
+.muscle[data-status='none'] {
   fill: rgba(148, 163, 184, 0.28);
 }
-.muscle[data-status='fresh'] > * {
+.muscle[data-status='fresh'] {
   fill: var(--success);
   fill-opacity: 0.8;
 }
-.muscle[data-status='recovering'] > * {
+.muscle[data-status='recovering'] {
   fill: var(--warning);
   fill-opacity: 0.85;
 }
-.muscle[data-status='fatigued'] > * {
+.muscle[data-status='fatigued'] {
   fill: var(--danger);
   fill-opacity: 0.9;
 }
