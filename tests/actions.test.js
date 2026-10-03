@@ -26,6 +26,7 @@ describe('actions in the markup', () => {
       import('../src/render/exercises.js'),
       import('../src/render/history.js'),
       import('../src/render/nutrition.js'),
+      import('../src/render/nutrition-log.js'),
       import('../src/render/profile.js'),
       import('../src/render/schedule.js'),
       import('../src/render/share-card.js'),

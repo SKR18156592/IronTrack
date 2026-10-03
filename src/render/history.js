@@ -3,6 +3,7 @@ import { args } from '../actions.js';
 import { sessionKey } from '../history-merge.js';
 import { WORKOUT } from '../model.js';
 import { HISTORY_KEY, HISTORY_TOMBSTONES_KEY, clearHistory, getHistory, setHistory } from '../history-store.js';
+import { NUTRITION_LOG_KEY, getNutritionLog, setNutritionLog } from '../nutrition-log.js';
 import { esc, getJ, setJ } from '../storage.js';
 import { currentUser, pushToCloud, supabaseClient } from '../sync.js';
 import { refreshAllUI, showTab, showToast } from '../ui.js';
@@ -405,7 +406,9 @@ export function exportFullBackup() {
       backup[key] = localStorage.getItem(key);
     }
   }
-  backup[HISTORY_KEY] = JSON.stringify(getHistory()); // stored as a string, like the other keys
+  // Stored as strings, like the other keys.
+  backup[HISTORY_KEY] = JSON.stringify(getHistory());
+  backup[NUTRITION_LOG_KEY] = JSON.stringify(getNutritionLog());
   const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -427,9 +430,9 @@ export function importBackupFile(input) {
         setHistory(data);
       } else if (typeof data === 'object') {
         Object.keys(data).forEach(key => {
-          if (key === HISTORY_KEY) {
+          if (key === HISTORY_KEY || key === NUTRITION_LOG_KEY) {
             const list = typeof data[key] === 'string' ? JSON.parse(data[key]) : data[key];
-            if (Array.isArray(list)) setHistory(list);
+            if (Array.isArray(list)) (key === HISTORY_KEY ? setHistory : setNutritionLog)(list);
           } else if (key.startsWith('iron_')) {
             localStorage.setItem(key, typeof data[key] === 'string' ? data[key] : JSON.stringify(data[key]));
           }

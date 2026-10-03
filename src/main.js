@@ -6,6 +6,7 @@ import { compute1RM, computePlates, computeTDEE, loadSettings } from './render/t
 import { applyVariation, renderAll, switchDayView } from './render/workout.js';
 import { restoreSessionDraft, watchSessionForm } from './session-draft.js';
 import { getHistory, loadHistory } from './history-store.js';
+import { loadNutritionLog } from './nutrition-log.js';
 import { getL, onStorageFailure } from './storage.js';
 import { currentUser, pullFromCloud, startSessionSync, supabaseClient } from './sync.js';
 import { showTab, showToast, unlockAudio, updateOnlineStatus } from './ui.js';
@@ -17,6 +18,7 @@ import * as analytics from './render/analytics.js';
 import * as exercises from './render/exercises.js';
 import * as history from './render/history.js';
 import * as nutrition from './render/nutrition.js';
+import * as nutritionLog from './render/nutrition-log.js';
 import * as profile from './render/profile.js';
 import * as schedule from './render/schedule.js';
 import * as shareCard from './render/share-card.js';
@@ -26,7 +28,20 @@ import * as workout from './render/workout.js';
 onStorageFailure(message => showToast(message, 'error'));
 
 // The markup and rendered templates name these modules' functions in data-on-* attributes.
-registerActions([ui, sync, analytics, exercises, history, nutrition, profile, schedule, shareCard, tools, workout]);
+registerActions([
+  ui,
+  sync,
+  analytics,
+  exercises,
+  history,
+  nutrition,
+  nutritionLog,
+  profile,
+  schedule,
+  shareCard,
+  tools,
+  workout
+]);
 listenForActions();
 
 window.addEventListener('online', updateOnlineStatus);
@@ -56,7 +71,7 @@ setInterval(() => {
 }, 30000);
 
 async function init() {
-  await loadHistory();
+  await Promise.all([loadHistory(), loadNutritionLog()]);
   hydrateIcons();
   loadSettings();
   loadProfileData();

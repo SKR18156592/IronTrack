@@ -16,11 +16,16 @@ import {
   scalePlan,
   workoutDaysPerWeek
 } from '../nutrition-targets.js';
+import { args } from '../actions.js';
 import { esc, setL } from '../storage.js';
 import { pushToCloud } from '../sync.js';
+import { renderNutritionLog } from './nutrition-log.js';
 
 // null: follow today's schedule. Set when the user picks a plan, until the app restarts.
 let chosenDietMode = null;
+let shownMeals = []; // the plan as last rendered, for logging a meal from it
+
+export const plannedMeals = () => shownMeals;
 
 export function setDietMode(mode) {
   chosenDietMode = mode;
@@ -81,11 +86,12 @@ function renderTiles({ kcal: k, protein, carbs, fat }) {
 function renderMeals(meals, heading) {
   const container = document.getElementById('nutritionMealsContainer');
   if (!container) return;
+  shownMeals = meals;
   const total = planNutrients(meals, FOODS);
   container.innerHTML =
     `<p class="nutri-plan-heading">${heading} · ≈ ${kcal(total.kcal)} kcal · ${Math.round(total.p)} g protein</p>` +
     meals
-      .map(meal => {
+      .map((meal, index) => {
         const sum = mealNutrients(meal, FOODS);
         const cards = meal.items
           .map(([id, amount]) => {
@@ -114,6 +120,7 @@ function renderMeals(meals, heading) {
           <div class="meal-header-row">
             <div class="meal-title">${esc(meal.title)}</div>
             <div class="meal-badge-summary">${kcal(sum.kcal)} kcal • ${round1(sum.p)}g Protein</div>
+            <button class="btn btn-secondary btn-sm" data-on-click="logPlannedMeal" data-args="${args(index)}">Log this meal</button>
           </div>
           <div class="food-grid">${cards}</div>
         </div>`;
@@ -122,6 +129,7 @@ function renderMeals(meals, heading) {
 }
 
 export function renderNutritionPlan() {
+  renderNutritionLog();
   const microcycle = getMicrocycle();
   const todayType = isWorkoutDay(microcycle) ? 'workout' : 'rest';
   const mode = chosenDietMode || todayType;
