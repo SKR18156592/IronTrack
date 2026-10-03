@@ -1,6 +1,5 @@
-// @vitest-environment happy-dom
 import { describe, expect, it } from 'vitest';
-import { mirroredOutline } from '../src/render/analytics.js';
+import { mirroredOutline } from '../src/render/body-figure.js';
 
 describe('mirroredOutline', () => {
   it('traces the half outline, then its mirror image back to the start', () => {
