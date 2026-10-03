@@ -5,6 +5,7 @@ import { esc, getJ, setJ } from '../storage.js';
 import { currentUser, pushToCloud, supabaseClient } from '../sync.js';
 import { refreshAllUI, showToast } from '../ui.js';
 import { icon } from '../icons.js';
+import { activeDay } from './workout.js';
 
 export function populateHistoryDayFilter() {
   const select = document.getElementById('historyDayFilter');
@@ -80,22 +81,23 @@ export function populateHistoryExerciseDropdown() {
 export function populateCompoundSelect() {
   const select = document.getElementById('compoundSelect');
   if (!select) return;
-  const history = getHistory();
-  const currentVal = select.value;
-  const exerciseSet = new Set();
+  // Lifts with history, by category, most recently logged first (labelled with their latest name).
+  const names = new Map();
+  getHistory().forEach(h => (h.exercises || []).forEach(ex => {
+    if (ex.category && !names.has(ex.category)) names.set(ex.category, ex.name || ex.category);
+  }));
+  const current = select.value;
+  select.innerHTML = [...names].map(([cat, name]) => `<option value="${esc(cat)}">${esc(name)}</option>`).join('')
+    || '<option value="">No lifts logged yet</option>';
+  select.value = names.has(current) ? current : defaultTrendLift(names);
+}
 
-  history.forEach(h => {
-    (h.exercises || []).forEach(ex => {
-      if (ex.name) exerciseSet.add(ex.name);
-    });
-  });
-
-  let html = `<option value="">All Top Lifts</option>`;
-  exerciseSet.forEach(name => {
-    html += `<option value="${esc(name)}">${esc(name)}</option>`;
-  });
-  select.innerHTML = html;
-  select.value = currentVal;
+// The first compound lift of today's workout that has history, else the most recently logged lift.
+function defaultTrendLift(names) {
+  const day = WORKOUT[activeDay];
+  const exercises = day ? day.sections.flatMap(sec => sec.exercises || []) : [];
+  const compound = exercises.find(ex => ex.exerciseType === 'compound' && names.has(ex.category));
+  return compound ? compound.category : (names.keys().next().value || '');
 }
 
 export function renderHistoryForSelectedExercise(exerciseName) {
@@ -197,7 +199,9 @@ export function renderHistory() {
   });
 
   if (!filteredHistory.length) {
-    container.innerHTML = `<p style="color:var(--muted); text-align:center; padding:24px;">No matching workout sessions found.</p>`;
+    container.innerHTML = history.length
+      ? `<p style="color:var(--muted); text-align:center; padding:24px;">No sessions for this day yet.</p>`
+      : `<div class="chart-empty"><p>No workouts yet. Finish today's session and it will show up here.</p><button class="btn btn-secondary" onclick="closeHistoryModal(); showTab('workout')">Go to today's workout</button></div>`;
     return;
   }
 

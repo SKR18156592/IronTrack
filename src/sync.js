@@ -33,8 +33,8 @@ export function setSyncContext({ client, user }) {
 
 export function toggleAuthMode() {
   isSignUpMode = !isSignUpMode;
-  document.getElementById('authTitle').textContent = isSignUpMode ? 'Create Account' : 'Sign In';
-  document.getElementById('authSubmitBtn').textContent = isSignUpMode ? 'Sign Up' : 'Sign In';
+  document.getElementById('authTitle').textContent = isSignUpMode ? 'Create an account' : 'Sign in to sync';
+  document.getElementById('authSubmitBtn').textContent = isSignUpMode ? 'Create account' : 'Sign in';
   document.getElementById('authToggleText').textContent = isSignUpMode ? 'Already have an account?' : 'Need an account?';
 }
 
@@ -65,7 +65,7 @@ export async function handleAuthSubmit(e) {
   }
 
   btn.disabled = false;
-  btn.textContent = isSignUpMode ? 'Sign Up' : 'Sign In';
+  btn.textContent = isSignUpMode ? 'Create account' : 'Sign in';
 
   if (res.error) {
     msg.textContent = res.error.message;
@@ -107,23 +107,39 @@ export async function handleSignOut() {
   currentUser = null;
   // The next person to sign in on this device must not inherit this account's data.
   clearLocalUserData();
+  localStorage.removeItem(AUTH_SKIPPED_KEY);
   await flushHistory(); // the reload must not cut off the history wipe
   window.location.reload();
+}
+
+// Signing in is optional: the app works fully on this device without an account.
+const AUTH_SKIPPED_KEY = 'irontrack_auth_skipped'; // '1' once the user chose to continue without an account
+
+export function skipSignIn() {
+  setL(AUTH_SKIPPED_KEY, '1');
+  document.getElementById('authOverlay').classList.remove('active');
+}
+
+export function openSignIn() {
+  document.getElementById('authOverlay').classList.add('active');
+  document.getElementById('authEmail')?.focus();
 }
 
 export function updateUserSessionUI(user) {
   const overlay = document.getElementById('authOverlay');
   const userBar = document.getElementById('userBar');
+  userBar.style.display = 'flex'; // the profile stays reachable when signed out
+  document.getElementById('accountSignedIn').style.display = user ? 'flex' : 'none';
+  document.getElementById('accountSignedOut').style.display = user ? 'none' : 'flex';
+  document.getElementById('manualSyncBtn').style.display = user ? '' : 'none';
   if (user) {
     overlay.classList.remove('active');
-    userBar.style.display = 'flex';
     const profileEmail = document.getElementById('profileEmailField');
     if (profileEmail) profileEmail.value = user.email;
     const syncBadge = document.getElementById('profileSyncBadge');
     if (syncBadge) syncBadge.textContent = 'Cloud Synced';
   } else {
-    overlay.classList.add('active');
-    userBar.style.display = 'none';
+    overlay.classList.toggle('active', getL(AUTH_SKIPPED_KEY, '') !== '1');
   }
   updateSyncIndicator();
 }
@@ -452,7 +468,7 @@ export async function uploadSnapshot() {
 
 // Resumes a saved session (if any) and starts syncing.
 export function startSessionSync() {
-  if (!supabaseClient) return;
+  if (!supabaseClient) { updateUserSessionUI(null); document.getElementById('authOverlay').classList.remove('active'); return; }
   supabaseClient.auth.getSession().then(({ data: { session } }) => {
     if (session && session.user) {
       currentUser = session.user;

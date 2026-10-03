@@ -8,14 +8,16 @@ at the gym, and track progress over time. Your data syncs across devices through
 - **Workout planner:** an editable weekly microcycle, custom days and sections, custom exercises
   and equipment variations, saved set presets, supersets, and reordering throughout.
 - **Session logging:** weight, reps, set tag, and RIR per set, with a rest timer (beeps and
-  haptics), session timer, notes, and a progress bar. An in-progress session is saved on the
+  haptics), session timer, notes, and a progress bar. One exercise is open at a time and the next
+  opens when you finish it. Each set shows what you did last time on the same equipment, and
+  beating it earns a "↑" or "PR" badge. An in-progress session is saved on the
   device, so it survives a reload or the OS closing the app.
 - **History & analytics:** session log, per-exercise history, estimated 1RM trends, volume per
   muscle group, a muscle recovery heatmap, and a shareable stats card.
 - **Tools:** TDEE, 1RM, and plate calculators, plus a rest-day and workout-day nutrition plan.
 - **Offline-first:** everything works without a connection. Changes sync when you're back online.
-- **Multi-device sync:** sign in with email and password, and changes reach your other devices via
-  Supabase Realtime.
+- **Multi-device sync (optional):** sign in with email and password, and changes reach your other
+  devices via Supabase Realtime. Without an account, everything stays on the device.
 - **Backup:** export history as JSON or CSV, or export and import a full backup.
 
 ## Tech stack
@@ -41,6 +43,7 @@ irontrack-pwa/
 │   ├── session-draft.js       # In-progress workout draft (survives reloads)
 │   ├── history-store.js       # Workout history in IndexedDB, with an in-memory copy
 │   ├── session-sync.js        # Syncs workout history as one workout_sessions row per session
+│   ├── performance.js         # Last time's numbers and PRs per exercise and equipment
 │   ├── model.js               # Workout split built from the catalog + local customizations
 │   ├── storage.js             # localStorage helpers, escaping
 │   ├── ui.js                  # Toasts, tabs, theme, sounds, full UI refresh

@@ -91,9 +91,11 @@
     }
     .app-shell { width: 100%; max-width: 960px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
 
-    .app-topbar { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; gap: 12px; width: 100%; flex-wrap: wrap; }
+    .app-topbar { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; gap: 12px; width: 100%; }
+    .app-topbar > div:first-child { min-width: 0; }
+    .home-summary { font-size: 12.5px; font-weight: 600; color: var(--muted); margin-top: 2px; }
     .brand-logo { font-weight: 800; font-size: 22px; letter-spacing: -0.5px; display: flex; align-items: center; gap: 10px; white-space: nowrap; flex-shrink: 0; }
-    .logo-bolt { color: var(--accent); text-shadow: 0 0 20px var(--accent-glow); font-size: 24px; animation: pulseBolt 3s infinite ease-in-out; }
+    .logo-bolt { color: var(--accent); font-size: 24px; animation: pulseBolt 3s infinite ease-in-out; }
     @keyframes pulseBolt { 0%, 100% { transform: scale(1); text-shadow: 0 0 15px var(--accent-glow); } 50% { transform: scale(1.08); text-shadow: 0 0 25px var(--accent-glow); } }
 
     .user-auth-bar { display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; justify-content: flex-end; flex-shrink: 0; }
@@ -101,9 +103,9 @@
     .toast-container { position: fixed; bottom: 104px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; gap: 8px; z-index: 1000; pointer-events: none; width: 90%; max-width: 380px; align-items: center; }
     .toast { background: var(--card-solid); border: 1px solid var(--card-border); color: var(--text); padding: 14px 20px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 700; box-shadow: 0 16px 40px rgba(0,0,0,0.6); opacity: 0; transform: translateY(20px); transition: all .35s cubic-bezier(0.16, 1, 0.3, 1); pointer-events: auto; backdrop-filter: blur(16px); text-align: center; width: 100%; }
     .toast.active { opacity: 1; transform: translateY(0); }
-    .toast.success { border-color: var(--lime); color: #86efac; box-shadow: 0 0 24px var(--lime-glow); }
-    .toast.error { border-color: var(--coral); color: #fca5a5; box-shadow: 0 0 24px var(--coral-glow); }
-    .toast.info { border-color: var(--accent); color: var(--accent); box-shadow: 0 0 24px var(--accent-glow); }
+    .toast.success { border-color: var(--lime); color: #86efac; }
+    .toast.error { border-color: var(--coral); color: #fca5a5; }
+    .toast.info { border-color: var(--accent); color: var(--accent); }
     .app-views { position: relative; }
     .app-view { display: none; flex-direction: column; gap: 20px; }
     .app-view.active { display: flex; animation: viewIn .4s cubic-bezier(0.16, 1, 0.3, 1); }
@@ -119,12 +121,12 @@
     }
 
     .schedule-card { padding: 18px 20px; display: flex; flex-direction: column; gap: 14px; }
-    .schedule-header { display: flex; justify-content: space-between; align-items: center; font-size: 11.5px; text-transform: uppercase; letter-spacing: 1px; font-weight: 800; color: var(--muted); flex-wrap: wrap; gap: 6px; }
+    .schedule-header { display: flex; justify-content: space-between; align-items: center; font-size: 11.5px; font-weight: 800; color: var(--muted); flex-wrap: wrap; gap: 6px; }
     .schedule-ribbon { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; }
     .sched-item { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; padding: 12px 4px; border-radius: var(--radius-sm); background: rgba(30, 41, 59, 0.35); border: 1px solid rgba(255,255,255,0.04); cursor: pointer; transition: all .25s ease; }
     .sched-item:hover { transform: translateY(-3px); background: rgba(51, 65, 85, 0.6); border-color: rgba(255,255,255,0.12); }
-    .sched-item.today { border-color: var(--accent); box-shadow: 0 0 18px var(--accent-glow); background: var(--accent-dim); }
-    .sched-day-name { font-size: 10.5px; font-weight: 700; color: var(--muted); text-transform: uppercase; }
+    .sched-item.today { border-color: var(--accent); background: var(--accent-dim); }
+    .sched-day-name { font-size: 10.5px; font-weight: 700; color: var(--muted); }
     .sched-label { font-size: 11px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; text-align: center; }
 
     .day-nav-wrapper {
@@ -158,7 +160,7 @@
       background: var(--accent-dim);
       border-color: var(--accent);
       color: #fff;
-      box-shadow: 0 0 18px var(--accent-glow);
+
     }
     .nav-btn-add {
       background: var(--accent-dim);
@@ -179,7 +181,7 @@
     .nav-btn-add:hover {
       background: var(--accent-dim);
       border-color: var(--accent);
-      box-shadow: 0 0 16px var(--accent-glow);
+
     }
 
     .header-card { padding: 24px; border-radius: var(--radius-lg); position: relative; overflow: hidden; }
@@ -187,7 +189,7 @@
     .header-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
     .title-group h1 { font-size: 26px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 4px; }
     .title-group p { color: var(--muted); font-size: 14px; }
-    .badge-day { display: inline-block; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .8px; padding: 4px 10px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.12); background: var(--accent-dim); color: var(--accent); }
+    .badge-day { display: inline-block; font-size: 11px; font-weight: 800; padding: 4px 10px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.12); background: var(--accent-dim); color: var(--accent); }
     /* Session bar: timer + progress, pinned while scrolling through the exercises */
     .session-bar {
       position: sticky; top: calc(env(safe-area-inset-top, 0px) + 8px); z-index: 40;
@@ -195,16 +197,16 @@
       padding: 10px 14px; border-radius: var(--radius-md);
       background: var(--card-solid); backdrop-filter: blur(20px);
       border: 1px solid rgba(255,255,255,0.1);
-      box-shadow: 0 8px 30px rgba(0,0,0,0.5), 0 0 20px var(--accent-dim);
+      box-shadow: 0 8px 30px rgba(0,0,0,0.5);
     }
     .session-bar-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-    .session-timer { font-family: 'JetBrains Mono', monospace; font-size: 17px; font-weight: 700; color: var(--accent); white-space: nowrap; text-shadow: 0 0 10px var(--accent-glow); }
+    .session-timer { font-family: 'JetBrains Mono', monospace; font-size: 17px; font-weight: 700; color: var(--accent); white-space: nowrap; }
     .session-progress-text { font-size: 12.5px; font-weight: 700; color: var(--muted); white-space: nowrap; }
     .session-bar .progress-bar-bg { height: 6px; }
 
     /* Weekly microcycle, collapsed to one line of day dots */
     .week-strip { display: block; padding: 12px 16px; }
-    .week-strip > summary { list-style: none; display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); }
+    .week-strip > summary { list-style: none; display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 11px; font-weight: 800; color: var(--muted); }
     .week-strip > summary::-webkit-details-marker { display: none; }
     .week-title { white-space: nowrap; }
     .week-dots { display: flex; gap: 4px; flex: 1; justify-content: center; min-width: 0; }
@@ -230,23 +232,23 @@
     /* Edit mode: plan-restructuring controls only appear after tapping Edit */
     body:not(.edit-mode) .edit-only { display: none !important; }
     .edit-toggle { flex-shrink: 0; }
-    .edit-toggle[aria-pressed="true"] { background: var(--accent); color: #031317; border-color: var(--accent); box-shadow: 0 0 16px var(--accent-glow); }
+    .edit-toggle[aria-pressed="true"] { background: var(--accent); color: #031317; border-color: var(--accent); }
     body.edit-mode .exercise-card { outline: 1px dashed var(--accent-glow); outline-offset: -6px; }
     .equip-tools { display: flex; gap: 8px; flex-wrap: wrap; }
     .title-badges { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
-    .stat-pill { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .6px; }
-    .stat-pill strong { font-family: 'JetBrains Mono', monospace; color: var(--accent); font-size: 17px; text-shadow: 0 0 10px var(--accent-glow); }
+    .stat-pill { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; color: var(--muted); }
+    .stat-pill strong { font-family: 'JetBrains Mono', monospace; color: var(--accent); font-size: 17px; }
     .stat-pill.lime strong { color: var(--text); text-shadow: none; }
     .session-meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; background: rgba(10, 15, 28, 0.55); padding: 16px; border-radius: var(--radius-md); border: 1px solid rgba(255,255,255,0.06); margin-bottom: 16px; }
     .meta-field { display: flex; flex-direction: column; gap: 6px; }
-    .meta-field label { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+    .meta-field label { font-size: 11px; font-weight: 700; color: var(--muted); }
     .meta-field input, .meta-field textarea, .meta-field select { background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 10px 12px; border-radius: var(--radius-sm); font-size: 13.5px; font-weight: 600; outline: none; transition: border-color .2s, box-shadow .2s; width: 100%; font-family: 'Plus Jakarta Sans', sans-serif; resize: none; }
     .meta-field input:focus, .meta-field textarea:focus, .meta-field select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
 
     .progress-wrapper { display: flex; flex-direction: column; gap: 8px; }
     .progress-header { display: flex; justify-content: space-between; font-size: 12.5px; font-weight: 700; color: var(--muted); flex-wrap: wrap; gap: 4px; }
     .progress-bar-bg { height: 8px; background: rgba(15, 23, 42, 0.95); border-radius: 999px; overflow: hidden; border: 1px solid rgba(255,255,255,0.06); }
-    .progress-bar-fill { height: 100%; width: 0%; background: var(--accent); border-radius: 999px; transition: width .5s cubic-bezier(0.16, 1, 0.3, 1); box-shadow: 0 0 14px var(--accent-glow); }
+    .progress-bar-fill { height: 100%; width: 0%; background: var(--accent); border-radius: 999px; transition: width .5s cubic-bezier(0.16, 1, 0.3, 1); }
 
     .day-view { display: none; flex-direction: column; gap: 18px; }
     /* .day-view.active { display: flex; animation: dayIn .35s cubic-bezier(0.16, 1, 0.3, 1); } */
@@ -257,14 +259,15 @@
     
     .category-section { display: flex; flex-direction: column; gap: 14px; position: relative; }
     .category-header-row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
-    .category-tag { font-size: 12.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .8px; padding: 8px 16px; border-radius: var(--radius-sm); border: 1px solid rgba(255,255,255,0.1); width: fit-content; box-shadow: 0 4px 16px rgba(0,0,0,0.3); background: var(--accent-dim); color: var(--accent); }
+    .category-count { font-size: 12.5px; font-weight: 600; color: var(--muted); margin-left: 6px; }
+    .category-tag { font-size: 15px; font-weight: 800; padding: 4px 2px; width: fit-content; color: var(--text); letter-spacing: -0.2px; }
     .section-actions { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
 
     .exercise-card { padding: 22px; border-radius: var(--radius-lg); display: flex; flex-direction: column; gap: 16px; position: relative; }
-    .exercise-card.highlight { border-color: var(--accent-glow); box-shadow: 0 16px 40px rgba(0,0,0,0.45), 0 0 28px var(--accent-glow); }
+    .exercise-card.highlight { border-color: var(--accent-glow); box-shadow: 0 16px 40px rgba(0,0,0,0.45); }
     .ex-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
     .ex-title-row { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; flex-wrap: wrap; }
-    .ex-number { background: var(--accent-dim); color: var(--accent); font-weight: 800; font-size: 12px; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border-radius: 8px; border: 1px solid var(--accent-glow); flex-shrink: 0; box-shadow: 0 0 10px var(--accent-dim); }
+    .ex-number { background: var(--accent-dim); color: var(--accent); font-weight: 800; font-size: 12px; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border-radius: 8px; border: 1px solid var(--accent-glow); flex-shrink: 0; }
     .ex-title { font-size: 18px; font-weight: 800; letter-spacing: -0.3px; }
     .ex-target { font-size: 12px; color: var(--muted); font-weight: 600; }
     .ex-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
@@ -281,7 +284,7 @@
     /* Base table (also used by the preset editor) */
     .sets-table { width: 100%; border-collapse: collapse; }
     .sets-table th, .sets-table td { padding: 6px; text-align: center; vertical-align: middle; }
-    .sets-table th { font-size: 10px; text-transform: uppercase; color: var(--muted); white-space: nowrap; letter-spacing: .5px; font-weight: 700; }
+    .sets-table th { font-size: 10px; color: var(--muted); white-space: nowrap; font-weight: 700; }
     .sets-table th:first-child { text-align: left; }
     /* Workout set rows: a grid per row */
     .exercise-card .sets-table, .exercise-card .sets-table thead, .exercise-card .sets-table tbody { display: block; width: 100%; }
@@ -299,7 +302,7 @@
     .sets-table tr:has(.set-tag option[value="Failure"]:checked) .set-num-btn { color: var(--danger); }
     .sets-table td.set-extra { display: none; grid-column: 2 / -1; gap: 12px; padding-top: 8px; align-items: center; }
     .sets-table tr.expanded td.set-extra { display: flex; }
-    .set-extra label { display: flex; align-items: center; gap: 6px; font-size: 10.5px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; }
+    .set-extra label { display: flex; align-items: center; gap: 6px; font-size: 10.5px; font-weight: 700; color: var(--muted); }
     .set-extra .set-tag { min-width: 104px; }
     .set-extra .set-rir { width: 52px; height: 38px; }
     
@@ -309,7 +312,7 @@
 
     .stepper { display: flex; align-items: center; gap: 3px; justify-content: center; width: 100%; max-width: 190px; margin: 0 auto; }
     .stepper-btn { width: 30px; height: 40px; border: 1px solid var(--card-border); background: rgba(15, 23, 42, 0.9); color: var(--text); border-radius: 8px; font-size: 16px; line-height: 1; font-weight: 700; cursor: pointer; transition: all .2s; display: flex; align-items: center; justify-content: center; user-select: none; flex-shrink: 0; }
-    .stepper-btn:hover { background: var(--accent-dim); color: var(--accent); border-color: var(--accent); box-shadow: 0 0 8px var(--accent-dim); }
+    .stepper-btn:hover { background: var(--accent-dim); color: var(--accent); border-color: var(--accent); }
     .stepper-btn:active { transform: scale(0.92); }
     .stepper .input-field { flex: 1; min-width: 0; width: auto; height: 40px; padding: 4px 2px; font-size: 14px; }
     /* Spinner arrows steal width from small number inputs; the steppers replace them. */
@@ -326,8 +329,8 @@
     .set-tag:focus { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-glow); }
     
     .check-btn { width: 44px; height: 44px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.15); background: rgba(15, 23, 42, 0.95); color: var(--muted); font-size: 16px; font-weight: 700; cursor: pointer; transition: all .25s ease; display: flex; align-items: center; justify-content: center; margin: 0 auto; box-shadow: 0 4px 12px rgba(0,0,0,0.3); font-size: 18px; }
-    .check-btn:hover { background: var(--accent-dim); color: var(--accent); border-color: var(--accent); transform: scale(1.08); box-shadow: 0 0 16px var(--accent-glow); }
-    .check-btn.completed { background: var(--success); color: #052e14; border-color: var(--success); box-shadow: 0 0 14px var(--success-glow); }
+    .check-btn:hover { background: var(--accent-dim); color: var(--accent); border-color: var(--accent); transform: scale(1.08); }
+    .check-btn.completed { background: var(--success); color: #052e14; border-color: var(--success); }
     @keyframes popCheck { 0% { transform: scale(1); } 50% { transform: scale(1.25); } 100% { transform: scale(1); } }
     .ex-actions-bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 
@@ -370,10 +373,10 @@
     .btn-danger:hover { background: rgba(239, 68, 68, 0.25); transform: translateY(-2px); }
     .btn:active, .btn-xs:active, .bottom-tab:active, .check-btn:active { transform: scale(0.96) !important; }
 
-    .rest-modal { position: fixed; bottom: 84px; right: 20px; background: var(--card-solid); border: 1px solid var(--accent-glow); border-radius: var(--radius-md); padding: 16px 22px; display: none; align-items: center; gap: 14px; box-shadow: 0 20px 50px rgba(0,0,0,0.7), 0 0 30px var(--accent-glow); z-index: 95; backdrop-filter: blur(18px); }
+    .rest-modal { position: fixed; bottom: 84px; right: 20px; background: var(--card-solid); border: 1px solid var(--accent-glow); border-radius: var(--radius-md); padding: 16px 22px; display: none; align-items: center; gap: 14px; box-shadow: 0 20px 50px rgba(0,0,0,0.7); z-index: 95; backdrop-filter: blur(18px); }
     .rest-modal.active { display: flex; animation: slideUp .35s cubic-bezier(0.16, 1, 0.3, 1); }
     @keyframes slideUp { from { transform: translateY(24px); opacity: 0; } to { transform: translateY(0); } }
-    .rest-timer-val { font-family: 'JetBrains Mono', monospace; font-size: 24px; font-weight: 800; color: var(--accent); text-shadow: 0 0 14px var(--accent-glow); }
+    .rest-timer-val { font-family: 'JetBrains Mono', monospace; font-size: 24px; font-weight: 800; color: var(--accent); }
 
     .modal-overlay { position: fixed; inset: 0; background: rgba(5, 6, 9, 0.88); backdrop-filter: blur(14px); display: none; align-items: center; justify-content: center; padding: 20px 14px; z-index: 100; overflow-y: auto; animation: fadeIn .25s ease; }
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
@@ -386,7 +389,7 @@
 
     .calc-box, .settings-card, .placeholder-card, .nutrition-card { padding: 20px; display: flex; flex-direction: column; gap: 14px; border-radius: var(--radius-md); }
     .calc-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .calc-result-box { background: rgba(10, 14, 24, 0.85); border: 1px solid rgba(255,255,255,0.1); padding: 16px; border-radius: var(--radius-sm); text-align: center; font-size: 16px; font-weight: 800; color: var(--accent); box-shadow: inset 0 2px 8px rgba(0,0,0,0.4); font-variant-numeric: tabular-nums; text-shadow: 0 0 10px var(--accent-dim); }
+    .calc-result-box { background: rgba(10, 14, 24, 0.85); border: 1px solid rgba(255,255,255,0.1); padding: 16px; border-radius: var(--radius-sm); text-align: center; font-size: 16px; font-weight: 800; color: var(--accent); box-shadow: inset 0 2px 8px rgba(0,0,0,0.4); font-variant-numeric: tabular-nums; }
     .plate-breakdown { font-size: 12.5px; color: #cbd5e1; line-height: 1.6; text-align: center; font-variant-numeric: tabular-nums; }
     .log-item { padding: 0; border-radius: var(--radius-sm); background: rgba(15,23,42,0.65); border: 1px solid rgba(255,255,255,0.08); box-shadow: 0 8px 24px rgba(0,0,0,0.3); overflow: hidden; transition: border-color .2s; }
     .log-item:hover { border-color: var(--accent-glow); }
@@ -407,7 +410,7 @@
     .settings-row input[type=checkbox] { width: 20px; height: 20px; accent-color: var(--accent); cursor: pointer; }
     .range-label { display: flex; justify-content: space-between; width: 100%; font-size: 13px; font-weight: 700; color: var(--muted); }
     input[type=range] { -webkit-appearance: none; width: 100%; height: 8px; background: rgba(255,255,255,0.08); border-radius: 999px; outline: none; }
-    input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 22px; height: 22px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 12px var(--accent-glow); cursor: pointer; margin-top: -7px; transition: transform .15s; }
+    input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 22px; height: 22px; border-radius: 50%; background: var(--accent); cursor: pointer; margin-top: -7px; transition: transform .15s; }
     input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.15); }
     input[type=range]::-webkit-slider-runnable-track { height: 8px; border-radius: 999px; background: linear-gradient(90deg, var(--accent-dim), var(--accent)); }
 
@@ -422,28 +425,28 @@
     .bottom-tab {
       display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
       background: transparent; color: var(--muted); border: 1px solid transparent;
-      border-radius: var(--radius-sm); padding: 8px 4px; font-size: 9.5px; font-weight: 700;
-      text-transform: uppercase; letter-spacing: .4px; cursor: pointer;
+      border-radius: var(--radius-sm); padding: 8px 4px; font-size: 11px; font-weight: 700;
+      cursor: pointer;
       transition: all .25s ease; min-height: 56px;
     }
     .bottom-tab:hover { color: #fff; background: rgba(255,255,255,0.04); }
-    .bottom-tab.active { color: var(--accent); background: var(--accent-dim); border-color: var(--accent-glow); box-shadow: 0 0 20px var(--accent-glow); }
+    .bottom-tab.active { color: var(--accent); background: var(--accent-dim); border-color: var(--accent-glow); }
     .bottom-tab-icon { font-size: 19px; transition: all .25s; }
-    .bottom-tab.active .bottom-tab-icon { text-shadow: 0 0 16px var(--accent-glow); transform: scale(1.12); }
+    .bottom-tab.active .bottom-tab-icon { transform: scale(1.12); }
 
     .avatar-upload-container { display: flex; align-items: center; gap: 14px; margin-bottom: 6px; }
-    .avatar-preview { width: 68px; height: 68px; border-radius: 50%; background: var(--accent-dim); border: 2px solid var(--accent-glow); display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 800; color: var(--accent); overflow: hidden; position: relative; box-shadow: 0 0 20px var(--accent-dim); }
+    .avatar-preview { width: 68px; height: 68px; border-radius: 50%; background: var(--accent-dim); border: 2px solid var(--accent-glow); display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 800; color: var(--accent); overflow: hidden; position: relative; }
     .avatar-preview img { width: 100%; height: 100%; object-fit: cover; }
 
     .analytics-card { background: var(--card); border: 1px solid var(--card-border); border-radius: var(--radius-md); padding: 20px; display: flex; flex-direction: column; gap: 14px; }
     .analytics-header { font-size: 15.5px; font-weight: 800; color: var(--text); display: flex; align-items: center; gap: 10px; }
     .range-toggle { display: inline-flex; gap: 6px; flex-wrap: wrap; }
     .range-btn { background: rgba(30,41,59,0.75); border: 1px solid rgba(255,255,255,0.1); color: var(--muted); padding: 8px 14px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; transition: .2s; }
-    .range-btn:hover, .range-btn.active { background: var(--accent-dim); color: var(--accent); border-color: var(--accent-glow); box-shadow: 0 0 16px var(--accent-glow); }
+    .range-btn:hover, .range-btn.active { background: var(--accent-dim); color: var(--accent); border-color: var(--accent-glow); }
     .svg-chart-wrap { width: 100%; overflow-x: auto; }
     .svg-chart-wrap svg { width: 100%; height: auto; display: block; }
     .chart-bar { transition: height .5s ease, y .5s ease; }
-    .chart-line { fill: none; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 0 6px currentColor); }
+    .chart-line { fill: none; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
     .chart-point { r: 5; stroke: var(--bg); stroke-width: 2.5; transition: r .2s; }
     .chart-point:hover { r: 8; }
     .chart-axis { stroke: rgba(255,255,255,0.15); stroke-width: 1.2; }
@@ -451,7 +454,7 @@
     .chart-label { font-size: 11px; font-weight: 700; fill: var(--muted); }
     .chart-value { font-size: 11px; font-weight: 700; fill: #fff; }
 
-    .exercise-card.superset { border-color: rgba(251, 191, 36, 0.5); box-shadow: 0 14px 36px rgba(0,0,0,0.4), 0 0 28px rgba(251,191,36,0.22); }
+    .exercise-card.superset { border-color: rgba(251, 191, 36, 0.5); box-shadow: 0 14px 36px rgba(0,0,0,0.4); }
     .superset-badge { background: rgba(251, 191, 36, 0.16); color: #fcd34d; border: 1px solid rgba(251,191,36,0.4); font-size: 10px; font-weight: 800; padding: 4px 8px; border-radius: 6px; text-transform: uppercase; }
     .btn-superset { border-color: rgba(251,191,36,0.3); color: #fcd34d; }
     .btn-superset.active { background: rgba(251, 191, 36, 0.25); border-color: rgba(251,191,36,0.6); color: #fff; }
@@ -483,9 +486,9 @@
     /* ---------- Icons (Lucide, inline SVG; colour follows currentColor) ---------- */
     .icon { display: inline-block; flex-shrink: 0; vertical-align: -0.18em; }
     .btn .icon, .btn-xs .icon { vertical-align: middle; }
-    .logo-bolt { display: inline-flex; animation: none; text-shadow: none; filter: drop-shadow(0 0 10px var(--accent-glow)); }
+    .logo-bolt { display: inline-flex; animation: none; text-shadow: none; }
     .bottom-tab-icon { display: inline-flex; font-size: 0; }
-    .bottom-tab.active .bottom-tab-icon { text-shadow: none; transform: scale(1.08); filter: drop-shadow(0 0 8px var(--accent-glow)); }
+    .bottom-tab.active .bottom-tab-icon { text-shadow: none; transform: scale(1.08); }
     .analytics-header .icon, .calc-title .icon, .modal-header h2 .icon { color: var(--accent); }
     .modal-header h2, .calc-title, .settings-title, .meta-field label, .machine-label { display: inline-flex; align-items: center; gap: 8px; }
     .meta-field label { gap: 6px; }
@@ -530,7 +533,7 @@
     .body-figures { display: flex; justify-content: center; gap: 28px; }
     .body-figure { display: flex; flex-direction: column; align-items: center; gap: 6px; margin: 0; }
     .body-figure svg { width: 118px; height: auto; }
-    .body-figure figcaption { font-size: 11px; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: .8px; }
+    .body-figure figcaption { font-size: 11px; font-weight: 800; color: var(--muted); }
     .body-base > * { fill: rgba(148, 163, 184, 0.12); stroke: rgba(148, 163, 184, 0.28); stroke-width: 1; }
     .muscle > * { stroke: rgba(5, 6, 8, 0.6); stroke-width: 1; transition: fill .4s ease; }
     .muscle[data-status="none"] > * { fill: rgba(148, 163, 184, 0.28); }
@@ -551,10 +554,17 @@
     .chart-empty { text-align: center; padding: 26px 16px; color: var(--muted); font-size: 13.5px; line-height: 1.55; border: 1px dashed rgba(255,255,255,0.1); border-radius: var(--radius-sm); }
     .macro-summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
     .macro-tile { display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; border-radius: var(--radius-sm); background: rgba(10, 14, 24, 0.7); border: 1px solid rgba(255,255,255,0.06); }
-    .macro-tile span { font-size: 10.5px; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: .6px; }
+    .macro-tile span { font-size: 10.5px; font-weight: 800; color: var(--muted); }
     .macro-tile strong { font-family: 'JetBrains Mono', monospace; font-size: 19px; font-weight: 700; color: var(--text); white-space: nowrap; }
     .macro-tile:first-child strong { color: var(--accent); }
     @media (max-width: 560px) { .macro-summary { grid-template-columns: repeat(2, 1fr); } }
+    .chart-empty p { margin-bottom: 12px; }
+    .trend-summary { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin: 4px 0 6px; }
+    .trend-latest { font-family: 'JetBrains Mono', monospace; font-size: 26px; font-weight: 700; color: var(--text); }
+    .trend-delta { font-size: 13px; font-weight: 700; color: var(--muted); }
+    .trend-delta.up { color: var(--success); }
+    .trend-delta.down { color: var(--danger); }
+    .analytics-sub { font-size: 12px; font-weight: 600; color: var(--muted); margin-left: 4px; }
     .chart-empty-stat { font-family: 'JetBrains Mono', monospace; font-size: 26px; font-weight: 700; color: var(--accent); margin-bottom: 4px; }
 
     /* ---------- Motion ---------- */
@@ -568,26 +578,66 @@
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
     }
+  
+    /* Exercise cards collapse to one line; only the current exercise (and its superset partner) is
+       open. Edit mode shows everything. */
+    .ex-header { cursor: pointer; border-radius: var(--radius-sm); -webkit-tap-highlight-color: transparent; }
+    .ex-header:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+    body.edit-mode .ex-header { cursor: default; }
+    .ex-progress { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; color: var(--muted); padding: 4px 8px; border-radius: 7px; background: rgba(148,163,184,0.1); font-variant-numeric: tabular-nums; }
+    .exercise-card.done .ex-progress { background: var(--success-dim); color: var(--success); }
+    .exercise-card.done .ex-number { background: var(--success-dim); color: var(--success); border-color: var(--success-glow); box-shadow: none; }
+    .ex-header > div:first-child { flex: 1 1 100%; min-width: 0; }
+    .ex-title-end { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+    .ex-chevron { display: flex; color: var(--muted); transition: transform .2s ease; }
+    body.edit-mode .ex-chevron { display: none; }
+    body:not(.edit-mode) .exercise-card.collapsed { padding: 14px 16px; gap: 0; }
+    body:not(.edit-mode) .exercise-card.collapsed > :not(.ex-header),
+    body:not(.edit-mode) .exercise-card.collapsed .ex-target,
+    body:not(.edit-mode) .exercise-card.collapsed .ex-type-badge,
+    body:not(.edit-mode) .exercise-card.collapsed .ex-scheme-badge { display: none; }
+    body:not(.edit-mode) .exercise-card.collapsed .ex-header { align-items: center; flex-wrap: nowrap; }
+    body:not(.edit-mode) .exercise-card.collapsed .ex-title-row { margin-bottom: 0; }
+    body:not(.edit-mode) .exercise-card.collapsed .ex-title { font-size: 15.5px; }
+    body:not(.edit-mode) .exercise-card.collapsed .ex-chevron { transform: rotate(-90deg); }
+    .exercise-card.done.collapsed { opacity: .7; }
+
+    /* Last time's numbers under each set, and the PR / beat-last-time badge. */
+    .exercise-card .sets-table td.set-last { grid-column: 2 / -1; display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; margin-top: -2px; }
+    .exercise-card .sets-table td.set-last:has(.set-last-text:empty):has(.set-badge:empty) { display: none; }
+    .set-badge:empty { display: none; }
+    .set-badge { font-size: 10.5px; font-weight: 800; padding: 2px 7px; border-radius: 6px; background: var(--success-dim); color: var(--success); letter-spacing: .3px; }
+    .set-badge[data-kind="pr"] { background: rgba(251, 191, 36, 0.16); color: var(--warning); }
+
+    /* Bigger tap targets while lifting. 16px inputs also stop iOS zooming in on focus. */
+    .exercise-card .sets-table tr { grid-template-columns: 30px minmax(0, 1.15fr) minmax(0, 1fr) 52px; row-gap: 4px; padding: 8px 0; }
+    .exercise-card .stepper-btn { width: 36px; height: 48px; font-size: 18px; }
+    .exercise-card .stepper .input-field { height: 48px; font-size: 16px; }
+    .exercise-card .check-btn { width: 52px; height: 52px; }
+    .stepper-btn, .check-btn, .set-num-btn, .ex-header { touch-action: manipulation; }
+    @media (max-width: 420px) {
+      .exercise-card .stepper-btn { width: 30px; }
+      .exercise-card .sets-table-wrap { padding: 2px 4px; }
+    }
   </style>
 </head>
 <body>
 
 <!-- Email + Password Auth Modal Overlay -->
-<div class="modal-overlay active" id="authOverlay" style="align-items: center; z-index: 300;">
+<div class="modal-overlay" id="authOverlay" style="align-items: center; z-index: 300;">
   <div class="modal-content" style="max-width: 400px; text-align: center;">
     <div class="brand-logo" style="justify-content: center; margin-bottom: 8px;">
       <span class="logo-bolt"><i data-icon="zap" data-size="22"></i></span>
       <span>IronTrack</span>
-      <span class="brand-badge">CLOUD SYNC</span>
     </div>
-    <h2 id="authTitle" style="font-size: 22px; font-weight: 800;">Sign In</h2>
-    <p style="font-size: 13.5px; color: var(--muted); margin-bottom: 16px;">Sync your workouts & nutrition seamlessly.</p>
+    <h2 id="authTitle" style="font-size: 20px; font-weight: 700;">Sign in to sync</h2>
+    <p style="font-size: 13.5px; color: var(--muted); margin-bottom: 16px;">Back up your workouts and pick up where you left off on any device.</p>
     
     <form id="authForm" onsubmit="handleAuthSubmit(event)" style="display: flex; flex-direction: column; gap: 12px;">
       <input type="email" id="authEmail" class="input-field" placeholder="Email address" autocomplete="off" required style="padding: 13px; font-size: 14px; text-align: left;" />
       <input type="password" id="authPassword" class="input-field" placeholder="Password (min 6 characters)" autocomplete="current-password" required minlength="6" style="padding: 13px; font-size: 14px; text-align: left;" />
       
-      <button type="submit" class="btn btn-primary" id="authSubmitBtn" style="justify-content: center; margin-top: 4px;">Sign In</button>
+      <button type="submit" class="btn btn-primary" id="authSubmitBtn" style="justify-content: center; margin-top: 4px;">Sign in</button>
       
       <div style="font-size: 12.5px; color: var(--muted); margin-top: 6px;">
         <span id="authToggleText">Need an account?</span>
@@ -596,14 +646,19 @@
       
       <div id="authMsg" style="font-size: 13.5px; display: none; line-height: 1.4;"></div>
     </form>
+    <button type="button" class="btn btn-secondary" onclick="skipSignIn()" style="width: 100%; justify-content: center; margin-top: 14px;">Continue without an account</button>
+    <p style="font-size: 12px; color: var(--muted); margin-top: 8px;">Your data stays on this device. You can sign in later from your profile.</p>
   </div>
 </div>
 
 <div class="app-shell">
   <div class="app-topbar">
-    <div class="brand-logo">
-      <span class="logo-bolt"><i data-icon="zap" data-size="22"></i></span>
-      <span>IronTrack</span>
+    <div>
+      <div class="brand-logo">
+        <span class="logo-bolt"><i data-icon="zap" data-size="22"></i></span>
+        <span>IronTrack</span>
+      </div>
+      <div class="home-summary" id="homeSummary"></div>
     </div>
     <div class="user-auth-bar" id="userBar">
       <button class="avatar-btn" id="profileToggleBtn" onclick="toggleProfileTab()" aria-label="Profile and sync">
@@ -723,12 +778,10 @@
         <div class="svg-chart-wrap" id="muscleBarChartWrap"></div>
       </div>
       <div class="analytics-card">
-        <div class="analytics-header"><i data-icon="trend" data-size="20"></i> Estimated 1RM Trends (Epley)</div>
+        <div class="analytics-header"><i data-icon="trend" data-size="20"></i> Strength trend <span class="analytics-sub">estimated 1RM</span></div>
         <div class="compound-select-row" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-          <label for="compoundSelect" style="font-size:12.5px; color:var(--muted); font-weight:700;">Focus:</label>
-          <select id="compoundSelect" class="machine-dropdown" onchange="render1RMTrends()" style="min-width:200px;">
-            <option value="">All top compounds</option>
-          </select>
+          <label for="compoundSelect" style="font-size:12.5px; color:var(--muted); font-weight:700;">Lift</label>
+          <select id="compoundSelect" class="machine-dropdown" onchange="render1RMTrends()" style="min-width:200px;"></select>
         </div>
         <div class="svg-chart-wrap" id="oneRmTrendWrap"></div>
       </div>
@@ -741,7 +794,7 @@
         <p style="font-size:12.5px; color:var(--muted);">Your Basal Metabolic Rate (BMR) and maintenance calories (TDEE), using the Mifflin-St Jeor formula.</p>
         <div class="calc-row">
           <div class="meta-field">
-            <label>Biological Sex</label>
+            <label>Biological sex</label>
             <select id="calcSex" class="machine-dropdown" style="width:100%;" onchange="computeTDEE()">
               <option value="male">Male (+5)</option>
               <option value="female">Female (-161)</option>
@@ -754,7 +807,7 @@
           <div class="meta-field"><label>Height (cm)</label><input type="number" id="calcHeight" placeholder="175" value="175" oninput="computeTDEE()"></div>
         </div>
         <div class="meta-field">
-          <label>Activity Multiplier (TDEE Factor)</label>
+          <label>Activity multiplier (TDEE factor)</label>
           <select id="calcActivity" class="machine-dropdown" style="width:100%;" onchange="computeTDEE()">
             <option value="1.2">Sedentary (Desk job, little exercise) [1.2]</option>
             <option value="1.375">Lightly Active (1–3 days/week) [1.375]</option>
@@ -763,7 +816,7 @@
             <option value="1.9">Extremely Active (Athlete / Physical job) [1.9]</option>
           </select>
         </div>
-        <div class="calc-result-box" id="calcTdeeResult">BMR: 0 kcal | Maintenance TDEE: 0 kcal</div>
+        <div class="calc-result-box" id="calcTdeeResult">BMR: — | Maintenance: —</div>
         <button class="btn btn-primary" onclick="syncCalculatorToProfile()" style="justify-content:center; margin-top:4px;"><i data-icon="save"></i> Save Weight to Profile</button>
       </div>
 
@@ -771,21 +824,21 @@
         <strong class="calc-title"><i data-icon="trophy" data-size="18"></i> One Rep Max</strong>
         <p style="font-size:12.5px; color:var(--muted);">Estimated with the Epley formula.</p>
         <div class="calc-row">
-          <div class="meta-field"><label>Weight (kg)</label><input type="number" id="calc1rmWeight" placeholder="80" oninput="compute1RM()"></div>
-          <div class="meta-field"><label>Reps Done</label><input type="number" id="calc1rmReps" placeholder="8" oninput="compute1RM()"></div>
+          <div class="meta-field"><label>Weight (kg)</label><input type="number" inputmode="decimal" id="calc1rmWeight" value="80" oninput="compute1RM()"></div>
+          <div class="meta-field"><label>Reps done</label><input type="number" inputmode="numeric" id="calc1rmReps" value="8" oninput="compute1RM()"></div>
         </div>
-        <div class="calc-result-box" id="calc1rmResult">Est. 1RM: 0.0 kg</div>
+        <div class="calc-result-box" id="calc1rmResult">Est. 1RM: —</div>
       </div>
       <div class="calc-box">
         <strong class="calc-title"><i data-icon="dumbbell" data-size="18"></i> Plate Loader</strong>
         <p style="font-size:12.5px; color:var(--muted);">Plates per side on an Olympic barbell.</p>
         <div class="calc-row">
-          <div class="meta-field"><label>Target Total Weight (kg)</label><input type="number" id="plateTargetWeight" placeholder="80" oninput="computePlates()"></div>
-          <div class="meta-field"><label>Bar Weight (kg)</label><input type="number" id="plateBarWeight" value="20" oninput="computePlates()"></div>
+          <div class="meta-field"><label>Target total weight (kg)</label><input type="number" inputmode="decimal" id="plateTargetWeight" value="80" oninput="computePlates()"></div>
+          <div class="meta-field"><label>Bar weight (kg)</label><input type="number" inputmode="decimal" id="plateBarWeight" value="20" oninput="computePlates()"></div>
         </div>
-        <div class="calc-result-box" id="plateResultBox">Load Each Side: 0.0 kg</div>
+        <div class="calc-result-box" id="plateResultBox">Load each side: —</div>
         <div id="plateBarbellWrap" class="svg-chart-wrap" style="margin-top:4px;"></div>
-        <div class="plate-breakdown" id="plateBreakdownText">Plates per side will display here.</div>
+        <div class="plate-breakdown" id="plateBreakdownText"></div>
       </div>
     </section>
 
@@ -870,7 +923,7 @@
         </div>
 
         <div class="meta-field">
-          <label>Biological Sex (for BMR)</label>
+          <label>Biological sex (for BMR)</label>
           <select id="profileTabSex" class="machine-dropdown" style="width:100%;" onchange="saveProfileTab()">
             <option value="male">Male (+5)</option>
             <option value="female">Female (-161)</option>
@@ -895,11 +948,17 @@
           <span id="syncStatusText">Synced</span>
           <button class="btn-xs" id="manualSyncBtn" onclick="pullFromCloud(true)" style="margin-left:auto;"><i data-icon="refresh" data-size="14"></i> <span class="btn-label">Sync now</span></button>
         </div>
-        <div class="meta-field">
-          <label>Cloud Sync Status</label>
-          <input type="text" id="profileEmailField" class="input-field" readonly style="text-align: left; padding: 12px; color: var(--muted);" value="Connected via Supabase Auth" />
+        <div id="accountSignedIn" style="display: flex; flex-direction: column; gap: 14px;">
+          <div class="meta-field">
+            <label>Cloud sync status</label>
+            <input type="text" id="profileEmailField" class="input-field" readonly style="text-align: left; padding: 12px; color: var(--muted);" value="Connected via Supabase Auth" />
+          </div>
+          <button class="btn btn-danger" onclick="handleSignOut()" style="justify-content: center; margin-top: 4px;"><i data-icon="log-out"></i> Log Out of Account</button>
         </div>
-        <button class="btn btn-danger" onclick="handleSignOut()" style="justify-content: center; margin-top: 4px;"><i data-icon="log-out"></i> Log Out of Account</button>
+        <div id="accountSignedOut" style="display: none; flex-direction: column; gap: 10px;">
+          <p style="font-size: 13px; color: var(--muted);">Sign in to back up your workouts and sync them across your devices.</p>
+          <button class="btn btn-primary" onclick="openSignIn()" style="justify-content: center;"><i data-icon="cloud"></i> Sign in to sync</button>
+        </div>
       </div>
     </section>
   </main>
@@ -948,15 +1007,15 @@
     </div>
     <form id="addDayForm" onsubmit="handleSaveCustomDay(event)" autocomplete="off" style="display: flex; flex-direction: column; gap: 14px;">
       <div class="meta-field">
-        <label>Day Title / Focus</label>
+        <label>Day title / focus</label>
         <input type="text" id="newDayTitle" class="input-field" placeholder="e.g., Posterior Chain • Hamstrings &amp; Back" required style="text-align: left; padding: 12px;" />
       </div>
       <div class="meta-field">
-        <label>Subtitle / Description</label>
+        <label>Subtitle / description</label>
         <input type="text" id="newDaySub" class="input-field" placeholder="e.g., Glute &amp; Hamstring Hypertrophy Routine" required style="text-align: left; padding: 12px;" />
       </div>
       <div class="meta-field">
-        <label>Initial Section Name</label>
+        <label>Initial section name</label>
         <input type="text" id="newDayInitialSec" class="input-field" placeholder="e.g., Hamstring Isolation" required style="text-align: left; padding: 12px;" />
       </div>
       <div class="modal-footer" style="margin-top: 8px;">
@@ -976,15 +1035,15 @@
     </div>
     <form id="addSecForm" onsubmit="handleSaveNewSection(event)" autocomplete="off" style="display: flex; flex-direction: column; gap: 14px;">
       <div class="meta-field">
-        <label>Target Workout Day</label>
+        <label>Target workout day</label>
         <select id="secTargetDay" class="machine-dropdown" style="width:100%;"></select>
       </div>
       <div class="meta-field">
-        <label>Section Name</label>
+        <label>Section name</label>
         <input type="text" id="secNameInput" class="input-field" placeholder="e.g., Forearms &amp; Calves" required style="text-align: left; padding: 12px;" />
       </div>
       <div class="meta-field">
-        <label>Accent Tag Color</label>
+        <label>Accent tag color</label>
         <select id="secColorSelect" class="machine-dropdown" style="width:100%;">
           <option value="blue">Cyan / Blue</option>
           <option value="green">Green</option>
@@ -1009,38 +1068,38 @@
     </div>
     <form id="addExForm" onsubmit="handleSaveCustomExercise(event)" autocomplete="off" style="display: flex; flex-direction: column; gap: 14px;">
       <div class="meta-field">
-        <label>Target Workout Day</label>
+        <label>Target workout day</label>
         <select id="exDay" class="machine-dropdown" style="width:100%;" onchange="populateSectionDropdown(this.value)"></select>
       </div>
       <div class="meta-field">
-        <label>Target Section</label>
+        <label>Target section</label>
         <select id="exSectionSelect" class="machine-dropdown" style="width:100%;" onchange="handleSectionSelectChange(this.value)"></select>
       </div>
       <div class="meta-field" id="customSectionNameField" style="display:none;">
-        <label>New Custom Section Name</label>
+        <label>New custom section name</label>
         <input type="text" id="exCustomSection" class="input-field" placeholder="e.g., Forearm Specialization" autocomplete="off" value="" style="text-align: left; padding: 12px;" />
       </div>
       <div class="meta-field">
-        <label>Exercise Title</label>
+        <label>Exercise title</label>
         <input type="text" id="exTitle" class="input-field" placeholder="e.g., Romanian Deadlift" autocomplete="off" value="" required style="text-align: left; padding: 12px;" />
       </div>
       <div class="meta-field">
-        <label>Target Muscle / Focus</label>
+        <label>Target muscle / focus</label>
         <input type="text" id="exTarget" class="input-field" placeholder="e.g., Hamstrings &amp; Glutes" autocomplete="off" value="" required style="text-align: left; padding: 12px;" />
       </div>
       <div class="meta-field">
-        <label>Exercise Type</label>
+        <label>Exercise type</label>
         <select id="exType" class="machine-dropdown" style="width:100%;">
           <option value="isolation">Isolation (Rest ~75s)</option>
           <option value="compound">Compound (Rest ~150s)</option>
         </select>
       </div>
       <div class="meta-field">
-        <label>Equipment / Variation Name</label>
+        <label>Equipment / variation name</label>
         <input type="text" id="exVarLabel" class="input-field" placeholder="e.g., Barbell / Dumbbells" autocomplete="off" value="" required style="text-align: left; padding: 12px;" />
       </div>
       <div class="meta-field">
-        <label>Default Sets Scheme</label>
+        <label>Default sets scheme</label>
         <input type="text" id="exScheme" class="input-field" value="3 × 8–10 | Rest 2m" autocomplete="off" style="text-align: left; padding: 12px;" />
       </div>
       <div class="modal-footer" style="margin-top: 8px;">
@@ -1060,15 +1119,15 @@
     </div>
     <form id="addVarForm" onsubmit="handleSaveNewVariation(event)" autocomplete="off" style="display: flex; flex-direction: column; gap: 14px;">
       <div class="meta-field">
-        <label>Variation / Equipment Name</label>
+        <label>Variation / equipment name</label>
         <input type="text" id="newVarLabelInput" class="input-field" placeholder="e.g., Incline Single-Arm Cable Fly" autocomplete="off" required style="text-align: left; padding: 12px;" />
       </div>
       <div class="meta-field">
-        <label>Setup / Mechanics Note</label>
+        <label>Setup / mechanics note</label>
         <input type="text" id="newVarSetupInput" class="input-field" placeholder="e.g., Cable at chest height, lean forward" autocomplete="off" style="text-align: left; padding: 12px;" />
       </div>
       <div class="meta-field">
-        <label>Execution Cue</label>
+        <label>Execution cue</label>
         <input type="text" id="newVarCueInput" class="input-field" placeholder="e.g., Squeeze elbows together" autocomplete="off" style="text-align: left; padding: 12px;" />
       </div>
       <div class="modal-footer" style="margin-top: 8px;">

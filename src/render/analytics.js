@@ -1,6 +1,7 @@
 import { MUSCLE_GROUP_ORDER, epley1RM, getMuscleGroup } from '../model.js';
 import { getHistory } from '../history-store.js';
 import { esc } from '../storage.js';
+import { formatTick, niceTicks } from '../chart-scale.js';
 
 // ==========================================
 // MUSCLE RECOVERY HEATMAP FEATURE
@@ -92,6 +93,11 @@ export function renderMuscleRecoveryHeatmap() {
     <ul class="recovery-legend">${legend}</ul>${empty}`;
 }
 
+// Charts with nothing to show yet point the user at the Workout tab.
+function emptyState(text) {
+  return `<div class="chart-empty"><p>${text}</p><button class="btn btn-secondary" onclick="showTab('workout')">Go to today's workout</button></div>`;
+}
+
 export let analyticRange = 7;
 export function setAnalyticRange(days) {
   analyticRange = days;
@@ -119,25 +125,28 @@ export function renderMuscleGroupBarChart() {
   });
   const values = MUSCLE_GROUP_ORDER.map(g => data[g]);
   if (!values.some(v => v > 0)) {
-    wrap.innerHTML = `<p class="chart-empty">No completed sets in the last ${analyticRange} days. Finish a workout to see volume per muscle group.</p>`;
+    wrap.innerHTML = getHistory().length
+      ? `<p class="chart-empty">No completed sets in the last ${analyticRange} days.</p>`
+      : emptyState('Log your first workout to see your volume per muscle group.');
     return;
   }
-  const max = Math.max(...values, 1);
+  const ticks = niceTicks(0, Math.max(...values), 4);
+  const max = ticks.at(-1);
   const w = 500, h = 260, pad = 40, barW = 60, gap = 28, chartH = h - pad - 60;
   const startX = (w - (MUSCLE_GROUP_ORDER.length * (barW + gap) - gap)) / 2;
 
   let svg = `<svg class="plate-svg" viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg">`;
-  for (let i = 0; i <= 4; i++) {
-    const y = pad + chartH - (i * chartH / 4);
+  ticks.forEach(t => {
+    const y = pad + chartH - (t / max) * chartH;
     svg += `<line x1="${pad}" y1="${y}" x2="${w - pad}" y2="${y}" class="chart-grid" />`;
-    svg += `<text x="${pad - 8}" y="${y + 4}" text-anchor="end" class="chart-label">${(i * max / 4).toFixed(0)}</text>`;
-  }
+    svg += `<text x="${pad - 8}" y="${y + 4}" text-anchor="end" class="chart-label">${formatTick(t)}</text>`;
+  });
   MUSCLE_GROUP_ORDER.forEach((g, i) => {
     const val = data[g], barH = (val / max) * chartH;
     const x = startX + i * (barW + gap), y = pad + chartH - barH;
     if (val > 0) {
       svg += `<rect class="chart-bar" x="${x}" y="${y}" width="${barW}" height="${barH}" rx="8" />`;
-      svg += `<text x="${x + barW/2}" y="${y - 8}" text-anchor="middle" class="chart-value">${val.toFixed(0)} kg</text>`;
+      svg += `<text x="${x + barW/2}" y="${y - 8}" text-anchor="middle" class="chart-value">${Math.round(val).toLocaleString()} kg</text>`;
     }
     svg += `<text x="${x + barW/2}" y="${h - 24}" text-anchor="middle" class="chart-label${val > 0 ? '' : ' chart-label-muted'}">${GROUP_LABEL[g]}</text>`;
   });
@@ -149,71 +158,68 @@ export function render1RMTrends() {
   const wrap = document.getElementById('oneRmTrendWrap');
   const select = document.getElementById('compoundSelect');
   if (!wrap) return;
+  const category = select ? select.value : '';
 
-  const history = getHistory();
-  const selectedExercise = select ? select.value : '';
-
+  // The best estimated 1RM per session for the chosen lift, oldest first.
   const points = [];
-  history.slice().reverse().forEach(h => {
+  getHistory().slice().reverse().forEach(h => {
+    let best = 0;
     (h.exercises || []).forEach(ex => {
-      if (!selectedExercise || ex.name === selectedExercise || ex.category === selectedExercise) {
-        let max1RM = 0;
-        (ex.sets || []).forEach(s => {
-          if (s.done !== false) {
-            const w = parseFloat(s.weight) || 0;
-            const r = parseFloat(s.reps) || 0;
-            if (w > 0 && r > 0) {
-              const est = epley1RM(w, r);
-              if (est > max1RM) max1RM = est;
-            }
-          }
-        });
-        if (max1RM > 0) points.push({ date: h.date, val: max1RM, name: ex.name });
-      }
+      if (ex.category !== category) return;
+      (ex.sets || []).forEach(s => {
+        if (s.done === false || s.tag === 'Warmup') return;
+        const w = parseFloat(s.weight) || 0, r = parseFloat(s.reps) || 0;
+        if (w > 0 && r > 0) best = Math.max(best, epley1RM(w, r));
+      });
     });
+    if (best > 0) points.push({ date: h.date || '', val: best });
   });
 
   if (!points.length) {
-    wrap.innerHTML = '<p class="chart-empty">No logged sets for this lift yet. Finish a workout to start tracking your estimated 1RM.</p>';
+    wrap.innerHTML = category
+      ? '<p class="chart-empty">No logged sets for this lift yet.</p>'
+      : emptyState('Log your first workout to see your strength trend.');
     return;
   }
+  const latest = points.at(-1);
   if (points.length === 1) {
-    wrap.innerHTML = `<div class="chart-empty"><div class="chart-empty-stat">${points[0].val.toFixed(1)} kg</div>Estimated 1RM so far. Log one more session to see a trend.</div>`;
+    wrap.innerHTML = `<div class="trend-summary"><span class="trend-latest">${latest.val.toFixed(1)} kg</span><span class="trend-delta">Log one more session to see a trend</span></div>`;
     return;
   }
 
-  const maxVal = Math.max(...points.map(p => p.val), 20);
-  const w = 520, h = 240, pad = 40, chartW = w - pad * 2, chartH = h - pad * 2;
+  // Change over about the last four weeks (or since the first session, if that's more recent).
+  const latestTime = Date.parse(latest.date) || 0;
+  const base = points.find(p => (Date.parse(p.date) || 0) >= latestTime - 28 * 86400000 && p !== latest) || points.at(-2);
+  const delta = latest.val - base.val;
+  const days = Math.max(1, Math.round((latestTime - (Date.parse(base.date) || latestTime)) / 86400000));
+  const span = days >= 14 ? `${Math.round(days / 7)} weeks` : days === 1 ? '1 day' : `${days} days`;
+  const deltaText = `${delta >= 0 ? '+' : '−'}${Math.abs(delta).toFixed(1)} kg in ${span}`;
+  const summary = `<div class="trend-summary"><span class="trend-latest">${latest.val.toFixed(1)} kg</span><span class="trend-delta ${delta > 0 ? 'up' : delta < 0 ? 'down' : ''}">${deltaText}</span></div>`;
+
+  const vals = points.map(p => p.val);
+  const ticks = niceTicks(Math.min(...vals), Math.max(...vals), 3);
+  const lo = ticks[0], hi = ticks.at(-1);
+  const w = 520, h = 220, padL = 44, padR = 24, padT = 24, padB = 34, chartW = w - padL - padR, chartH = h - padT - padB;
+  const xy = points.map((p, i) => [padL + (i / (points.length - 1)) * chartW, padT + chartH - ((p.val - lo) / (hi - lo)) * chartH]);
+
   let svg = `<svg class="plate-svg" viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg">`;
-  
-  for (let i = 0; i <= 3; i++) {
-    const y = pad + chartH - (i * chartH / 3);
-    svg += `<line x1="${pad}" y1="${y}" x2="${w - pad}" y2="${y}" class="chart-grid" />`;
-    svg += `<text x="${pad - 8}" y="${y + 4}" text-anchor="end" class="chart-label">${((maxVal * i) / 3).toFixed(0)}</text>`;
-  }
-
-  const coords = points.map((p, i) => {
-    const inset = 28;
-    const x = pad + inset + (i / (points.length - 1)) * (chartW - inset * 2);
-    const y = pad + chartH - ((p.val / maxVal) * chartH);
-    return `${x},${y}`;
+  ticks.forEach(t => {
+    const y = padT + chartH - ((t - lo) / (hi - lo)) * chartH;
+    svg += `<line x1="${padL}" y1="${y}" x2="${w - padR}" y2="${y}" class="chart-grid" />`;
+    svg += `<text x="${padL - 8}" y="${y + 4}" text-anchor="end" class="chart-label">${formatTick(t)}</text>`;
   });
-
-  if (points.length > 1) {
-    svg += `<polyline points="${coords.join(' ')}" class="chart-line" stroke="var(--accent)" fill="none" />`;
-  }
-
-  // Label every point on short histories; on long ones, about six evenly spaced plus the last.
-  const every = Math.max(1, Math.ceil(points.length / 6));
-  points.forEach((p, i) => {
-    const [x, y] = coords[i].split(',');
-    const labelled = i % every === 0 || i === points.length - 1;
-    svg += `<circle cx="${x}" cy="${y}" class="chart-point" fill="var(--accent)" />`;
-    if (!labelled) return;
-    svg += `<text x="${x}" y="${parseFloat(y) - 10}" text-anchor="middle" class="chart-value">${p.val.toFixed(1)}kg</text>`;
-    svg += `<text x="${x}" y="${h - 12}" text-anchor="middle" class="chart-label">${esc(p.date ? String(p.date).slice(5) : '')}</text>`;
+  svg += `<polyline points="${xy.map(c => c.join(',')).join(' ')}" class="chart-line" stroke="var(--accent)" fill="none" />`;
+  xy.forEach(([x, y]) => { svg += `<circle cx="${x}" cy="${y}" class="chart-point" fill="var(--accent)" />`; });
+  // Up to five evenly spaced dates, always including the first and last.
+  const labelCount = Math.min(5, points.length);
+  const labelled = new Set(Array.from({ length: labelCount }, (_, k) => Math.round(k * (points.length - 1) / (labelCount - 1))));
+  labelled.forEach(i => {
+    const anchor = i === 0 ? 'start' : i === points.length - 1 ? 'end' : 'middle';
+    svg += `<text x="${xy[i][0]}" y="${h - 10}" text-anchor="${anchor}" class="chart-label">${esc(String(points[i].date).slice(5))}</text>`;
   });
-
+  const [lx, ly] = xy.at(-1);
+  svg += `<text x="${lx}" y="${ly - 12}" text-anchor="end" class="chart-value">${latest.val.toFixed(1)} kg</text>`;
   svg += `</svg>`;
-  wrap.innerHTML = svg;
+  wrap.innerHTML = summary + svg;
 }
+
