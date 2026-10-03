@@ -1,7 +1,8 @@
 import { sessionKey } from '../history-merge.js';
 import { WORKOUT } from '../model.js';
-import { esc, getJ, getL, setJ } from '../storage.js';
-import { HISTORY_KEY, HISTORY_TOMBSTONES_KEY, currentUser, pushToCloud, supabaseClient } from '../sync.js';
+import { HISTORY_KEY, HISTORY_TOMBSTONES_KEY, clearHistory, getHistory, setHistory } from '../history-store.js';
+import { esc, getJ, setJ } from '../storage.js';
+import { currentUser, pushToCloud, supabaseClient } from '../sync.js';
 import { refreshAllUI, showToast } from '../ui.js';
 import { icon } from '../icons.js';
 
@@ -21,7 +22,7 @@ export function populateHistoryDayFilter() {
 // PR / MILESTONE DETECTION & 1RM LOGIC
 // ==========================================
 export function calculateMaxWeightsPerExercise() {
-  const history = getJ('iron_workout_history', []);
+  const history = getHistory();
   const maxMap = {};
   history.slice().reverse().forEach((h) => {
     if (h.exercises) {
@@ -53,7 +54,7 @@ export function populateHistoryExerciseDropdown() {
   const dayFilterVal = document.getElementById('historyDayFilter')?.value || '';
   if (!select) return;
 
-  const history = getJ('iron_workout_history', []);
+  const history = getHistory();
   const exerciseSet = new Set();
   
   history.forEach(h => {
@@ -79,7 +80,7 @@ export function populateHistoryExerciseDropdown() {
 export function populateCompoundSelect() {
   const select = document.getElementById('compoundSelect');
   if (!select) return;
-  const history = getJ('iron_workout_history', []);
+  const history = getHistory();
   const currentVal = select.value;
   const exerciseSet = new Set();
 
@@ -99,7 +100,7 @@ export function populateCompoundSelect() {
 
 export function renderHistoryForSelectedExercise(exerciseName) {
   if (!exerciseName) return;
-  const history = getJ('iron_workout_history', []);
+  const history = getHistory();
   const dayFilterVal = document.getElementById('historyDayFilter')?.value || '';
   const dataPoints = [];
 
@@ -185,7 +186,7 @@ export function toggleLogAccordion(headerElem) {
 
 export function renderHistory() {
   const container = document.getElementById('historyListContainer');
-  const history = getJ('iron_workout_history', []);
+  const history = getHistory();
   container.innerHTML = '';
   
   const dayFilter = document.getElementById('historyDayFilter')?.value || '';
@@ -262,9 +263,9 @@ export function closeHistoryModal() { document.getElementById('historyModalOverl
 export async function clearWorkoutHistory() {
   if (confirm('Clear workout history?')) {
     // Tombstone the sessions so the history merge does not bring them back from the cloud.
-    const cleared = getJ(HISTORY_KEY, []).map(sessionKey);
+    const cleared = getHistory().map(sessionKey);
     setJ(HISTORY_TOMBSTONES_KEY, [...new Set([...getJ(HISTORY_TOMBSTONES_KEY, []), ...cleared])]);
-    localStorage.removeItem(HISTORY_KEY);
+    clearHistory();
     if (currentUser && supabaseClient) pushToCloud();
     renderHistory();
     refreshAllUI();
@@ -272,14 +273,14 @@ export async function clearWorkoutHistory() {
 }
 
 export function exportHistoryJSON() {
-  const data = getL('iron_workout_history') || '[]';
+  const data = JSON.stringify(getHistory());
   const blob = new Blob([data], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a'); a.href = url; a.download = 'irontrack_history.json'; a.click();
 }
 
 export function exportHistoryCSV() {
-  const history = getJ('iron_workout_history', []);
+  const history = getHistory();
   if (!history.length) {
     showToast('No history available to export.', 'error');
     return;
@@ -329,6 +330,7 @@ export function exportFullBackup() {
       backup[key] = localStorage.getItem(key);
     }
   }
+  backup[HISTORY_KEY] = JSON.stringify(getHistory()); // stored as a string, like the other keys
   const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -347,10 +349,13 @@ export function importBackupFile(input) {
     try {
       const data = JSON.parse(e.target.result);
       if (Array.isArray(data)) {
-        setJ('iron_workout_history', data);
+        setHistory(data);
       } else if (typeof data === 'object') {
         Object.keys(data).forEach(key => {
-          if (key.startsWith('iron_')) {
+          if (key === HISTORY_KEY) {
+            const list = typeof data[key] === 'string' ? JSON.parse(data[key]) : data[key];
+            if (Array.isArray(list)) setHistory(list);
+          } else if (key.startsWith('iron_')) {
             localStorage.setItem(key, typeof data[key] === 'string' ? data[key] : JSON.stringify(data[key]));
           }
         });

@@ -4,7 +4,8 @@ import { populateCompoundSelect, populateHistoryDayFilter, populateHistoryExerci
 import { renderDayNav } from './schedule.js';
 import { generateShareCard } from './share-card.js';
 import { clearSessionDraft, hasSessionDraft, saveSessionDraft } from '../session-draft.js';
-import { esc, getJ, getL, isSafeId, setJ, setL } from '../storage.js';
+import { getHistory, requestPersistentStorage, setHistory } from '../history-store.js';
+import { esc, getL, isSafeId, setL } from '../storage.js';
 import { pushToCloud } from '../sync.js';
 import { fireConfetti, playBeep, showToast } from '../ui.js';
 import { icon } from '../icons.js';
@@ -534,12 +535,13 @@ export function finishCurrentDayWorkout() {
     exercises
   };
 
-  const history = getJ('iron_workout_history', []);
+  const history = getHistory();
   history.unshift(record);
-  if (!setJ('iron_workout_history', history)) {
+  if (!setHistory(history)) {
     showToast('❌ Session NOT saved: device storage is full. Export a full backup from Settings to free space.', 'error');
     return;
   }
+  requestPersistentStorage();
   pushToCloud();
   clearSessionDraft();
   lastFinishedRecord = record;

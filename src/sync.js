@@ -1,4 +1,5 @@
-import { mergeHistories } from './history-merge.js';
+import { HISTORY_KEY, HISTORY_TOMBSTONES_KEY, clearHistory, flushHistory, loadHistory } from './history-store.js';
+import { SESSIONS_CURSOR_KEY, SESSIONS_MIGRATED_KEY, SESSIONS_SYNCED_KEY, syncSessions } from './session-sync.js';
 import { getMicrocycle } from './model.js';
 import { loadProfileTabUI, shrinkStoredAvatar } from './render/profile.js';
 import { getJ, getL, setJ, setL } from './storage.js';
@@ -73,6 +74,7 @@ export async function handleAuthSubmit(e) {
     showToast(res.error.message, 'error');
   } else if (res.data.session) {
     currentUser = res.data.session.user;
+    await loadHistory();
     prepareLocalDataFor(currentUser);
     updateUserSessionUI(currentUser);
     await pullFromCloud();
@@ -105,6 +107,7 @@ export async function handleSignOut() {
   currentUser = null;
   // The next person to sign in on this device must not inherit this account's data.
   clearLocalUserData();
+  await flushHistory(); // the reload must not cut off the history wipe
   window.location.reload();
 }
 
@@ -150,7 +153,9 @@ export function clearLocalUserData() {
     if (key && key.startsWith('iron_')) keys.push(key);
   }
   keys.forEach(k => localStorage.removeItem(k));
-  [SYNC_DIRTY_KEY, SYNC_OWNER_KEY, SYNC_STAMP_KEY, SESSION_DRAFT_KEY, SYNCED_KEYS_KEY].forEach(k => localStorage.removeItem(k));
+  clearHistory();
+  [SYNC_DIRTY_KEY, SYNC_OWNER_KEY, SYNC_STAMP_KEY, SESSION_DRAFT_KEY, SYNCED_KEYS_KEY,
+   SESSIONS_CURSOR_KEY, SESSIONS_SYNCED_KEY, SESSIONS_MIGRATED_KEY].forEach(k => localStorage.removeItem(k));
 }
 
 // Never let one account's local data leak into another account on a shared device.
@@ -166,6 +171,7 @@ export function prepareLocalDataFor(user) {
 
 export async function pullFromCloud(showIndicator = false) {
   if (!currentUser || !supabaseClient) return;
+  await loadHistory(); // merging into a not-yet-loaded history would drop the local sessions
   const syncBtn = document.getElementById('manualSyncBtn');
   const finish = (ok, message) => {
     const label = syncBtn && syncBtn.querySelector('.btn-label');
@@ -186,9 +192,12 @@ export async function pullFromCloud(showIndicator = false) {
       return;
     }
 
+    const sessionsChanged = await syncSessions(supabaseClient, currentUser.id);
+    if (sessionsChanged) refreshHistoryUI();
+
     const { data, error } = await supabaseClient
       .from('user_sync')
-      .select('*')
+      .select(ROW_COLUMNS)
       .eq('user_id', currentUser.id)
       .maybeSingle();
 
@@ -216,44 +225,16 @@ export async function pullFromCloud(showIndicator = false) {
       return;
     }
 
-    const hasUnsyncedHistory = applyCloudRow(data);
+    applyCloudRow(data);
     if (data.updated_at) setL(SYNC_STAMP_KEY, data.updated_at);
     refreshAllUI();
     loadProfileTabUI();
     shrinkStoredAvatar();
-    // e.g. sessions logged here before signing in: upload them too.
-    if (hasUnsyncedHistory) pushToCloud();
     finish(true, 'Data synchronized successfully!');
   } catch (err) {
     console.error('Unexpected sync error:', err);
     finish(false, 'Sync error occurred.');
   }
-}
-
-// ---- Workout history (merge logic lives in history-merge.js).
-export const HISTORY_KEY = 'iron_workout_history';
-export const HISTORY_TOMBSTONES_KEY = 'iron_history_tombstones';
-
-export function readCloudArray(row, column, key) {
-  if (column && Array.isArray(row[column])) return row[column];
-  const raw = row.local_storage_backup && row.local_storage_backup[key];
-  try {
-    const v = typeof raw === 'string' ? JSON.parse(raw) : raw;
-    return Array.isArray(v) ? v : [];
-  } catch (e) { return []; }
-}
-
-// Merges the cloud row's sessions into local history. Reports what each side was missing.
-export function mergeCloudHistory(row) {
-  const { merged, tombstones, localChanged, missingFromCloud } = mergeHistories({
-    localHistory: getJ(HISTORY_KEY, []),
-    cloudHistory: readCloudArray(row, 'history', HISTORY_KEY),
-    localTombstones: getJ(HISTORY_TOMBSTONES_KEY, []),
-    cloudTombstones: readCloudArray(row, null, HISTORY_TOMBSTONES_KEY)
-  });
-  setJ(HISTORY_TOMBSTONES_KEY, tombstones);
-  setJ(HISTORY_KEY, merged);
-  return { localChanged, missingFromCloud };
 }
 
 // localStorage keys that sync through their own user_sync column, so they are left out of
@@ -279,11 +260,14 @@ const COLUMN_KEYS = {
   profile_avatar: 'iron_profile_avatar'
 };
 
+// Everything in the row except the history column older versions synced through.
+const ROW_COLUMNS = [...Object.keys(COLUMN_KEYS).filter(c => c !== 'history'), 'local_storage_backup', 'updated_at'].join(', ');
+
 // Keys local_storage_backup never overwrites or prunes: device-local, or synced through their own
 // column or merge logic. (Rows written by older app versions still carry column keys in the backup.)
 const BACKUP_SKIP_KEYS = new Set(['iron_active_day', HISTORY_TOMBSTONES_KEY, ...Object.values(COLUMN_KEYS)]);
 
-// Applies a cloud row locally. Returns true if this device has history the cloud lacks.
+// Applies a cloud row locally. Workout history is not in it: see session-sync.js.
 export function applyCloudRow(data) {
   const backup = data.local_storage_backup;
   if (backup && typeof backup === 'object') {
@@ -322,8 +306,6 @@ export function applyCloudRow(data) {
     if (typeof data[col] === 'string') setL(COLUMN_KEYS[col], data[col]);
   });
   if (data.profile_avatar) setL('iron_profile_avatar', data.profile_avatar);
-
-  return mergeCloudHistory(data).missingFromCloud;
 }
 
 // Called after every local edit. Marks local data as unsynced and schedules one debounced upload.
@@ -369,7 +351,6 @@ export function buildSyncPayload(updatedAt) {
     custom_days: getJ('iron_custom_days', []),
     custom_sections: getJ('iron_custom_sections', []),
     hidden_days: getJ('iron_hidden_days', []),
-    history: getJ(HISTORY_KEY, []),
     custom_exercises: getJ('iron_custom_exercises', []),
     hidden_exercises: getJ('iron_hidden_exercises', []),
     custom_variations: getJ('iron_custom_variations', {}),
@@ -405,21 +386,22 @@ export async function writeSyncRow(payload, cloudRow) {
 const MAX_WRITE_ATTEMPTS = 3;
 
 export async function uploadSnapshot() {
+  await loadHistory();
   const seq = localEditSeq;
   let historyChanged = false;
   try {
+    // Sessions first, so a device woken by the row change below finds them already uploaded.
+    historyChanged = await syncSessions(supabaseClient, currentUser.id);
     for (let attempt = 0; attempt < MAX_WRITE_ATTEMPTS; attempt++) {
-      // Read first so sessions logged on another device are merged in, not overwritten.
       const { data: cloudRow, error: readError } = await supabaseClient
         .from('user_sync')
-        .select('history, local_storage_backup, updated_at')
+        .select('updated_at')
         .eq('user_id', currentUser.id)
         .maybeSingle();
       if (readError) {
         console.error('Cloud read error:', readError);
         return false;
       }
-      if (cloudRow && mergeCloudHistory(cloudRow).localChanged) historyChanged = true;
 
       const updatedAt = new Date().toISOString();
       const payload = buildSyncPayload(updatedAt);

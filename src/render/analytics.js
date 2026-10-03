@@ -1,5 +1,6 @@
 import { MUSCLE_GROUP_ORDER, epley1RM, getMuscleGroup } from '../model.js';
-import { esc, getJ } from '../storage.js';
+import { getHistory } from '../history-store.js';
+import { esc } from '../storage.js';
 
 // ==========================================
 // MUSCLE RECOVERY HEATMAP FEATURE
@@ -55,7 +56,7 @@ function bodyFigure(view, statusByGroup) {
 export function renderMuscleRecoveryHeatmap() {
   const container = document.getElementById('recoveryGridContainer');
   if (!container) return;
-  const history = getJ('iron_workout_history', []);
+  const history = getHistory();
   const now = new Date();
 
   const muscleLastTrained = {};
@@ -103,7 +104,7 @@ export function renderMuscleGroupBarChart() {
   if (!wrap) return;
   const data = { chest:0, back:0, legs:0, shoulders:0, arms:0 };
   const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - analyticRange);
-  const history = getJ('iron_workout_history', []).filter(h => h.date && new Date(h.date + 'T00:00:00') >= cutoff);
+  const history = getHistory().filter(h => h.date && new Date(h.date + 'T00:00:00') >= cutoff);
   history.forEach(h => {
     if (!h.exercises) return;
     h.exercises.forEach(ex => {
@@ -149,7 +150,7 @@ export function render1RMTrends() {
   const select = document.getElementById('compoundSelect');
   if (!wrap) return;
 
-  const history = getJ('iron_workout_history', []);
+  const history = getHistory();
   const selectedExercise = select ? select.value : '';
 
   const points = [];
