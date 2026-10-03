@@ -108,7 +108,11 @@ The script is idempotent, so it's safe to re-run.
 ### 2. Enable email sign-in
 
 Under **Authentication → Providers**, enable **Email**. Email and password is the only sign-in
-method the app uses. If "Confirm email" is on, new users must confirm their address before signing in.
+method the app uses. **Turn on "Confirm email"**: otherwise anyone can create an account with an address
+they don't own (or that doesn't exist). With it on, sign-up sends a link, the app asks the user to open it
+(with a button to resend it), and the account can't sign in until they do. The app also catches common
+typos in the domain (`gmial.com`) before sending. Supabase's built-in email sender is limited to a few
+messages an hour, so for real use set up your own SMTP under **Authentication → Emails → SMTP Settings**.
 
 "Forgot password?" emails a link that opens the app on a "Set a new password" screen. Supabase only
 sends people back to allowed addresses: under **Authentication → URL Configuration**, set the **Site

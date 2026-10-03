@@ -21,6 +21,7 @@ import {
 } from './settings-merge.js';
 import { loadProfileTabUI, shrinkStoredAvatar } from './render/profile.js';
 import { maybeStartOnboarding } from './render/onboarding.js';
+import { suggestEmailFix } from './email-check.js';
 import { getL, setL } from './storage.js';
 import { refreshAllUI, refreshHistoryUI, refreshNutritionUI, showToast, updateSyncIndicator } from './ui.js';
 
@@ -38,6 +39,11 @@ const SUPABASE_ANON_KEY =
 // the client starts, possibly before any listener is attached, so note it now.
 const OPENED_FROM_RESET_LINK =
   typeof location !== 'undefined' && /(^|[#?&])type=recovery(&|$)/.test(`${location.hash}&${location.search}`);
+// Likewise a sign-up confirmation link (type=signup).
+const OPENED_FROM_CONFIRM_LINK =
+  typeof location !== 'undefined' && /(^|[#?&])type=signup(&|$)/.test(`${location.hash}&${location.search}`);
+// Where email links (confirmation, password reset) bring the user back to.
+const appUrl = () => location.origin + location.pathname;
 
 export let supabaseClient = null;
 try {
@@ -68,7 +74,11 @@ export function toggleAuthMode() {
   document.getElementById('authToggleText').textContent = isSignUpMode
     ? 'Already have an account?'
     : 'Need an account?';
+  document.getElementById('authToggleBtn').textContent = isSignUpMode ? 'Sign in' : 'Create one';
   document.getElementById('authForgotBtn').hidden = isSignUpMode;
+  document.getElementById('authMsg').style.display = 'none';
+  warnedEmail = '';
+  setAuthExtras();
 }
 
 function showAuthMessage(id, text, isError) {
@@ -93,7 +103,7 @@ export async function requestPasswordReset() {
   btn.disabled = true;
   try {
     const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
-      redirectTo: location.origin + location.pathname
+      redirectTo: appUrl()
     });
     if (error) throw error;
     // The same answer whether or not the account exists, so the form can't be used to find accounts.
@@ -133,12 +143,60 @@ export async function submitNewPassword(e) {
   }
 }
 
+let warnedEmail = ''; // the address a typo warning was shown for; submitting it again goes ahead
+let pendingEmail = ''; // the address waiting for its confirmation email
+
+function setAuthExtras({ fix = null, resend = false } = {}) {
+  const fixBtn = document.getElementById('authFixEmailBtn');
+  if (fixBtn) {
+    fixBtn.hidden = !fix;
+    fixBtn.textContent = fix ? `Use ${fix}` : '';
+    fixBtn.dataset.email = fix || '';
+  }
+  const resendBtn = document.getElementById('authResendBtn');
+  if (resendBtn) resendBtn.hidden = !resend;
+}
+
+export function useSuggestedEmail() {
+  const btn = document.getElementById('authFixEmailBtn');
+  document.getElementById('authEmail').value = btn.dataset.email;
+  warnedEmail = '';
+  setAuthExtras();
+  document.getElementById('authMsg').style.display = 'none';
+  document.getElementById('authPassword').focus();
+}
+
+// Asks Supabase to send the sign-up confirmation email again.
+export async function resendConfirmation() {
+  const email = pendingEmail || document.getElementById('authEmail').value.trim();
+  if (!email || !supabaseClient) return;
+  const btn = document.getElementById('authResendBtn');
+  btn.disabled = true;
+  try {
+    const { error } = await supabaseClient.auth.resend({
+      type: 'signup',
+      email,
+      options: { emailRedirectTo: appUrl() }
+    });
+    if (error) throw error;
+    showAuthMessage('authMsg', `Sent again to ${email}. Check your spam folder too.`);
+  } catch (err) {
+    showAuthMessage('authMsg', err?.message || 'Could not send the email. Try again in a minute.', true);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+const isUnconfirmed = error =>
+  error?.code === 'email_not_confirmed' || /email not confirmed/i.test(error?.message || '');
+
 export async function handleAuthSubmit(e) {
   e.preventDefault();
   const email = document.getElementById('authEmail').value.trim();
   const password = document.getElementById('authPassword').value;
   const msg = document.getElementById('authMsg');
   const btn = document.getElementById('authSubmitBtn');
+  setAuthExtras();
 
   if (!supabaseClient) {
     msg.textContent = 'Supabase client unavailable. Running local standalone mode.';
@@ -151,6 +209,15 @@ export async function handleAuthSubmit(e) {
     return;
   }
 
+  // A likely typo in the domain ('gmial.com'): ask once before creating an account nobody can confirm.
+  const fix = isSignUpMode ? suggestEmailFix(email) : null;
+  if (fix && warnedEmail !== email) {
+    warnedEmail = email;
+    showAuthMessage('authMsg', `Did you mean ${fix}? Press “Create account” again to keep ${email}.`, true);
+    setAuthExtras({ fix });
+    return;
+  }
+
   btn.disabled = true;
   btn.textContent = 'Processing...';
   msg.style.display = 'none';
@@ -158,7 +225,8 @@ export async function handleAuthSubmit(e) {
   let res;
   try {
     if (isSignUpMode) {
-      res = await supabaseClient.auth.signUp({ email, password });
+      // With "Confirm email" on in Supabase, this sends a link and creates no session until it's opened.
+      res = await supabaseClient.auth.signUp({ email, password, options: { emailRedirectTo: appUrl() } });
     } else {
       res = await supabaseClient.auth.signInWithPassword({ email, password });
     }
@@ -170,25 +238,37 @@ export async function handleAuthSubmit(e) {
     btn.textContent = isSignUpMode ? 'Create account' : 'Sign in';
   }
 
-  if (res.error) {
+  if (res.error && isUnconfirmed(res.error)) {
+    pendingEmail = email;
+    showAuthMessage('authMsg', `Confirm your email first: open the link we sent to ${email}.`, true);
+    setAuthExtras({ resend: true });
+  } else if (res.error) {
     msg.textContent = res.error.message;
     msg.style.color = '#ef4444';
     msg.style.display = 'block';
     showToast(res.error.message, 'error');
   } else if (res.data.session) {
-    currentUser = res.data.session.user;
-    await Promise.all([loadHistory(), loadNutritionLog()]);
-    prepareLocalDataFor(currentUser);
-    updateUserSessionUI(currentUser);
-    await pullFromCloud();
-    subscribeToRealtimeSync();
+    await startSignedInSession(res.data.session.user);
     showToast('Successfully signed in!', 'success');
-    maybeStartOnboarding(); // after the pull: a returning user's profile is already here
-  } else if (res.data.user && !res.data.session) {
-    msg.textContent = 'Account created successfully!';
-    msg.style.color = 'var(--accent)';
-    msg.style.display = 'block';
+  } else if (res.data.user) {
+    // The same answer whether or not the address already had an account (Supabase doesn't say either).
+    pendingEmail = email;
+    showAuthMessage(
+      'authMsg',
+      `Almost done: we sent a link to ${email}. Open it to confirm your address and finish creating your account.`
+    );
+    setAuthExtras({ resend: true });
   }
+}
+
+async function startSignedInSession(user) {
+  currentUser = user;
+  await Promise.all([loadHistory(), loadNutritionLog()]);
+  prepareLocalDataFor(currentUser);
+  updateUserSessionUI(currentUser);
+  await pullFromCloud();
+  subscribeToRealtimeSync();
+  maybeStartOnboarding(); // after the pull: a returning user's profile is already here
 }
 
 export async function handleSignOut() {
@@ -535,6 +615,7 @@ export function startSessionSync() {
       pullFromCloud().then(maybeStartOnboarding); // after the pull: a returning user's profile is here
       subscribeToRealtimeSync();
       if (OPENED_FROM_RESET_LINK) showPasswordReset(session.user);
+      else if (OPENED_FROM_CONFIRM_LINK) showToast('✅ Email confirmed. You’re signed in.', 'success');
     } else {
       updateUserSessionUI(null);
       maybeStartOnboarding(); // only if the sign-in screen isn't showing

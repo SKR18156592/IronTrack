@@ -3001,7 +3001,7 @@ body:not(.edit-mode) .exercise-card.collapsed .ex-chevron {
   margin-top: -4px;
   font-size: 12.5px;
 }
-.auth-forgot[hidden] {
+.auth-link[hidden] {
   display: none;
 }
 .auth-card {
