@@ -22,6 +22,11 @@ const buttonFor = (key) => {
   item.appendChild(btn);
   return btn;
 };
+// Answers the in-app confirm dialog: its last button confirms, the first cancels.
+const answer = (confirmed) => {
+  const buttons = document.querySelectorAll('.dialog [data-dialog-button]');
+  buttons[confirmed ? buttons.length - 1 : 0].click();
+};
 const tombstones = () => JSON.parse(localStorage.getItem('iron_history_tombstones') || '[]');
 
 beforeEach(async () => {
@@ -33,17 +38,21 @@ beforeEach(async () => {
 });
 
 describe('deleteWorkoutSession', () => {
-  it('removes only that session and tombstones it so sync deletes it everywhere', () => {
-    window.confirm = () => true;
-    deleteWorkoutSession(buttonFor('session_1'));
+  it('removes only that session and tombstones it so sync deletes it everywhere', async () => {
+    const done = deleteWorkoutSession(buttonFor('session_1'));
+    answer(true);
+    await done;
     expect(getHistory().map(s => s.id)).toEqual(['session_2']);
     expect(tombstones()).toEqual(['session_1']);
     expect(pushToCloud).toHaveBeenCalled();
   });
 
-  it('does nothing when the user cancels', () => {
-    window.confirm = () => false;
-    deleteWorkoutSession(buttonFor('session_1'));
+  it('does nothing when the user cancels', async () => {
+    const done = deleteWorkoutSession(buttonFor('session_1'));
+    expect(document.querySelector('.dialog').textContent).toContain('2026-10-01');
+    answer(false);
+    await done;
+    expect(document.querySelector('.dialog')).toBeNull();
     expect(getHistory()).toHaveLength(2);
     expect(tombstones()).toEqual([]);
     expect(pushToCloud).not.toHaveBeenCalled();

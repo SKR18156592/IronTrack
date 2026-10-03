@@ -1,3 +1,4 @@
+import { args } from '../actions.js';
 import { MUSCLE_GROUP_ORDER, epley1RM, getMuscleGroup } from '../model.js';
 import { getHistory } from '../history-store.js';
 import { esc } from '../storage.js';
@@ -95,7 +96,7 @@ export function renderMuscleRecoveryHeatmap() {
 
 // Charts with nothing to show yet point the user at the Workout tab.
 function emptyState(text) {
-  return `<div class="chart-empty"><p>${text}</p><button class="btn btn-secondary" onclick="showTab('workout')">Go to today's workout</button></div>`;
+  return `<div class="chart-empty"><p>${text}</p><button class="btn btn-secondary" data-on-click="showTab" data-args="${args('workout')}">Go to today's workout</button></div>`;
 }
 
 export let analyticRange = 7;
