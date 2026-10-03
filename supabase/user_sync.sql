@@ -1,6 +1,7 @@
 -- The tables the app syncs through:
 --   user_sync         one row per user: settings, customizations, profile
 --   workout_sessions  one row per logged workout session
+--   nutrition_log     one row per nutrition log entry (food, water, body weight)
 -- Idempotent: safe to run on a project where the tables already exist.
 -- It does not change existing columns; it only adds missing ones, enables RLS,
 -- replaces the policies below, and adds user_sync to realtime. workout_sessions is left out
@@ -108,7 +109,43 @@ create policy "workout_sessions_update_own" on public.workout_sessions
 create policy "workout_sessions_delete_own" on public.workout_sessions
   for delete to authenticated using (user_id = (select auth.uid()));
 
+-- nutrition_log: one row per entry of the daily nutrition log, synced like workout_sessions.
+-- Until this table exists the app keeps the log on the device; everything else still syncs.
+create table if not exists public.nutrition_log (
+  user_id    uuid not null references auth.users on delete cascade,
+  id         text not null,
+  data       jsonb,
+  deleted    boolean not null default false,
+  updated_at timestamptz not null default now(),
+  primary key (user_id, id)
+);
+
+create index if not exists nutrition_log_user_updated on public.nutrition_log (user_id, updated_at);
+
+drop trigger if exists nutrition_log_touch on public.nutrition_log;
+create trigger nutrition_log_touch before insert or update on public.nutrition_log
+  for each row execute function public.workout_sessions_touch();
+
+alter table public.nutrition_log enable row level security;
+
+drop policy if exists "nutrition_log_select_own" on public.nutrition_log;
+drop policy if exists "nutrition_log_insert_own" on public.nutrition_log;
+drop policy if exists "nutrition_log_update_own" on public.nutrition_log;
+drop policy if exists "nutrition_log_delete_own" on public.nutrition_log;
+
+create policy "nutrition_log_select_own" on public.nutrition_log
+  for select to authenticated using (user_id = (select auth.uid()));
+create policy "nutrition_log_insert_own" on public.nutrition_log
+  for insert to authenticated with check (user_id = (select auth.uid()));
+create policy "nutrition_log_update_own" on public.nutrition_log
+  for update to authenticated
+  using (user_id = (select auth.uid()))
+  with check (user_id = (select auth.uid()));
+create policy "nutrition_log_delete_own" on public.nutrition_log
+  for delete to authenticated using (user_id = (select auth.uid()));
+
 -- Verify afterwards:
 --   select relrowsecurity from pg_class where relname = 'user_sync';   -- expect: true
 --   select policyname, cmd from pg_policies where tablename = 'user_sync';
 --   select relrowsecurity from pg_class where relname = 'workout_sessions';  -- expect: true
+--   select relrowsecurity from pg_class where relname = 'nutrition_log';     -- expect: true
