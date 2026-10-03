@@ -106,6 +106,11 @@ The script is idempotent, so it's safe to re-run.
 Under **Authentication → Providers**, enable **Email**. Email and password is the only sign-in
 method the app uses. If "Confirm email" is on, new users must confirm their address before signing in.
 
+"Forgot password?" emails a link that opens the app on a "Set a new password" screen. Supabase only
+sends people back to allowed addresses: under **Authentication → URL Configuration**, set the **Site
+URL** to your deployed app and add it (plus `http://localhost:5173` for development) to **Redirect
+URLs**.
+
 ### 3. Point the app at your project
 
 Copy `.env.example` to `.env.local` and set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`

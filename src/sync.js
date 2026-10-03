@@ -33,6 +33,11 @@ const SUPABASE_ANON_KEY =
   import.meta.env.VITE_SUPABASE_ANON_KEY ||
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impsd2FlYnNmdHZ0cWdobWhoZXNzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg0Mjk1OTgsImV4cCI6MjEwNDAwNTU5OH0.6bb0zIkWxUpX31KIckqNVWVBb0p2QRhl10yeUlA5e_g';
 
+// A password-reset link opens the app with type=recovery in the URL. supabase-js reads and clears it while
+// the client starts, possibly before any listener is attached, so note it now.
+const OPENED_FROM_RESET_LINK =
+  typeof location !== 'undefined' && /(^|[#?&])type=recovery(&|$)/.test(`${location.hash}&${location.search}`);
+
 export let supabaseClient = null;
 try {
   if (SUPABASE_URL && SUPABASE_ANON_KEY) {
@@ -62,6 +67,69 @@ export function toggleAuthMode() {
   document.getElementById('authToggleText').textContent = isSignUpMode
     ? 'Already have an account?'
     : 'Need an account?';
+  document.getElementById('authForgotBtn').hidden = isSignUpMode;
+}
+
+function showAuthMessage(id, text, isError) {
+  const msg = document.getElementById(id);
+  msg.textContent = text;
+  msg.style.color = isError ? 'var(--danger)' : 'var(--accent)'; // as the other sign-in messages
+  msg.hidden = false;
+  msg.style.display = 'block';
+}
+
+// Emails a password-reset link for the address in the sign-in form.
+export async function requestPasswordReset() {
+  const emailInput = document.getElementById('authEmail');
+  const email = emailInput.value.trim();
+  if (!supabaseClient) return;
+  if (!emailInput.checkValidity() || !email) {
+    showAuthMessage('authMsg', 'Enter your email address above, then tap “Forgot password?” again.', true);
+    emailInput.focus();
+    return;
+  }
+  const btn = document.getElementById('authForgotBtn');
+  btn.disabled = true;
+  try {
+    const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
+      redirectTo: location.origin + location.pathname
+    });
+    if (error) throw error;
+    // The same answer whether or not the account exists, so the form can't be used to find accounts.
+    showAuthMessage('authMsg', `If there's an account for ${email}, a link to reset its password is on its way.`);
+  } catch (err) {
+    showAuthMessage('authMsg', err?.message || 'Could not send the email. Try again.', true);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function showPasswordReset(user) {
+  document.getElementById('authOverlay').classList.remove('active');
+  document.getElementById('resetEmail').textContent = user?.email || 'your account';
+  document.getElementById('resetOverlay').classList.add('active');
+  document.getElementById('resetPassword').focus();
+}
+
+export async function submitNewPassword(e) {
+  e.preventDefault();
+  const password = document.getElementById('resetPassword').value;
+  const confirm = document.getElementById('resetPasswordConfirm').value;
+  if (password.length < 6) return showAuthMessage('resetMsg', 'Use at least 6 characters.', true);
+  if (password !== confirm) return showAuthMessage('resetMsg', 'The two passwords don’t match.', true);
+  const btn = document.getElementById('resetSubmitBtn');
+  btn.disabled = true;
+  try {
+    const { error } = await supabaseClient.auth.updateUser({ password });
+    if (error) throw error;
+    document.getElementById('resetOverlay').classList.remove('active');
+    e.target.reset();
+    showToast('🔑 Password updated. You’re signed in.', 'success');
+  } catch (err) {
+    showAuthMessage('resetMsg', err?.message || 'Could not save the password. Try again.', true);
+  } finally {
+    btn.disabled = false;
+  }
 }
 
 export async function handleAuthSubmit(e) {
@@ -462,14 +530,17 @@ export function startSessionSync() {
       updateUserSessionUI(currentUser);
       pullFromCloud();
       subscribeToRealtimeSync();
+      if (OPENED_FROM_RESET_LINK) showPasswordReset(session.user);
     } else {
       updateUserSessionUI(null);
     }
   });
   // Signed out in another tab, or the session could not be refreshed: in-memory state is stale.
   // Local data is kept (an unsynced edit uploads after the next sign-in to the same account).
-  supabaseClient.auth.onAuthStateChange(event => {
+  supabaseClient.auth.onAuthStateChange((event, session) => {
     if (event === 'SIGNED_OUT' && currentUser && !isSigningOut) window.location.reload();
+    // Usually noticed through the URL above; this covers the event arriving after the listener.
+    if (event === 'PASSWORD_RECOVERY' && session) showPasswordReset(session.user);
   });
 }
 
