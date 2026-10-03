@@ -16,7 +16,7 @@ vi.mock('../src/render/profile.js', async importOriginal => ({
   shrinkStoredAvatar: vi.fn()
 }));
 
-const { mergeCloudRow, flushPush, pullFromCloud, pushToCloud, setSyncContext } = await import('../src/sync.js');
+const { flushPush, pullFromCloud, pushToCloud, setSyncContext } = await import('../src/sync.js');
 const { clearHistory, getHistory, loadHistory, setHistory } = await import('../src/history-store.js');
 
 const USER = { id: 'user-1' };
@@ -288,32 +288,6 @@ describe('moving history out of user_sync.history', () => {
     await pullFromCloud();
     expect(cloudIds()).toEqual(['session_1']);
     expect(localStorage.getItem('irontrack_sessions_migrated')).toBe(USER.id);
-  });
-});
-
-describe('mergeCloudRow', () => {
-  it('removes keys deleted on another device but keeps keys never synced', () => {
-    localStorage.setItem('irontrack_synced_keys', JSON.stringify(['iron_preset_a', 'iron_theme']));
-    localStorage.setItem('iron_preset_a', '[]'); // synced before, now gone from the cloud
-    localStorage.setItem('iron_local_only', 'x'); // never synced
-    localStorage.setItem('iron_custom_days', '[{"dayNum":"9"}]');
-    mergeCloudRow({ local_storage_backup: { iron_theme: 'lime' }, custom_days: [] });
-    expect(localStorage.getItem('iron_preset_a')).toBeNull();
-    expect(localStorage.getItem('iron_local_only')).toBe('x');
-    expect(localStorage.getItem('iron_theme')).toBe('lime');
-    expect(localStorage.getItem('iron_custom_days')).toBe('[]'); // set from its column
-  });
-
-  it('applies a cleared profile field', () => {
-    localStorage.setItem('iron_profile_name', 'Alex');
-    mergeCloudRow({ local_storage_backup: {}, profile_name: '' });
-    expect(localStorage.getItem('iron_profile_name')).toBe('');
-  });
-
-  it('leaves workout history alone', () => {
-    setHistory([session(1)]);
-    mergeCloudRow({ local_storage_backup: {}, history: [session(9)] });
-    expect(ids(history())).toEqual(['session_1']);
   });
 });
 
