@@ -19,7 +19,7 @@ import { clearSessionDraft, hasSessionDraft, saveSessionDraft } from '../session
 import { getHistory, requestPersistentStorage, setHistory } from '../history-store.js';
 import { esc, getL, isSafeId, setL } from '../storage.js';
 import { pushToCloud } from '../sync.js';
-import { buildPerformanceIndex, compareSet, formatSet, lastPerformance } from '../performance.js';
+import { buildPerformanceIndex, compareSet, formatSet, lastPerformance, suggestNext } from '../performance.js';
 import { fireConfetti, haptic, playBeep, showToast } from '../ui.js';
 import { icon } from '../icons.js';
 
@@ -201,7 +201,7 @@ export function renderExerciseCard(ex, idx) {
   const info = exerciseInfo(activeVarObj);
 
   return `
-  <div class="exercise-card ${dec.cls}" data-category="${ex.category}" data-prefix="${ex.prefix}" data-exercise-type="${esc(ex.exerciseType)}" data-rest="${ex.rest}">
+  <div class="exercise-card ${dec.cls}" data-category="${ex.category}" data-prefix="${ex.prefix}" data-exercise-type="${esc(ex.exerciseType)}" data-scheme="${esc(ex.scheme)}" data-rest="${ex.rest}">
     <div class="ex-header" role="button" tabindex="0" aria-expanded="true" data-on-click="toggleExerciseCard" data-on-keydown="onExerciseHeaderKey" data-args="${args('$el', '$event')}">
       <div>
         <div class="ex-title-row"><span class="ex-number">${String(idx).padStart(2, '0')}</span><div class="ex-title">${esc(ex.title)}</div>${dec.badge}<span class="ex-title-end"><span class="ex-progress" aria-label="Sets done">0/0</span><span class="ex-chevron" aria-hidden="true">${icon('chevron-down', { size: 18 })}</span></span></div>
@@ -233,6 +233,7 @@ export function renderExerciseCard(ex, idx) {
       <div class="ex-cue" id="${ex.prefix}CueBadge">${esc(info.cue)}</div>
       <div class="ex-prev" id="${ex.prefix}PrevBadge">${prevLine(storedPreset && storedPreset.length ? 'Preset' : 'Default', sets)}</div>
     </div>
+    <div class="ex-suggest" hidden></div>
     <div class="sets-table-wrap">
       <table class="sets-table" id="table_${ex.prefix}">
         <thead><tr><th>Set</th><th>Weight (kg)</th><th>Reps</th><th aria-label="Done"></th></tr></thead>
@@ -689,9 +690,40 @@ function cardPerformance(card) {
   return lastPerformance(perfIndex, card.dataset.category, variation);
 }
 
-// Shows what each set was last time on the same equipment.
+const fmtKg = w => `${+w.toFixed(2)} kg`;
+
+// The suggestion for this session from last time on the same equipment (see suggestNext).
+function updateSuggestion(card, entry) {
+  const box = card.querySelector('.ex-suggest');
+  if (!box) return;
+  const next = suggestNext(entry, card.dataset.scheme);
+  box.hidden = !next;
+  if (!next) return;
+  const arrow = { up: '↑', down: '↓', reps: '→', hold: '→' }[next.kind];
+  const target = next.weight > 0 ? `${fmtKg(next.weight)} × ${next.reps}` : `Bodyweight × ${next.reps}`;
+  box.dataset.kind = next.kind;
+  box.innerHTML = `<span class="ex-suggest-text"><strong>${arrow} Today: ${esc(target)}</strong>
+      <span class="ex-suggest-why">${esc(next.why)}</span></span>
+    ${next.weight > 0 ? `<button type="button" class="btn-xs" data-on-click="useSuggestion" data-args="${args('$el', next.weight)}">Use</button>` : ''}`;
+}
+
+// Puts the suggested weight in this exercise's working sets that aren't done yet.
+export function useSuggestion(btn, weight) {
+  const card = btn.closest('.exercise-card');
+  card.querySelectorAll('tbody tr').forEach(tr => {
+    const tag = tr.querySelector('.set-tag')?.value;
+    if (tr.querySelector('.check-btn')?.classList.contains('completed') || tag === 'Warmup' || tag === 'Drop Set')
+      return;
+    const input = tr.querySelector('.set-weight');
+    if (input) input.value = weight;
+  });
+  // The tap itself saves the in-progress session (session-draft.js listens for clicks).
+}
+
+// Shows what each set was last time on the same equipment, and what to aim for today.
 export function updateLastHints(card) {
   const entry = cardPerformance(card);
+  updateSuggestion(card, entry);
   card.querySelectorAll('tbody tr').forEach((tr, i) => {
     const text = tr.querySelector('.set-last-text');
     const last = entry && entry.sets[i];
