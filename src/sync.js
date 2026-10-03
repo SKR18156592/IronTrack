@@ -1,28 +1,33 @@
 import { confirmDialog } from './dialog.js';
 import { createClient } from '@supabase/supabase-js';
-import { HISTORY_KEY, HISTORY_TOMBSTONES_KEY, clearHistory, flushHistory, loadHistory } from './history-store.js';
+import { clearHistory, flushHistory, loadHistory } from './history-store.js';
+import { SESSIONS_CURSOR_KEY, SESSIONS_MIGRATED_KEY, SESSIONS_SYNCED_KEY, syncSessions } from './session-sync.js';
 import {
-  SESSIONS_CURSOR_KEY,
-  SESSIONS_MIGRATED_KEY,
-  SESSIONS_SYNCED_KEY,
-  fingerprint,
-  syncSessions
-} from './session-sync.js';
-import { getMicrocycle } from './model.js';
+  LEGACY_SYNCED_KEYS_KEY,
+  ROW_COLUMNS,
+  SYNCED_FPS_KEY,
+  buildSyncPayload,
+  matchesSynced,
+  mergeCloudRow,
+  recordSynced
+} from './settings-merge.js';
 import { loadProfileTabUI, shrinkStoredAvatar } from './render/profile.js';
-import { getJ, getL, setJ, setL } from './storage.js';
+import { getL, setL } from './storage.js';
 import { refreshAllUI, refreshHistoryUI, showToast, updateSyncIndicator } from './ui.js';
 
 // ==========================================
 // SUPABASE CLIENT & AUTH CONFIGURATION
 // ==========================================
-const SUPABASE_URL = 'https://jlwaebsftvtqghmhhess.supabase.co';
+// Set at build time (see .env.example). The defaults are this project's public values: the anon key is
+// public by design, and Row-Level Security protects the data.
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://jlwaebsftvtqghmhhess.supabase.co';
 const SUPABASE_ANON_KEY =
+  import.meta.env.VITE_SUPABASE_ANON_KEY ||
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impsd2FlYnNmdHZ0cWdobWhoZXNzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg0Mjk1OTgsImV4cCI6MjEwNDAwNTU5OH0.6bb0zIkWxUpX31KIckqNVWVBb0p2QRhl10yeUlA5e_g';
 
 export let supabaseClient = null;
 try {
-  if (SUPABASE_URL !== 'YOUR_SUPABASE_URL') {
+  if (SUPABASE_URL && SUPABASE_ANON_KEY) {
     supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
     });
@@ -179,10 +184,6 @@ const SYNC_STAMP_KEY = 'irontrack_last_synced_at';
 // updated_at of the last row we pushed or applied
 export const SESSION_DRAFT_KEY = 'irontrack_session_draft';
 // in-progress workout form; device-local, never synced
-const SYNCED_FPS_KEY = 'irontrack_synced_fps';
-// iron_* key -> fingerprint of its value in the cloud as of our last sync
-const LEGACY_SYNCED_KEYS_KEY = 'irontrack_synced_keys';
-// older versions: iron_* keys in the last snapshot synced
 const PUSH_DEBOUNCE_MS = 800;
 let pushTimer = null;
 let pushInFlight = null;
@@ -296,166 +297,6 @@ export async function pullFromCloud(showIndicator = false) {
   }
 }
 
-// localStorage keys that sync through their own user_sync column, so they are left out of
-// local_storage_backup (no point uploading them twice).
-const COLUMN_KEYS = {
-  microcycle_config: 'iron_microcycle_config',
-  custom_days: 'iron_custom_days',
-  custom_sections: 'iron_custom_sections',
-  hidden_days: 'iron_hidden_days',
-  history: HISTORY_KEY,
-  custom_exercises: 'iron_custom_exercises',
-  hidden_exercises: 'iron_hidden_exercises',
-  custom_variations: 'iron_custom_variations',
-  hidden_variations: 'iron_hidden_variations',
-  var_order: 'iron_var_order',
-  exercise_orders: 'iron_all_exercise_orders',
-  section_orders: 'iron_section_orders',
-  profile_name: 'iron_profile_name',
-  profile_age: 'iron_profile_age',
-  profile_weight: 'iron_profile_weight',
-  profile_height: 'iron_profile_height',
-  profile_sex: 'iron_profile_sex',
-  profile_avatar: 'iron_profile_avatar'
-};
-
-// Everything in the row except the history column older versions synced through.
-const ROW_COLUMNS = [
-  ...Object.keys(COLUMN_KEYS).filter(c => c !== 'history'),
-  'local_storage_backup',
-  'updated_at'
-].join(', ');
-
-// Keys local_storage_backup never overwrites or prunes: device-local, or synced through their own
-// column or merge logic. (Rows written by older app versions still carry column keys in the backup.)
-const BACKUP_SKIP_KEYS = new Set(['iron_active_day', HISTORY_TOMBSTONES_KEY, ...Object.values(COLUMN_KEYS)]);
-
-// ---- Settings merge. Each synced setting is compared with its value in the cloud as of this device's
-// last sync (kept as a fingerprint), so a sync takes another device's changes without dropping this
-// device's unsynced ones. Workout history is not in the row: see session-sync.js.
-
-const isList = v => Array.isArray(v);
-const isMap = v => !!v && typeof v === 'object';
-const isText = v => typeof v === 'string'; // including '', so a cleared field clears everywhere
-// Which values each column may hold. Anything else (including null: never set) says nothing about the key.
-const COLUMN_VALID = {
-  microcycle_config: isList,
-  custom_days: isList,
-  custom_sections: isList,
-  hidden_days: isList,
-  custom_exercises: isList,
-  hidden_exercises: isList,
-  custom_variations: isMap,
-  hidden_variations: isMap,
-  var_order: isMap,
-  exercise_orders: isMap,
-  section_orders: isMap,
-  profile_name: isText,
-  profile_age: isText,
-  profile_weight: isText,
-  profile_height: isText,
-  profile_sex: isText,
-  profile_avatar: v => isText(v) && v !== ''
-};
-const COLUMN_KEY_SET = new Set(Object.values(COLUMN_KEYS));
-const ABSENT = '-'; // fingerprint of a key that isn't set (real fingerprints contain a '.')
-
-function settingFp(raw) {
-  if (raw === null || raw === undefined) return ABSENT;
-  let v = raw;
-  try {
-    v = JSON.parse(raw);
-  } catch (e) {} // jsonb doesn't keep key order or formatting
-  return fingerprint(v);
-}
-
-// The settings a user_sync row holds, as the raw strings localStorage would store.
-function rowSettings(row) {
-  const out = {};
-  const backup = isMap(row.local_storage_backup) ? row.local_storage_backup : null;
-  if (backup) {
-    for (const k in backup) {
-      if (k.startsWith('iron_') && !BACKUP_SKIP_KEYS.has(k) && backup[k] !== null) out[k] = String(backup[k]);
-    }
-  }
-  for (const [col, key] of Object.entries(COLUMN_KEYS)) {
-    if (!COLUMN_VALID[col] || !COLUMN_VALID[col](row[col])) continue;
-    out[key] = isText(row[col]) ? row[col] : JSON.stringify(row[col]);
-  }
-  // Per-section exercise orders also travel inside exercise_orders.
-  if (isMap(row.exercise_orders)) {
-    for (const k in row.exercise_orders) {
-      if (k.startsWith('iron_order_') && !(k in out)) out[k] = JSON.stringify(row.exercise_orders[k]);
-    }
-  }
-  // A key the backup leaves out is not set in the cloud; a column key left out is unknown.
-  const valueOf = k => (k in out ? out[k] : backup && !COLUMN_KEY_SET.has(k) ? null : undefined);
-  return { keys: Object.keys(out), valueOf };
-}
-
-// Remembers `row` as the cloud's current settings.
-function recordSynced(row) {
-  const { keys, valueOf } = rowSettings(row);
-  const synced = getJ(SYNCED_FPS_KEY, {}) || {};
-  for (const k of new Set([...Object.keys(synced), ...keys])) {
-    const raw = valueOf(k);
-    if (raw === undefined) continue;
-    if (raw === null) delete synced[k];
-    else synced[k] = settingFp(raw);
-  }
-  setJ(SYNCED_FPS_KEY, synced);
-  localStorage.removeItem(LEGACY_SYNCED_KEYS_KEY);
-}
-
-// Whether the cloud already holds every setting in `payload`, as of this device's last sync.
-// (A value recordSynced can't tell, like an unset avatar, counts as unchanged, as it does there.)
-function matchesSynced(payload) {
-  const synced = getJ(SYNCED_FPS_KEY, null);
-  if (!synced) return false; // no fingerprints yet (first sync, or updated from an older version)
-  const { keys, valueOf } = rowSettings(payload);
-  for (const k of new Set([...Object.keys(synced), ...keys])) {
-    const raw = valueOf(k);
-    if (raw !== undefined && settingFp(raw) !== (synced[k] ?? ABSENT)) return false;
-  }
-  return true;
-}
-
-// Applies another device's changes from a cloud row. A setting changed in the cloud since this device's
-// last sync is taken, unless keepLocalEdits is set and this device changed it too (its edit uploads next).
-// Returns whether any local setting changed.
-export function mergeCloudRow(row, { keepLocalEdits = false } = {}) {
-  const { keys, valueOf } = rowSettings(row);
-  const synced = getJ(SYNCED_FPS_KEY, null);
-  const legacySynced = new Set(getJ(LEGACY_SYNCED_KEYS_KEY, []));
-  // Local values as an upload would send them (unset columns go up as their defaults).
-  const mine = rowSettings(buildSyncPayload(null));
-
-  let changed = false;
-  for (const k of new Set([...keys, ...mine.keys, ...Object.keys(synced || {})])) {
-    const remote = valueOf(k);
-    if (remote === undefined) continue;
-    const local = mine.valueOf(k) ?? localStorage.getItem(k);
-    const remoteFp = settingFp(remote),
-      localFp = settingFp(local);
-    if (remoteFp === localFp) continue;
-    let baseFp;
-    if (synced) baseFp = synced[k] ?? ABSENT;
-    // First sync since updating from a version without fingerprints.
-    else if (keepLocalEdits)
-      baseFp = local === null ? ABSENT : remoteFp; // keep every local value, add the cloud's new keys
-    else baseFp = legacySynced.has(k) || remote !== null ? localFp : ABSENT; // nothing unsynced: local is what was synced
-
-    const remoteChanged = remoteFp !== baseFp,
-      localChanged = localFp !== baseFp;
-    if (!remoteChanged || (keepLocalEdits && localChanged)) continue;
-    if (remote === null) localStorage.removeItem(k);
-    else setL(k, remote);
-    changed = true;
-  }
-  recordSynced(row);
-  return changed;
-}
-
 function isLastSyncedRow(row) {
   const lastStamp = getL(SYNC_STAMP_KEY, '');
   return !!(row.updated_at && lastStamp && Date.parse(row.updated_at) === Date.parse(lastStamp));
@@ -496,40 +337,6 @@ export async function flushPush() {
     if (!ok) return false;
   }
   return true;
-}
-
-export function buildSyncPayload(updatedAt) {
-  const columnKeys = new Set(Object.values(COLUMN_KEYS));
-  const allLocalStorageData = {};
-  for (let i = 0; i < localStorage.length; i++) {
-    const key = localStorage.key(i);
-    if (key && key.startsWith('iron_') && !columnKeys.has(key)) {
-      allLocalStorageData[key] = localStorage.getItem(key);
-    }
-  }
-
-  return {
-    user_id: currentUser?.id,
-    microcycle_config: getMicrocycle(),
-    custom_days: getJ('iron_custom_days', []),
-    custom_sections: getJ('iron_custom_sections', []),
-    hidden_days: getJ('iron_hidden_days', []),
-    custom_exercises: getJ('iron_custom_exercises', []),
-    hidden_exercises: getJ('iron_hidden_exercises', []),
-    custom_variations: getJ('iron_custom_variations', {}),
-    hidden_variations: getJ('iron_hidden_variations', {}),
-    var_order: getJ('iron_var_order', {}),
-    exercise_orders: getJ('iron_all_exercise_orders', {}),
-    section_orders: getJ('iron_section_orders', {}),
-    local_storage_backup: allLocalStorageData,
-    profile_name: getL('iron_profile_name', ''),
-    profile_age: getL('iron_profile_age', ''),
-    profile_weight: getL('iron_profile_weight', ''),
-    profile_height: getL('iron_profile_height', ''),
-    profile_sex: getL('iron_profile_sex', ''),
-    profile_avatar: getL('iron_profile_avatar', null),
-    updated_at: updatedAt
-  };
 }
 
 // Writes the row only if it is unchanged since `cloudRow` was read (compare-and-swap on updated_at).
@@ -578,7 +385,7 @@ export async function uploadSnapshot() {
       }
 
       const updatedAt = new Date().toISOString();
-      const payload = buildSyncPayload(updatedAt);
+      const payload = buildSyncPayload(currentUser.id, updatedAt);
 
       // Only sessions changed: skip rewriting the whole row (profile photo included). The ping
       // below still tells other devices to pull.
