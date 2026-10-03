@@ -2,7 +2,7 @@ import { FLAT_EXERCISES, WORKOUT, getChoice, rebuildWorkoutDatabase, setChoice }
 import { renderNutritionPlan } from './render/nutrition.js';
 import { loadProfileData, loadProfileTabUI, shrinkStoredAvatar } from './render/profile.js';
 import { renderScheduleRibbon } from './render/schedule.js';
-import { computeTDEE, loadSettings } from './render/tools.js';
+import { compute1RM, computePlates, computeTDEE, loadSettings } from './render/tools.js';
 import { applyVariation, renderAll, switchDayView } from './render/workout.js';
 import { restoreSessionDraft, watchSessionForm } from './session-draft.js';
 import { getHistory, loadHistory } from './history-store.js';
@@ -62,6 +62,8 @@ async function init() {
   renderScheduleRibbon();
   renderNutritionPlan();
   computeTDEE();
+  compute1RM();
+  computePlates();
   updateOnlineStatus();
   document.getElementById('sessionDate').valueAsDate = new Date();
 

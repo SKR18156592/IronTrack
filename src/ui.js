@@ -3,7 +3,7 @@ import { analyticRange, render1RMTrends, renderMuscleGroupBarChart, renderMuscle
 import { populateCompoundSelect, populateHistoryExerciseDropdown, renderHistory } from './render/history.js';
 import { renderNutritionPlan } from './render/nutrition.js';
 import { loadProfileTabUI, loadProfileToCalculator } from './render/profile.js';
-import { renderScheduleRibbon } from './render/schedule.js';
+import { renderHomeSummary, renderScheduleRibbon } from './render/schedule.js';
 import { computeTDEE } from './render/tools.js';
 import { activeDay, renderAll, switchDayView, updateProgress, updateSessionStats } from './render/workout.js';
 import { getL, setL } from './storage.js';
@@ -71,6 +71,7 @@ export function refreshAllUI() {
 }
 
 export function refreshHistoryUI() {
+  renderHomeSummary();
   renderHistory();
   populateHistoryExerciseDropdown();
   populateCompoundSelect();

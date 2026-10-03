@@ -3,6 +3,7 @@ import { WORKOUT, getMicrocycle, rebuildWorkoutDatabase, setMicrocycle } from '.
 import { populateHistoryDayFilter } from './history.js';
 import { activeDay, captureCurrentFormValues, renderAll, restoreFormValues, switchDayView } from './workout.js';
 import { esc, getJ, safeId, setJ } from '../storage.js';
+import { getHistory } from '../history-store.js';
 import { icon } from '../icons.js';
 import { pushToCloud } from '../sync.js';
 import { showToast } from '../ui.js';
@@ -57,6 +58,7 @@ export function renderScheduleRibbon() {
       return `<span class="week-dot ${lift ? 'lift' : ''} ${today ? 'today' : ''}" title="${esc(item.full)}: ${lift ? 'lift' : 'rest'}">${esc(item.day.charAt(0))}</span>`;
     }).join('');
   }
+  renderHomeSummary(); // the plan's workout count may have changed
 }
 
 export function openMicrocycleModal() {
@@ -341,4 +343,43 @@ export function restoreAllHiddenExercises() {
   renderAll();
   switchDayView('1', true);
   showToast('♻️ All exercises & default days restored!', 'success');
+}
+
+// ---- Header line under the logo: today's date, this week's workouts against the plan, and the streak.
+function localDate(iso) {
+  const [y, m, d] = String(iso || '').split('-').map(Number);
+  return y ? new Date(y, m - 1, d) : null;
+}
+
+// Monday 00:00 of the week `date` falls in.
+function weekStart(date) {
+  const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+  return d;
+}
+
+// Weeks in a row with at least one workout. The current week only counts once it has one,
+// so the streak doesn't look broken on a Monday.
+export function weekStreak(dates, today = new Date()) {
+  const weeks = new Set(dates.map(localDate).filter(Boolean).map(d => weekStart(d).getTime()));
+  const w = weekStart(today);
+  if (!weeks.has(w.getTime())) w.setDate(w.getDate() - 7);
+  let streak = 0;
+  while (weeks.has(w.getTime())) { streak++; w.setDate(w.getDate() - 7); }
+  return streak;
+}
+
+export function renderHomeSummary() {
+  const el = document.getElementById('homeSummary');
+  if (!el) return;
+  const today = new Date();
+  const dates = getHistory().map(h => h.date);
+  const start = weekStart(today).getTime();
+  const done = dates.filter(d => { const t = localDate(d); return t && t.getTime() >= start; }).length;
+  const planned = getMicrocycle().filter(d => d.type === 'workout').length;
+  const streak = weekStreak(dates, today);
+  const parts = [today.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })];
+  parts.push(planned ? `${done} of ${planned} this week` : `${done} this week`);
+  if (streak >= 2) parts.push(`🔥 ${streak}-week streak`);
+  el.textContent = parts.join(' · ');
 }

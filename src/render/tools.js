@@ -14,9 +14,9 @@ export function computeTDEE() {
     let bmr = (10 * weight) + (6.25 * height) - (5 * age);
     bmr += (sex === 'male') ? 5 : -161;
     const tdee = bmr * activity;
-    res.textContent = `BMR: ${bmr.toFixed(0)} kcal | Maintenance TDEE: ${tdee.toFixed(0)} kcal`;
+    res.textContent = `BMR: ${bmr.toFixed(0)} kcal | Maintenance: ${tdee.toFixed(0)} kcal`;
   } else {
-    res.textContent = `BMR: 0 kcal | Maintenance TDEE: 0 kcal`;
+    res.textContent = 'BMR: — | Maintenance: —';
   }
 }
 
@@ -25,7 +25,7 @@ export function compute1RM() {
   const r = parseFloat(document.getElementById('calc1rmReps').value) || 0;
   const res = document.getElementById('calc1rmResult');
   if (w > 0 && r > 0) res.textContent = `Est. 1RM: ${(r === 1 ? w : w * (1 + r / 30)).toFixed(1)} kg`;
-  else res.textContent = 'Est. 1RM: 0.0 kg';
+  else res.textContent = 'Est. 1RM: —';
 }
 
 export function getPlateBreakdown(side) {
@@ -43,14 +43,43 @@ export function computePlates() {
   const bar = parseFloat(document.getElementById('plateBarWeight').value) || 20;
   const res = document.getElementById('plateResultBox');
   const breakText = document.getElementById('plateBreakdownText');
-  if (total <= bar) { res.textContent = 'Load Each Side: 0.0 kg'; breakText.textContent = 'Target weight is less than bar.'; return; }
+  const drawing = document.getElementById('plateBarbellWrap');
+  if (!total) { res.textContent = 'Load each side: —'; breakText.textContent = ''; drawing.innerHTML = ''; return; }
+  if (total <= bar) { res.textContent = 'Just the bar'; breakText.textContent = 'The target is no more than the bar weight.'; drawing.innerHTML = renderBarbell([]); return; }
   const side = (total - bar) / 2;
-  res.textContent = `Load Each Side: ${side.toFixed(2)} kg`;
+  res.textContent = `Load each side: ${+side.toFixed(2)} kg`;
   const { list, rem } = getPlateBreakdown(side);
   const counts = {};
   list.forEach(p => counts[p] = (counts[p] || 0) + 1);
-  const used = Object.keys(counts).map(Number).sort((a,b)=>b-a).map(p => `${counts[p]}× ${p}kg`);
-  breakText.textContent = used.length ? `Plates per side: ${used.join(' • ')}` : '';
+  const used = Object.keys(counts).map(Number).sort((a,b)=>b-a).map(p => `${counts[p]}× ${p} kg`);
+  breakText.textContent = (used.length ? used.join(' • ') : '')
+    + (rem > 0 ? `${used.length ? ' • ' : ''}${+rem.toFixed(2)} kg per side can't be made with standard plates` : '');
+  drawing.innerHTML = renderBarbell(list);
+}
+
+// Competition plate colors and relative sizes, so the drawing matches what's on the gym floor.
+const PLATE_STYLE = {
+  50: ['#334155', 1, 22], 25: ['#dc2626', 1, 18], 20: ['#2563eb', 1, 16], 15: ['#eab308', .88, 14],
+  10: ['#16a34a', .76, 12], 5: ['#e5e7eb', .58, 9], 2.5: ['#dc2626', .46, 7], 1.25: ['#94a3b8', .38, 6], 0.5: ['#94a3b8', .3, 5]
+};
+
+// One side of the bar: sleeve, collar, and the plates from the collar outwards.
+export function renderBarbell(plates) {
+  const h = 120, mid = h / 2, maxPlate = 96;
+  let x = 64;
+  let rects = '';
+  plates.forEach(p => {
+    const [color, scale, width] = PLATE_STYLE[p] || ['#94a3b8', .3, 5];
+    const ph = maxPlate * scale;
+    rects += `<rect x="${x}" y="${mid - ph / 2}" width="${width}" height="${ph}" rx="2" fill="${color}"><title>${p} kg</title></rect>`;
+    x += width + 2;
+  });
+  const end = Math.max(x + 16, 200);
+  return `<svg class="plate-svg" viewBox="0 0 ${end + 8} ${h}" role="img" aria-label="Plates on one side of the bar">
+    <rect x="0" y="${mid - 4}" width="${end}" height="8" rx="3" fill="#64748b" />
+    <rect x="52" y="${mid - 14}" width="10" height="28" rx="2" fill="#94a3b8" />
+    ${rects}
+  </svg>`;
 }
 
 export function saveSettings() {

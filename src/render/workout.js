@@ -1,19 +1,22 @@
 import { FLAT_EXERCISES, WORKOUT, getChoice, getLinkedCategory, getNextCategory, getPreset, getPreviousCategory, getRestForCategory, setChoice } from '../model.js';
 import { populateDayDropdown } from './exercises.js';
 import { populateCompoundSelect, populateHistoryDayFilter, populateHistoryExerciseDropdown } from './history.js';
-import { renderDayNav } from './schedule.js';
+import { renderDayNav, renderHomeSummary } from './schedule.js';
 import { generateShareCard } from './share-card.js';
 import { clearSessionDraft, hasSessionDraft, saveSessionDraft } from '../session-draft.js';
 import { getHistory, requestPersistentStorage, setHistory } from '../history-store.js';
 import { esc, getL, isSafeId, setL } from '../storage.js';
 import { pushToCloud } from '../sync.js';
-import { fireConfetti, playBeep, showToast } from '../ui.js';
+import { buildPerformanceIndex, compareSet, formatSet, lastPerformance } from '../performance.js';
+import { fireConfetti, haptic, playBeep, showToast } from '../ui.js';
 import { icon } from '../icons.js';
 
 export let activeDay = '1';
 let restInterval = null;
 let confettiFired = false;
 let lastFinishedRecord = null;
+let perfIndex = new Map(); // past performance per exercise + equipment, from history
+let openCards = {};        // day -> category of the exercise the user is on
 export let hasStartedWorkout = false;
 export let workoutStartTime = null;
 let workoutTimerInterval = null;
@@ -75,9 +78,12 @@ export function restoreFormValues(data) {
       }
     });
   }
+  openCards = {};
+  document.querySelectorAll('#dayViews .exercise-card').forEach(updateLastHints);
   updateSectionWorkingSetCounts();
   updateProgress();
   updateSessionStats();
+  refreshExerciseFocus();
 }
 
 export function formatPreset(sets) {
@@ -102,9 +108,10 @@ function setRowCells(prefix, n, s, rest) {
   const rVal = s.reps == null ? '' : s.reps;
   const tagOptions = SET_TAGS.map(t => `<option value="${t}" ${t === tag ? 'selected' : ''}>${t}</option>`).join('');
   return `<td class="set-num-cell"><button type="button" class="set-num-btn" onclick="toggleSetDetails(this)" aria-label="Set ${n}: tag and RIR" aria-expanded="false">${n}</button></td>
-    <td><div class="stepper"><button type="button" class="stepper-btn" onclick="stepValue('${prefix}_w_${n}', -2.5)" aria-label="Less weight">−</button><input type="number" inputmode="decimal" class="input-field set-weight" id="${prefix}_w_${n}" value="${esc(wVal)}" placeholder="kg" oninput="checkStartWorkoutTimer()"><button type="button" class="stepper-btn" onclick="stepValue('${prefix}_w_${n}', 2.5)" aria-label="More weight">+</button></div></td>
-    <td><div class="stepper"><button type="button" class="stepper-btn" onclick="stepValue('${prefix}_r_${n}', -1)" aria-label="Fewer reps">−</button><input type="number" inputmode="numeric" class="input-field set-reps" id="${prefix}_r_${n}" value="${esc(rVal)}" placeholder="reps" oninput="checkStartWorkoutTimer()"><button type="button" class="stepper-btn" onclick="stepValue('${prefix}_r_${n}', 1)" aria-label="More reps">+</button></div></td>
-    <td class="set-done-cell"><button type="button" class="check-btn" onclick="toggleSet(this, ${rest})" aria-label="Set ${n} done">${icon('check', 20)}</button></td>
+    <td><div class="stepper"><button type="button" class="stepper-btn" onclick="stepValue('${prefix}_w_${n}', -2.5)" aria-label="Less weight">−</button><input type="number" inputmode="decimal" class="input-field set-weight" id="${prefix}_w_${n}" value="${esc(wVal)}" placeholder="kg" onfocus="this.select()" oninput="checkStartWorkoutTimer()"><button type="button" class="stepper-btn" onclick="stepValue('${prefix}_w_${n}', 2.5)" aria-label="More weight">+</button></div></td>
+    <td><div class="stepper"><button type="button" class="stepper-btn" onclick="stepValue('${prefix}_r_${n}', -1)" aria-label="Fewer reps">−</button><input type="number" inputmode="numeric" class="input-field set-reps" id="${prefix}_r_${n}" value="${esc(rVal)}" placeholder="reps" onfocus="this.select()" oninput="checkStartWorkoutTimer()"><button type="button" class="stepper-btn" onclick="stepValue('${prefix}_r_${n}', 1)" aria-label="More reps">+</button></div></td>
+    <td class="set-done-cell"><button type="button" class="check-btn" onclick="toggleSet(this, ${rest})" aria-label="Set ${n} done">${icon('check', { size: 22 })}</button></td>
+    <td class="set-last"><span class="set-last-text"></span><span class="set-badge"></span></td>
     <td class="set-extra">
       <label>Tag <select class="set-tag" id="${prefix}_t_${n}">${tagOptions}</select></label>
       <label>RIR <input type="number" inputmode="numeric" class="input-field set-rir" id="${prefix}_ri_${n}" value="${esc(rir)}"></label>
@@ -173,10 +180,10 @@ export function renderExerciseCard(ex, idx) {
   const info = exerciseInfo(activeVarObj);
 
   return `
-  <div class="exercise-card ${idx===1 ? 'highlight' : ''} ${dec.cls}" data-category="${ex.category}" data-prefix="${ex.prefix}" data-exercise-type="${esc(ex.exerciseType)}" data-rest="${ex.rest}">
-    <div class="ex-header">
+  <div class="exercise-card ${dec.cls}" data-category="${ex.category}" data-prefix="${ex.prefix}" data-exercise-type="${esc(ex.exerciseType)}" data-rest="${ex.rest}">
+    <div class="ex-header" role="button" tabindex="0" aria-expanded="true" onclick="toggleExerciseCard(this)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleExerciseCard(this)}">
       <div>
-        <div class="ex-title-row"><span class="ex-number">${String(idx).padStart(2,'0')}</span><div class="ex-title">${esc(ex.title)}</div>${dec.badge}</div>
+        <div class="ex-title-row"><span class="ex-number">${String(idx).padStart(2,'0')}</span><div class="ex-title">${esc(ex.title)}</div>${dec.badge}<span class="ex-title-end"><span class="ex-progress" aria-label="Sets done">0/0</span><span class="ex-chevron" aria-hidden="true">${icon('chevron-down', { size: 18 })}</span></span></div>
         <div class="ex-target">${esc(ex.target)}</div>
       </div>
       <div class="ex-meta">
@@ -230,7 +237,7 @@ export function renderDay(dayNum) {
     const displayTitle = (sec.title && sec.title !== 'undefined') ? sec.title : 'General';
     html += `<div class="category-section">
       <div class="category-header-row">
-        <div class="category-tag tag-${sec.color || 'blue'}" id="${sec.tag}">${sidx+1}. ${esc(displayTitle)} (<span class="set-count">0</span> Working Sets)</div>
+        <div class="category-tag tag-${sec.color || 'blue'}" id="${sec.tag}">${esc(displayTitle)} <span class="category-count"><span class="set-count">0</span> sets</span></div>
         <div class="section-actions edit-only">
           <button class="btn-xs" title="Move section up" onclick="reorderSection('${dayNum}', ${sidx}, -1)">${icon('arrow-up', 14)} Up</button>
           <button class="btn-xs" title="Move section down" onclick="reorderSection('${dayNum}', ${sidx}, 1)">${icon('arrow-down', 14)} Down</button>
@@ -254,8 +261,13 @@ export function renderAll() {
   // A sync or an edit can re-render mid-workout: keep what the user has entered so far.
   const formData = hasSessionDraft() ? captureCurrentFormValues() : null;
   const focusedId = container.contains(document.activeElement) ? document.activeElement.id : '';
+  perfIndex = buildPerformanceIndex(getHistory());
   container.innerHTML = days.map(d => renderDay(d)).join('');
+  container.querySelectorAll('.exercise-card').forEach(updateLastHints);
+  const keepOpen = openCards; // a re-render mid-workout keeps the exercise the user is on
   if (formData) restoreFormValues(formData);
+  openCards = keepOpen;
+  refreshExerciseFocus();
   if (focusedId) document.getElementById(focusedId)?.focus({ preventScroll: true });
   renderDayNav();
   
@@ -323,6 +335,8 @@ export function applyVariation(category, prefix, variation, fillRows=true) {
   }
 
   if (prev) prev.innerHTML = prevLine(sourceLabel, sourceSets);
+  const card = table?.closest('.exercise-card');
+  if (card) updateLastHints(card);
 }
 
 export function onVariationChange(category, prefix, select) {
@@ -348,6 +362,8 @@ export function addSetRow(tableId, prefix, rest, update=true) {
   const tr = document.createElement('tr');
   tr.innerHTML = setRowCells(prefix, tbody.children.length + 1, {}, rest);
   tbody.appendChild(tr);
+  const card = table.closest('.exercise-card');
+  if (card) updateLastHints(card);
   if (update) { updateSectionWorkingSetCounts(); updateProgress(); }
 }
 
@@ -451,6 +467,7 @@ export function updateProgress() {
   const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
   document.getElementById('progressText').textContent = `${completed} / ${total} sets`;
   document.getElementById('progressBar').style.width = Math.min(pct, 100) + '%';
+  updateCardProgress(activeDay);
   updateSessionStats();
   if (completed === total && total > 0 && !confettiFired) {
     fireConfetti({ particleCount: 120, spread: 80, origin: { y: 0.6 } });
@@ -459,16 +476,30 @@ export function updateProgress() {
   if (completed < total) confettiFired = false;
 }
 
+// Each card's 'done/total' label and its done state.
+export function updateCardProgress(day) {
+  dayCards(day).forEach(card => {
+    const rows = card.querySelectorAll('tbody tr').length;
+    const done = card.querySelectorAll('.check-btn.completed').length;
+    const label = card.querySelector('.ex-progress');
+    if (label) label.textContent = `${done}/${rows}`;
+    card.classList.toggle('done', rows > 0 && done === rows);
+  });
+}
+
 export function toggleSet(btn, restSeconds) {
   checkStartWorkoutTimer();
   btn.classList.toggle('completed');
   if (btn.classList.contains('completed')) {
     btn.classList.add('just-completed');
     setTimeout(() => btn.classList.remove('just-completed'), 600);
+    haptic(25);
   }
+  if (showSetBadge(btn.closest('tr')) === 'pr') showToast('🏆 New personal record!', 'success');
   updateProgress();
   if (btn.classList.contains('completed')) {
     const card = btn.closest('.exercise-card');
+    if (card && card.classList.contains('done')) setTimeout(() => advanceFrom(card), 450);
     const category = card ? card.dataset.category : '';
     let effectiveRest = restSeconds;
     const linked = category ? getLinkedCategory(category) : null;
@@ -549,6 +580,7 @@ export function finishCurrentDayWorkout() {
   showCelebration();
   populateHistoryExerciseDropdown();
   populateCompoundSelect();
+  renderHomeSummary();
 }
 
 export function shareLastWorkout() { generateShareCard(lastFinishedRecord); }
@@ -584,4 +616,87 @@ export function showCelebration() {
   `;
   overlay.classList.add('active');
   fireConfetti({ particleCount: 140, spread: 90, origin: { y: 0.55 } });
+}
+
+// ---- Last time's numbers and set feedback.
+function cardPerformance(card) {
+  const variation = card.querySelector('.machine-dropdown')?.value || '';
+  return lastPerformance(perfIndex, card.dataset.category, variation);
+}
+
+// Shows what each set was last time on the same equipment.
+export function updateLastHints(card) {
+  const entry = cardPerformance(card);
+  card.querySelectorAll('tbody tr').forEach((tr, i) => {
+    const text = tr.querySelector('.set-last-text');
+    const last = entry && entry.sets[i];
+    if (text) text.textContent = last ? `Last: ${formatSet(last)}` : '';
+    showSetBadge(tr, entry);
+  });
+}
+
+// 'PR' or '↑' next to a finished set that beats the best ever or last time.
+export function showSetBadge(tr, entry) {
+  const badge = tr && tr.querySelector('.set-badge');
+  if (!badge) return;
+  const card = tr.closest('.exercise-card');
+  const done = tr.querySelector('.check-btn')?.classList.contains('completed');
+  const index = [...tr.parentElement.children].indexOf(tr);
+  const result = done && card ? compareSet(entry === undefined ? cardPerformance(card) : entry, index,
+    tr.querySelector('.set-weight')?.value, tr.querySelector('.set-reps')?.value) : null;
+  badge.textContent = result === 'pr' ? 'PR' : result === 'up' ? '↑ Beat last time' : '';
+  badge.dataset.kind = result || '';
+  return result;
+}
+
+// ---- One exercise open at a time (plus its superset partner), so the day isn't one long scroll.
+function dayCards(day) {
+  return [...document.querySelectorAll(`#view-day-${day} .exercise-card`)];
+}
+
+// Opens `category` (or, if it's not on this day, the first unfinished exercise) and collapses the rest.
+export function focusExercise(day, category, scroll = false) {
+  const cards = dayCards(day);
+  const target = cards.find(c => c.dataset.category === category) || cards.find(c => !c.classList.contains('done')) || null;
+  const partner = target ? getLinkedCategory(target.dataset.category) : null;
+  cards.forEach(card => {
+    const open = card === target || (partner && card.dataset.category === partner);
+    card.classList.toggle('collapsed', !open);
+    card.classList.toggle('highlight', open);
+    card.querySelector('.ex-header')?.setAttribute('aria-expanded', String(open));
+  });
+  openCards[day] = target ? target.dataset.category : null;
+  if (scroll && target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+export function refreshExerciseFocus() {
+  Object.keys(WORKOUT).forEach(day => {
+    updateCardProgress(day);
+    focusExercise(day, openCards[day]);
+  });
+}
+
+export function toggleExerciseCard(header) {
+  if (document.body.classList.contains('edit-mode')) return; // everything stays open while editing
+  const card = header.closest('.exercise-card');
+  const day = card.closest('.day-view').id.replace('view-day-', '');
+  if (card.classList.contains('collapsed')) {
+    focusExercise(day, card.dataset.category);
+  } else {
+    card.classList.add('collapsed');
+    card.classList.remove('highlight');
+    header.setAttribute('aria-expanded', 'false');
+    openCards[day] = null;
+  }
+}
+
+// After an exercise's last set: open the next unfinished one (wrapping around), or none if all are done.
+function advanceFrom(card) {
+  if (!card.classList.contains('done') || card.classList.contains('collapsed')) return;
+  const day = card.closest('.day-view').id.replace('view-day-', '');
+  const cards = dayCards(day);
+  const i = cards.indexOf(card);
+  const next = [...cards.slice(i + 1), ...cards.slice(0, i)].find(c => !c.classList.contains('done'));
+  if (next) focusExercise(day, next.dataset.category, true);
+  else focusExercise(day, null);
 }
