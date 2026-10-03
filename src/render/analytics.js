@@ -3,6 +3,7 @@ import { MUSCLE_GROUP_ORDER, epley1RM, getMuscleGroup } from '../model.js';
 import { getHistory } from '../history-store.js';
 import { esc } from '../storage.js';
 import { formatTick, niceTicks } from '../chart-scale.js';
+import { bodyFigure } from './body-figure.js';
 
 // ==========================================
 // MUSCLE RECOVERY HEATMAP FEATURE
@@ -15,100 +16,6 @@ export function recoveryStatus(days) {
   if (days < 1) return { key: 'fatigued', label: 'Fatigued' };
   if (days < 2.5) return { key: 'recovering', label: 'Recovering' };
   return { key: 'fresh', label: 'Fresh' };
-}
-
-// Anatomical front/back figure in a 120 x 246 box, symmetric about x = 60. Everything is drawn for the
-// figure's right side (the viewer's left) and mirrored. Muscles are tinted by status through CSS (data-status).
-
-// Outline of the body's right half, from the top of the head down to the crotch, using only M, L and C.
-const BODY_HALF =
-  'M60 4 C53 4 49 9 49 17 C49 24 51 29 54 31 L54 37 C50 40 41 42 33 44 C27 46 24 51 24 58 ' +
-  'C23 70 22 84 21 98 C19 110 17 122 17 134 C16 140 16 146 18 150 C20 152 23 151 24 148 ' +
-  'C25 142 25 138 26 134 C28 122 30 110 31 100 C32 90 34 78 36 67 C37 67 38 67 39 68 ' +
-  'C40 80 41 92 43 104 C42 114 38 122 38 132 C37 150 38 166 40 182 C37 196 37 210 42 226 ' +
-  'L41 234 C39 238 40 241 46 241 L52 241 C53 236 53 232 52 226 C54 210 55 196 53 184 ' +
-  'C56 166 58 150 59 136 L60 134';
-
-const mirrorX = (x, y) => `${+(120 - x).toFixed(2)} ${y}`;
-
-// Closes a half outline into the whole body: the half, then its mirror image traced back up.
-export function mirroredOutline(half) {
-  const nums = half.match(/[A-Z]|-?[\d.]+/g);
-  const segs = [];
-  let start = null;
-  for (let i = 0; i < nums.length;) {
-    const cmd = nums[i++];
-    const count = cmd === 'C' ? 3 : 1;
-    const pts = [];
-    for (let k = 0; k < count; k++) pts.push([+nums[i++], +nums[i++]]);
-    if (cmd === 'M') start = pts[0];
-    else segs.push({ cmd, from: segs.length ? segs[segs.length - 1].to : start, pts, to: pts[pts.length - 1] });
-  }
-  const back = segs
-    .slice()
-    .reverse()
-    .map(({ cmd, from, pts }) =>
-      cmd === 'C' ? `C${mirrorX(...pts[1])} ${mirrorX(...pts[0])} ${mirrorX(...from)}` : `L${mirrorX(...from)}`
-    );
-  return `${half} ${back.join(' ')} Z`;
-}
-
-const BODY_OUTLINE = mirroredOutline(BODY_HALF);
-
-// Muscles that aren't tracked (abs, obliques), drawn for shape only.
-const BODY_DETAIL = {
-  front:
-    '<path d="M53 80 C52 92 52 104 53 118 C55 121 57 122 59 122 L59 80 C57 79 55 79 53 80 Z"/>' +
-    '<path d="M41 74 C44 84 46 96 46 110 C48 114 50 116 52 117 C51 104 51 92 52 80 C48 78 44 76 41 74 Z"/>',
-  back: ''
-};
-
-const MUSCLE_PATHS = {
-  front: {
-    shoulders: 'M34 45 C28 46 24 51 24.5 59 C25 64 26 68 28 71 C31 64 35 58 38 54 C38 50 37 47 34 45 Z',
-    chest: 'M59 50 C52 48 43 49 38 54 C35 60 36 68 39 72 C45 78 54 79 59 76 Z',
-    arms:
-      'M28 73 C25 80 24 90 25 98 C27 100 30 100 31 98 C33 90 34 80 35 68 C32 67 30 69 28 73 Z ' +
-      'M22 104 C19 114 18 124 18 132 L25 133 C27 122 29 112 30 104 C27 101 24 101 22 104 Z',
-    legs:
-      'M40 136 C38 150 39 166 42 178 C45 182 50 182 53 179 C56 166 58 150 58 138 C52 134 45 133 40 136 Z ' +
-      'M41 190 C39 202 40 214 43 224 L50 224 C52 212 53 200 52 190 C48 187 44 187 41 190 Z'
-  },
-  back: {
-    // The app counts trap exercises as shoulders.
-    shoulders:
-      'M59 34 L54 38 C49 41 42 43 36 45 C44 48 52 55 59 80 Z ' +
-      'M34 46 C28 47 24 51 24.5 59 C25 63 26 66 27 68 C30 62 33 56 37 52 C37 49 36 47 34 46 Z',
-    back:
-      'M38 56 C37 66 39 78 43 96 C46 99 49 101 52 102 C54 94 56 88 59 84 C54 70 46 60 38 56 Z ' +
-      'M52 104 C51 107 51 110 52 113 L59 113 L59 86 C56 90 54 96 52 104 Z',
-    arms:
-      'M26 61 C23 70 22 84 23 96 C26 99 29 99 31 96 C33 86 34 74 35 64 C32 61 29 60 26 61 Z ' +
-      'M22 104 C19 114 18 124 18 132 L25 133 C27 122 29 112 30 104 C27 101 24 101 22 104 Z',
-    legs:
-      'M41 117 C37 124 37 132 40 139 C46 144 54 144 59 141 L59 116 C53 114 46 114 41 117 Z ' +
-      'M40 142 C39 156 40 170 42 180 C46 183 51 183 54 180 C56 168 57 156 58 144 C52 145 45 145 40 142 Z ' +
-      'M41 188 C38 196 38 206 42 214 C45 216 49 216 52 214 C54 206 54 196 52 188 C48 185 44 185 41 188 Z'
-  }
-};
-
-// One side's shapes, plus the same shapes mirrored onto the other side.
-const bothSides = d => `<path d="${d}"/><path d="${d}" transform="matrix(-1 0 0 1 120 0)"/>`;
-
-function bodyFigure(view, statusByGroup) {
-  const muscles = Object.entries(MUSCLE_PATHS[view])
-    .map(
-      ([g, d]) =>
-        `<g class="muscle" data-status="${statusByGroup[g].key}"><title>${GROUP_LABEL[g]}: ${statusByGroup[g].label}</title>${bothSides(d)}</g>`
-    )
-    .join('');
-  const detail = BODY_DETAIL[view].replace(/<path d="([^"]+)"\/>/g, (_, d) => bothSides(d));
-  return `<figure class="body-figure">
-    <svg viewBox="0 0 120 246" role="img" aria-label="${view === 'front' ? 'Front' : 'Back'} view, tinted by recovery">
-      <path class="body-base" d="${BODY_OUTLINE}"/><g class="body-detail">${detail}</g>${muscles}
-    </svg>
-    <figcaption>${view === 'front' ? 'Front' : 'Back'}</figcaption>
-  </figure>`;
 }
 
 export function renderMuscleRecoveryHeatmap() {
@@ -150,7 +57,7 @@ export function renderMuscleRecoveryHeatmap() {
 
   const empty = history.length ? '' : '<p class="chart-empty">Log a workout to see which muscles need rest.</p>';
   container.innerHTML = `
-    <div class="body-figures">${bodyFigure('front', status)}${bodyFigure('back', status)}</div>
+    <div class="body-figures">${bodyFigure('front', status, GROUP_LABEL)}${bodyFigure('back', status, GROUP_LABEL)}</div>
     <ul class="recovery-legend">${legend}</ul>${empty}`;
 }
 

@@ -2137,7 +2137,7 @@ input[type='range']::-webkit-slider-runnable-track {
   margin: 0;
 }
 .body-figure svg {
-  width: 118px;
+  width: 136px;
   height: auto;
 }
 .body-figure figcaption {
@@ -2157,8 +2157,8 @@ input[type='range']::-webkit-slider-runnable-track {
   stroke-width: 0.6;
 }
 .muscle {
-  stroke: rgba(5, 6, 8, 0.6);
-  stroke-width: 0.8;
+  stroke: rgba(5, 6, 8, 0.7);
+  stroke-width: 0.6;
   stroke-linejoin: round;
   transition: fill 0.4s ease;
 }
@@ -2176,6 +2176,10 @@ input[type='range']::-webkit-slider-runnable-track {
 .muscle[data-status='fatigued'] {
   fill: var(--danger);
   fill-opacity: 0.9;
+}
+.muscle-shade {
+  stroke: none;
+  pointer-events: none;
 }
 .recovery-legend {
   list-style: none;
