@@ -68,7 +68,7 @@ irontrack-pwa/
 
 ### Prerequisites
 
-- Node.js 20+ (`.nvmrc` pins 22)
+- Node.js 22.12+ (`.nvmrc` pins 22)
 - A [Supabase](https://supabase.com/dashboard) project
 
 ### 1. Set up the database
