@@ -1,9 +1,11 @@
+import { confirmDialog } from '../dialog.js';
+import { args } from '../actions.js';
 import { sessionKey } from '../history-merge.js';
 import { WORKOUT } from '../model.js';
 import { HISTORY_KEY, HISTORY_TOMBSTONES_KEY, clearHistory, getHistory, setHistory } from '../history-store.js';
 import { esc, getJ, setJ } from '../storage.js';
 import { currentUser, pushToCloud, supabaseClient } from '../sync.js';
-import { refreshAllUI, showToast } from '../ui.js';
+import { refreshAllUI, showTab, showToast } from '../ui.js';
 import { icon } from '../icons.js';
 import { activeDay } from './workout.js';
 
@@ -129,7 +131,8 @@ export function renderHistoryForSelectedExercise(exerciseName) {
   const modal = document.createElement('div');
   modal.className = 'modal-overlay active';
   modal.id = 'exerciseChartModalOverlay';
-  modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+  modal.dataset.onSelfClick = 'closeClosestModal';
+  modal.dataset.args = JSON.stringify(['$el']);
 
   let chartSvg = '';
   if (!dataPoints.length) {
@@ -164,13 +167,13 @@ export function renderHistoryForSelectedExercise(exerciseName) {
     <div class="modal-content" style="max-width: 620px;">
       <div class="modal-header">
         <h2>${icon('trend', 20)} Progression: ${esc(exerciseName)}</h2>
-        <button class="btn-xs" aria-label="Close" onclick="this.closest('.modal-overlay').remove()">${icon('x', 16)}</button>
+        <button class="btn-xs" aria-label="Close" data-on-click="closeClosestModal" data-args="${args('$el')}">${icon('x', 16)}</button>
       </div>
       <div class="modal-body">
         <div class="svg-chart-wrap">${chartSvg}</div>
       </div>
       <div class="modal-footer">
-        <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">Close</button>
+        <button class="btn btn-secondary" data-on-click="closeClosestModal" data-args="${args('$el')}">Close</button>
       </div>
     </div>
   `;
@@ -201,7 +204,7 @@ export function renderHistory() {
   if (!filteredHistory.length) {
     container.innerHTML = history.length
       ? `<p style="color:var(--muted); text-align:center; padding:24px;">No sessions for this day yet.</p>`
-      : `<div class="chart-empty"><p>No workouts yet. Finish today's session and it will show up here.</p><button class="btn btn-secondary" onclick="closeHistoryModal(); showTab('workout')">Go to today's workout</button></div>`;
+      : `<div class="chart-empty"><p>No workouts yet. Finish today's session and it will show up here.</p><button class="btn btn-secondary" data-on-click="closeHistoryAndShowWorkout">Go to today's workout</button></div>`;
     return;
   }
 
@@ -244,14 +247,14 @@ export function renderHistory() {
     const notesBlock = h.notes ? `<div class="log-session-notes">"${esc(h.notes)}"</div>` : '';
 
     div.innerHTML = `
-      <div class="log-item-header" onclick="toggleLogAccordion(this)">
+      <div class="log-item-header" data-on-click="toggleLogAccordion" data-args="${args('$el')}">
         <span class="log-item-title">${icon('calendar', 14)} ${esc(h.date)} • Day ${esc(h.day)}: ${esc(String(h.dayTitle).replace(/^\s*⚡\s*/u, ''))}</span>
         <span class="log-item-meta">${icon('timer', 14)} ${esc(h.duration)} ${icon('chevron-down', 14)}</span>
       </div>
       <div class="log-item-body">
         <div class="log-body-top">
           <div style="font-size: 11.5px; color: var(--muted);">Body weight: ${esc(h.bodyWeight)}kg | Energy: ${esc(h.energy)}/10 | Sleep: ${esc(h.sleep)}hrs</div>
-          <button class="btn-xs btn-xs-danger" onclick="deleteWorkoutSession(this)">${icon('trash', { size: 14 })} Delete</button>
+          <button class="btn-xs btn-xs-danger" data-on-click="deleteWorkoutSession" data-args="${args('$el')}">${icon('trash', { size: 14 })} Delete</button>
         </div>
         ${notesBlock}
         ${exercisesHtml}
@@ -267,15 +270,16 @@ export function openHistoryModal() {
   document.getElementById('historyModalOverlay').classList.add('active'); 
 }
 export function closeHistoryModal() { document.getElementById('historyModalOverlay').classList.remove('active'); }
+export function closeHistoryAndShowWorkout() { closeHistoryModal(); showTab('workout'); }
 
 // Deletes one logged session. Its id is tombstoned so sync removes it on other devices too.
-export function deleteWorkoutSession(btn) {
+export async function deleteWorkoutSession(btn) {
   const key = btn.closest('.log-item')?.dataset.sessionKey;
   const history = getHistory();
   const session = history.find(rec => sessionKey(rec) === key);
   if (!session) return;
   const title = String(session.dayTitle || `Day ${session.day}`).replace(/^\s*⚡\s*/u, '');
-  if (!confirm(`Delete the ${session.date || 'undated'} session (${title})? This can't be undone.`)) return;
+  if (!(await confirmDialog(`Delete the ${session.date || 'undated'} session (${title})? This can't be undone.`, { confirmLabel: 'Delete', danger: true }))) return;
   setJ(HISTORY_TOMBSTONES_KEY, [...new Set([...getJ(HISTORY_TOMBSTONES_KEY, []), key])]);
   setHistory(history.filter(rec => sessionKey(rec) !== key));
   pushToCloud();
@@ -284,7 +288,7 @@ export function deleteWorkoutSession(btn) {
 }
 
 export async function clearWorkoutHistory() {
-  if (confirm('Clear workout history?')) {
+  if (await confirmDialog('Clear all workout history? This can\'t be undone.', { confirmLabel: 'Clear history', danger: true })) {
     // Tombstone the sessions so the history merge does not bring them back from the cloud.
     const cleared = getHistory().map(sessionKey);
     setJ(HISTORY_TOMBSTONES_KEY, [...new Set([...getJ(HISTORY_TOMBSTONES_KEY, []), ...cleared])]);

@@ -10,6 +10,7 @@ import { getL } from './storage.js';
 import { currentUser, pullFromCloud, startSessionSync, supabaseClient } from './sync.js';
 import { showTab, unlockAudio, updateOnlineStatus } from './ui.js';
 import { hydrateIcons } from './icons.js';
+import { listenForActions, registerActions } from './actions.js';
 import * as ui from './ui.js';
 import * as sync from './sync.js';
 import * as analytics from './render/analytics.js';
@@ -22,30 +23,32 @@ import * as shareCard from './render/share-card.js';
 import * as tools from './render/tools.js';
 import * as workout from './render/workout.js';
 
-// The markup and rendered templates use inline on* handlers that call functions by name.
-for (const mod of [ui, sync, analytics, exercises, history, nutrition, profile, schedule, shareCard, tools, workout]) {
-  for (const [name, value] of Object.entries(mod)) {
-    if (typeof value === 'function') window[name] = value;
-  }
-}
+// The markup and rendered templates name these modules' functions in data-on-* attributes.
+registerActions([ui, sync, analytics, exercises, history, nutrition, profile, schedule, shareCard, tools, workout]);
+listenForActions();
 
 window.addEventListener('online', updateOnlineStatus);
 
 window.addEventListener('offline', updateOnlineStatus);
 
-window.addEventListener('focus', () => {
-  if (currentUser && supabaseClient) pullFromCloud(false);
-});
+// Coming back to the app usually fires both focus and visibilitychange; one pull covers both.
+let lastReturnPullAt = 0;
+function pullOnReturn() {
+  if (!currentUser || !supabaseClient || Date.now() - lastReturnPullAt < 2000) return;
+  lastReturnPullAt = Date.now();
+  pullFromCloud(false);
+}
+
+window.addEventListener('focus', pullOnReturn);
 
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible' && currentUser && supabaseClient) {
-    pullFromCloud(false);
-  }
+  if (document.visibilityState === 'visible') pullOnReturn();
 });
 
-// Fallback in case a realtime event is missed.
+// Fallback in case a realtime event is missed. Not while the app is in the background:
+// coming back pulls anyway.
 setInterval(() => {
-  if (currentUser && supabaseClient && navigator.onLine) {
+  if (currentUser && supabaseClient && navigator.onLine && document.visibilityState === 'visible') {
     pullFromCloud(false);
   }
 }, 30000);
@@ -114,18 +117,10 @@ init();
 // ==========================================
 // PWA: SERVICE WORKER REGISTRATION
 // ==========================================
-if ('serviceWorker' in navigator) {
+// The worker is built from src/sw.js by `npm run build`; the dev server doesn't serve one.
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js')
-      .then(() => navigator.serviceWorker.ready)
-      .then((reg) => {
-        // The bundled JS/CSS (hashed file names) loaded before the worker controlled this page,
-        // so hand it the URLs to cache for offline use.
-        const urls = performance.getEntriesByType('resource')
-          .map(e => e.name)
-          .filter(u => new URL(u).origin === location.origin);
-        if (reg.active) reg.active.postMessage({ type: 'CACHE_URLS', urls });
-      })
       .catch(err => console.warn('Service worker registration failed:', err));
   });
 }
