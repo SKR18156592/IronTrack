@@ -13,7 +13,7 @@ vi.mock('../src/render/profile.js', async (importOriginal) => ({
   loadProfileTabUI: vi.fn(), shrinkStoredAvatar: vi.fn()
 }));
 
-const { applyCloudRow, flushPush, pullFromCloud, pushToCloud, setSyncContext } = await import('../src/sync.js');
+const { mergeCloudRow, flushPush, pullFromCloud, pushToCloud, setSyncContext } = await import('../src/sync.js');
 const { clearHistory, getHistory, loadHistory, setHistory } = await import('../src/history-store.js');
 
 const USER = { id: 'user-1' };
@@ -220,13 +220,13 @@ describe('moving history out of user_sync.history', () => {
   });
 });
 
-describe('applyCloudRow', () => {
+describe('mergeCloudRow', () => {
   it('removes keys deleted on another device but keeps keys never synced', () => {
     localStorage.setItem('irontrack_synced_keys', JSON.stringify(['iron_preset_a', 'iron_theme']));
     localStorage.setItem('iron_preset_a', '[]');      // synced before, now gone from the cloud
     localStorage.setItem('iron_local_only', 'x');      // never synced
     localStorage.setItem('iron_custom_days', '[{"dayNum":"9"}]');
-    applyCloudRow({ local_storage_backup: { iron_theme: 'lime' }, custom_days: [] });
+    mergeCloudRow({ local_storage_backup: { iron_theme: 'lime' }, custom_days: [] });
     expect(localStorage.getItem('iron_preset_a')).toBeNull();
     expect(localStorage.getItem('iron_local_only')).toBe('x');
     expect(localStorage.getItem('iron_theme')).toBe('lime');
@@ -235,13 +235,94 @@ describe('applyCloudRow', () => {
 
   it('applies a cleared profile field', () => {
     localStorage.setItem('iron_profile_name', 'Alex');
-    applyCloudRow({ local_storage_backup: {}, profile_name: '' });
+    mergeCloudRow({ local_storage_backup: {}, profile_name: '' });
     expect(localStorage.getItem('iron_profile_name')).toBe('');
   });
 
   it('leaves workout history alone', () => {
     setHistory([session(1)]);
-    applyCloudRow({ local_storage_backup: {}, history: [session(9)] });
+    mergeCloudRow({ local_storage_backup: {}, history: [session(9)] });
     expect(ids(history())).toEqual(['session_1']);
+  });
+});
+
+describe('settings changed on two devices', () => {
+  // Another device uploads its settings: `backup` replaces the row's local_storage_backup.
+  const otherDeviceWrites = (backup, columns = {}) => {
+    server.row = { ...server.row, ...columns, local_storage_backup: backup, updated_at: pgTime(new Date(Date.parse(server.row.updated_at) + 5000).toISOString()) };
+  };
+  const syncedBackup = () => ({ ...server.row.local_storage_backup });
+
+  beforeEach(async () => {
+    localStorage.setItem('iron_theme', 'cyan');
+    localStorage.setItem('iron_preset_squat_bar', '[[100,5,2,"Working"]]');
+    pushToCloud();
+    expect(await flushPush()).toBe(true);
+  });
+
+  it('an unsynced edit here keeps a setting another device added meanwhile', async () => {
+    otherDeviceWrites({ ...syncedBackup(), iron_preset_bench_flat: '[[60,8,2,"Working"]]' });
+    localStorage.setItem('iron_theme', 'lime'); // edited here while offline
+    pushToCloud();
+    await pullFromCloud();
+    expect(server.row.local_storage_backup.iron_preset_bench_flat).toBe('[[60,8,2,"Working"]]');
+    expect(server.row.local_storage_backup.iron_theme).toBe('lime');
+    expect(localStorage.getItem('iron_preset_bench_flat')).toBe('[[60,8,2,"Working"]]');
+  });
+
+  it('applies a deletion from another device even with unrelated unsynced edits here', async () => {
+    const { iron_preset_squat_bar, ...rest } = syncedBackup();
+    otherDeviceWrites(rest);
+    localStorage.setItem('iron_theme', 'lime');
+    pushToCloud();
+    expect(await flushPush()).toBe(true);
+    expect(localStorage.getItem('iron_preset_squat_bar')).toBeNull();
+    expect(server.row.local_storage_backup).not.toHaveProperty('iron_preset_squat_bar');
+  });
+
+  it('keeps the edit made here when both devices changed the same setting', async () => {
+    otherDeviceWrites({ ...syncedBackup(), iron_theme: 'rose' });
+    localStorage.setItem('iron_theme', 'lime');
+    pushToCloud();
+    expect(await flushPush()).toBe(true);
+    expect(localStorage.getItem('iron_theme')).toBe('lime');
+    expect(server.row.local_storage_backup.iron_theme).toBe('lime');
+  });
+
+  it('uploads a deletion made here instead of restoring the key from the cloud', async () => {
+    otherDeviceWrites({ ...syncedBackup(), iron_preset_bench_flat: '[]' });
+    localStorage.removeItem('iron_preset_squat_bar');
+    pushToCloud();
+    expect(await flushPush()).toBe(true);
+    expect(localStorage.getItem('iron_preset_squat_bar')).toBeNull();
+    expect(server.row.local_storage_backup).not.toHaveProperty('iron_preset_squat_bar');
+    expect(server.row.local_storage_backup.iron_preset_bench_flat).toBe('[]');
+  });
+
+  it('merges column-backed settings too', async () => {
+    otherDeviceWrites(syncedBackup(), { hidden_days: ['3'] });
+    localStorage.setItem('iron_profile_name', 'Alex');
+    pushToCloud();
+    expect(await flushPush()).toBe(true);
+    expect(localStorage.getItem('iron_hidden_days')).toBe('["3"]');
+    expect(server.row.hidden_days).toEqual(['3']);
+    expect(server.row.profile_name).toBe('Alex');
+  });
+
+  it('on a clean pull, takes the cloud\'s changes', async () => {
+    otherDeviceWrites({ ...syncedBackup(), iron_theme: 'rose' });
+    await pullFromCloud();
+    expect(localStorage.getItem('iron_theme')).toBe('rose');
+  });
+
+  it('after updating from the older version, an unsynced edit still keeps the cloud\'s new keys', async () => {
+    localStorage.removeItem('irontrack_synced_fps');
+    localStorage.setItem('irontrack_synced_keys', JSON.stringify(Object.keys(syncedBackup())));
+    otherDeviceWrites({ ...syncedBackup(), iron_preset_bench_flat: '[]' });
+    localStorage.setItem('iron_theme', 'lime');
+    pushToCloud();
+    expect(await flushPush()).toBe(true);
+    expect(server.row.local_storage_backup.iron_preset_bench_flat).toBe('[]');
+    expect(server.row.local_storage_backup.iron_theme).toBe('lime');
   });
 });
