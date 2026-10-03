@@ -1,3 +1,4 @@
+import { bmr, tdee } from '../nutrition-targets.js';
 import { updateRestMultiplierLabel } from './workout.js';
 import { getL, setL } from '../storage.js';
 import { loadTheme } from '../ui.js';
@@ -11,10 +12,8 @@ export function computeTDEE() {
   const res = document.getElementById('calcTdeeResult');
 
   if (age > 0 && weight > 0 && height > 0) {
-    let bmr = 10 * weight + 6.25 * height - 5 * age;
-    bmr += sex === 'male' ? 5 : -161;
-    const tdee = bmr * activity;
-    res.textContent = `BMR: ${bmr.toFixed(0)} kcal | Maintenance: ${tdee.toFixed(0)} kcal`;
+    const p = { sex, age, weight, height, activity };
+    res.textContent = `BMR: ${bmr(p).toFixed(0)} kcal | Maintenance: ${tdee(p).toFixed(0)} kcal`;
   } else {
     res.textContent = 'BMR: — | Maintenance: —';
   }

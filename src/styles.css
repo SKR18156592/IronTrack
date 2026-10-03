@@ -2257,6 +2257,77 @@ input[type='range']::-webkit-slider-runnable-track {
 .macro-tile:first-child strong {
   color: var(--accent);
 }
+/* ---------- Nutrition: goal controls, summary, plan ---------- */
+.nutri-header {
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.today-tag {
+  font-weight: 600;
+  opacity: 0.75;
+}
+.nutri-controls {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.nutri-controls select {
+  width: 100%;
+  min-width: 0;
+}
+.nutri-controls .meta-field {
+  min-width: 0;
+}
+.nutri-controls .meta-field[hidden] {
+  display: none;
+}
+@media (max-width: 560px) {
+  .nutri-controls {
+    grid-template-columns: 1fr 1fr;
+  }
+  .nutri-controls .meta-field:last-child {
+    grid-column: 1 / -1;
+  }
+}
+.nutri-summary {
+  margin-top: 6px;
+  font-size: 13.5px;
+  text-align: left;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  color: var(--text);
+}
+.nutri-accent {
+  color: var(--accent);
+}
+.nutri-warning {
+  color: var(--warning);
+}
+.nutri-meals {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.nutri-plan-heading {
+  padding: 0 14px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--muted);
+}
+.food-amount {
+  font-weight: 600;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.btn-sm {
+  padding: 6px 12px;
+  font-size: 12.5px;
+}
 @media (max-width: 560px) {
   .macro-summary {
     grid-template-columns: repeat(2, 1fr);
