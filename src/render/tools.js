@@ -82,6 +82,11 @@ export function renderBarbell(plates) {
   </svg>`;
 }
 
+export function onRestMultiplierInput() {
+  updateRestMultiplierLabel();
+  saveSettings();
+}
+
 export function saveSettings() {
   setL('iron_setting_sound', document.getElementById('soundToggle').checked);
   setL('iron_setting_vibe', document.getElementById('vibeToggle').checked);

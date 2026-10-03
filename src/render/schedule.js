@@ -1,8 +1,10 @@
+import { confirmDialog } from '../dialog.js';
+import { args } from '../actions.js';
 import { WORKOUT_BASE } from '../data/exercises.js';
 import { WORKOUT, getMicrocycle, rebuildWorkoutDatabase, setMicrocycle } from '../model.js';
 import { populateHistoryDayFilter } from './history.js';
 import { activeDay, captureCurrentFormValues, renderAll, restoreFormValues, switchDayView } from './workout.js';
-import { esc, getJ, safeId, setJ } from '../storage.js';
+import { esc, getJ, setJ } from '../storage.js';
 import { getHistory } from '../history-store.js';
 import { icon } from '../icons.js';
 import { pushToCloud } from '../sync.js';
@@ -28,7 +30,7 @@ export function renderScheduleRibbon() {
       liftCount++;
       const label = WORKOUT[item.dayNum] ? WORKOUT[item.dayNum].title.replace('⚡ ', '').split('•')[0].trim() : `Day ${item.dayNum}`;
       return `
-        <div class="sched-item ${todayClass}" onclick="switchDayView('${safeId(item.dayNum)}', true)">
+        <div class="sched-item ${todayClass}" data-on-click="switchDayView" data-args="${args(item.dayNum, true)}">
           <span class="sched-day-name">${esc(item.day)}</span>
           <span class="sched-dot lift"></span>
           <span class="sched-label" style="color:var(--accent)" title="${esc(label)}">${esc(label)}</span>
@@ -37,7 +39,7 @@ export function renderScheduleRibbon() {
     } else {
       restCount++;
       return `
-        <div class="sched-item ${todayClass}" onclick="notifyRestDay('${safeId(item.full)}')">
+        <div class="sched-item ${todayClass}" data-on-click="notifyRestDay" data-args="${args(item.full)}">
           <span class="sched-day-name">${esc(item.day)}</span>
           <span class="sched-dot"></span>
           <span class="sched-label" style="color:var(--muted)">Rest</span>
@@ -115,14 +117,14 @@ export function renderDayNav() {
   let html = days.map((d) => {
     const cfg = WORKOUT[d];
     return `
-      <button class="nav-btn day-${d} ${String(d) === String(activeDay) ? 'active' : ''}" onclick="switchDayView('${d}', true)">
+      <button class="nav-btn day-${d} ${String(d) === String(activeDay) ? 'active' : ''}" data-on-click="switchDayView" data-args="${args(d, true)}">
         <span>Day ${d}</span>
         <span style="font-size: 11px; opacity: 0.75; font-weight: 500;">(${esc(cfg.title.replace('⚡ ', '').split('•')[0].trim())})</span>
       </button>
     `;
   }).join('');
 
-  html += `<button class="nav-btn-add edit-only" onclick="openAddDayModal()">${icon('plus', 14)} Add Day</button>`;
+  html += `<button class="nav-btn-add edit-only" data-on-click="openAddDayModal">${icon('plus', 14)} Add Day</button>`;
   container.innerHTML = html;
 }
 
@@ -210,17 +212,17 @@ export function handleSaveNewSection(e) {
   showToast(`📑 Added section: ${name}!`, 'success');
 }
 
-export function deleteCurrentSplit() {
+export async function deleteCurrentSplit() {
   const currentKey = String(activeDay);
   const splitTitle = WORKOUT[currentKey] ? WORKOUT[currentKey].title : `Day ${currentKey}`;
 
   const allDays = Object.keys(WORKOUT);
   if (allDays.length <= 1) {
-    alert("You must keep at least one workout day.");
+    showToast('You must keep at least one workout day.', 'error');
     return;
   }
 
-  if (!confirm(`Are you sure you want to permanently delete "${splitTitle}"? All custom exercises and settings assigned to this day will be removed.`)) {
+  if (!(await confirmDialog(`Permanently delete "${splitTitle}"? All custom exercises and settings assigned to this day will be removed.`, { confirmLabel: 'Delete day', danger: true }))) {
     return;
   }
 
@@ -264,13 +266,13 @@ export function deleteCurrentSplit() {
   showToast(`🗑️ Deleted ${splitTitle}`, 'info');
 }
 
-export function removeSection(dayNum, secIdx) {
+export async function removeSection(dayNum, secIdx) {
   const dayObj = WORKOUT[dayNum];
   if (!dayObj || !dayObj.sections || !dayObj.sections[secIdx]) return;
   const sec = dayObj.sections[secIdx];
   const secTitle = sec.title || 'Undefined';
 
-  if (!confirm(`Are you sure you want to remove the section "${secTitle}" and all its exercises?`)) return;
+  if (!(await confirmDialog(`Remove the section "${secTitle}" and all its exercises?`, { confirmLabel: 'Remove', danger: true }))) return;
 
   const hiddenExs = getJ('iron_hidden_exercises', []);
   if (sec.exercises) {
@@ -331,7 +333,7 @@ export function reorderSection(dayNum, secIdx, direction) {
   showToast('🔄 Section reordered!', 'success');
 }
 
-export function notifyRestDay(d) { alert(`${d} is a rest day. Rest and recover!`); }
+export function notifyRestDay(d) { showToast(`${d} is a rest day. Rest and recover!`, 'info'); }
 
 export function restoreAllHiddenExercises() {
   setJ('iron_hidden_exercises', []);

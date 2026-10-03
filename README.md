@@ -35,9 +35,12 @@ at the gym, and track progress over time. Your data syncs across devices through
 
 ```text
 irontrack-pwa/
-├── index.html                 # Markup and styles; loads src/main.js
+├── index.html                 # Markup; loads src/styles.css and src/main.js
 ├── src/
 │   ├── main.js                # Startup, event listeners, service worker registration
+│   ├── actions.js             # Dispatches data-on-* attributes to exported functions
+│   ├── dialog.js              # In-app confirm and alert dialogs
+│   ├── styles.css             # All app styles
 │   ├── sync.js                # Supabase client, auth, upload/download, realtime
 │   ├── history-merge.js       # Pure workout-history merge (by session id + tombstones)
 │   ├── session-draft.js       # In-progress workout draft (survives reloads)
@@ -169,9 +172,12 @@ Serve the site from the domain root: the service worker and manifest use root-re
 
 ## Code notes
 
-- The markup uses inline `onclick`/`onchange` handlers, so `src/main.js` copies the exported
-  functions of the UI-facing modules onto `window`. Any new function called from a handler must
-  be exported from one of those modules.
+- Event handlers are data attributes, not inline `on*` attributes:
+  `data-on-click="fn"` (or `data-on-change`, `-input`, `-submit`, `-keydown`, `-focusin`) calls the
+  exported function `fn`, with arguments from `data-args` (built with `args()` in templates). See
+  `src/actions.js`. The function must be exported from one of the modules `src/main.js` registers;
+  `tests/actions.test.js` fails if the markup names one that isn't.
+- Use `confirmDialog()` / `alertDialog()` from `src/dialog.js` instead of `confirm()` / `alert()`.
 - Modules import each other freely, so don't call another module's functions while a module is
   still loading. Do that work in `init()` in `src/main.js` instead.
 

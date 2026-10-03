@@ -10,6 +10,7 @@ import { getL } from './storage.js';
 import { currentUser, pullFromCloud, startSessionSync, supabaseClient } from './sync.js';
 import { showTab, unlockAudio, updateOnlineStatus } from './ui.js';
 import { hydrateIcons } from './icons.js';
+import { listenForActions, registerActions } from './actions.js';
 import * as ui from './ui.js';
 import * as sync from './sync.js';
 import * as analytics from './render/analytics.js';
@@ -22,12 +23,9 @@ import * as shareCard from './render/share-card.js';
 import * as tools from './render/tools.js';
 import * as workout from './render/workout.js';
 
-// The markup and rendered templates use inline on* handlers that call functions by name.
-for (const mod of [ui, sync, analytics, exercises, history, nutrition, profile, schedule, shareCard, tools, workout]) {
-  for (const [name, value] of Object.entries(mod)) {
-    if (typeof value === 'function') window[name] = value;
-  }
-}
+// The markup and rendered templates name these modules' functions in data-on-* attributes.
+registerActions([ui, sync, analytics, exercises, history, nutrition, profile, schedule, shareCard, tools, workout]);
+listenForActions();
 
 window.addEventListener('online', updateOnlineStatus);
 

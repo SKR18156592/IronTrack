@@ -185,3 +185,7 @@ export function playBeep() {
 export function fireConfetti(opts) {
   import('canvas-confetti').then(({ default: confetti }) => confetti(opts)).catch(() => {});
 }
+
+export function selectText(input) { input.select(); }
+export function closeClosestModal(el) { el.closest('.modal-overlay')?.remove(); }
+export function closeCelebration() { document.getElementById('celebrationOverlay').classList.remove('active'); }

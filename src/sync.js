@@ -1,3 +1,4 @@
+import { confirmDialog } from './dialog.js';
 import { createClient } from '@supabase/supabase-js';
 import { HISTORY_KEY, HISTORY_TOMBSTONES_KEY, clearHistory, flushHistory, loadHistory } from './history-store.js';
 import { SESSIONS_CURSOR_KEY, SESSIONS_MIGRATED_KEY, SESSIONS_SYNCED_KEY, fingerprint, syncSessions } from './session-sync.js';
@@ -90,7 +91,7 @@ export async function handleAuthSubmit(e) {
 
 export async function handleSignOut() {
   if (currentUser && supabaseClient && !(await flushPush())) {
-    const discard = confirm('Some changes have not reached the cloud yet (you may be offline).\n\nSign out anyway and discard them from this device?');
+    const discard = await confirmDialog('Some changes have not reached the cloud yet (you may be offline).\n\nSign out anyway and discard them from this device?', { confirmLabel: 'Sign out', danger: true });
     if (!discard) return;
   }
   isSigningOut = true;

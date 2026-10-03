@@ -1,3 +1,5 @@
+import { confirmDialog } from '../dialog.js';
+import { args } from '../actions.js';
 import { FLAT_EXERCISES, WORKOUT, getChoice, getLinkedCategory, getNextCategory, getPreset, getPreviousCategory, getRestForCategory, setChoice } from '../model.js';
 import { populateDayDropdown } from './exercises.js';
 import { populateCompoundSelect, populateHistoryDayFilter, populateHistoryExerciseDropdown } from './history.js';
@@ -107,10 +109,10 @@ function setRowCells(prefix, n, s, rest) {
   const wVal = s.weight === 0 ? '0' : (s.weight === '' || s.weight == null ? '' : s.weight);
   const rVal = s.reps == null ? '' : s.reps;
   const tagOptions = SET_TAGS.map(t => `<option value="${t}" ${t === tag ? 'selected' : ''}>${t}</option>`).join('');
-  return `<td class="set-num-cell"><button type="button" class="set-num-btn" onclick="toggleSetDetails(this)" aria-label="Set ${n}: tag and RIR" aria-expanded="false">${n}</button></td>
-    <td><div class="stepper"><button type="button" class="stepper-btn" onclick="stepValue('${prefix}_w_${n}', -2.5)" aria-label="Less weight">−</button><input type="number" inputmode="decimal" class="input-field set-weight" id="${prefix}_w_${n}" value="${esc(wVal)}" placeholder="kg" onfocus="this.select()" oninput="checkStartWorkoutTimer()"><button type="button" class="stepper-btn" onclick="stepValue('${prefix}_w_${n}', 2.5)" aria-label="More weight">+</button></div></td>
-    <td><div class="stepper"><button type="button" class="stepper-btn" onclick="stepValue('${prefix}_r_${n}', -1)" aria-label="Fewer reps">−</button><input type="number" inputmode="numeric" class="input-field set-reps" id="${prefix}_r_${n}" value="${esc(rVal)}" placeholder="reps" onfocus="this.select()" oninput="checkStartWorkoutTimer()"><button type="button" class="stepper-btn" onclick="stepValue('${prefix}_r_${n}', 1)" aria-label="More reps">+</button></div></td>
-    <td class="set-done-cell"><button type="button" class="check-btn" onclick="toggleSet(this, ${rest})" aria-label="Set ${n} done">${icon('check', { size: 22 })}</button></td>
+  return `<td class="set-num-cell"><button type="button" class="set-num-btn" data-on-click="toggleSetDetails" data-args="${args('$el')}" aria-label="Set ${n}: tag and RIR" aria-expanded="false">${n}</button></td>
+    <td><div class="stepper"><button type="button" class="stepper-btn" data-on-click="stepValue" data-args="${args(`${prefix}_w_${n}`, -2.5)}" aria-label="Less weight">−</button><input type="number" inputmode="decimal" class="input-field set-weight" id="${prefix}_w_${n}" value="${esc(wVal)}" placeholder="kg" data-on-focusin="selectText" data-on-input="checkStartWorkoutTimer" data-args="${args('$el')}"><button type="button" class="stepper-btn" data-on-click="stepValue" data-args="${args(`${prefix}_w_${n}`, 2.5)}" aria-label="More weight">+</button></div></td>
+    <td><div class="stepper"><button type="button" class="stepper-btn" data-on-click="stepValue" data-args="${args(`${prefix}_r_${n}`, -1)}" aria-label="Fewer reps">−</button><input type="number" inputmode="numeric" class="input-field set-reps" id="${prefix}_r_${n}" value="${esc(rVal)}" placeholder="reps" data-on-focusin="selectText" data-on-input="checkStartWorkoutTimer" data-args="${args('$el')}"><button type="button" class="stepper-btn" data-on-click="stepValue" data-args="${args(`${prefix}_r_${n}`, 1)}" aria-label="More reps">+</button></div></td>
+    <td class="set-done-cell"><button type="button" class="check-btn" data-on-click="toggleSet" data-args="${args('$el', rest)}" aria-label="Set ${n} done">${icon('check', { size: 22 })}</button></td>
     <td class="set-last"><span class="set-last-text"></span><span class="set-badge"></span></td>
     <td class="set-extra">
       <label>Tag <select class="set-tag" id="${prefix}_t_${n}">${tagOptions}</select></label>
@@ -137,10 +139,10 @@ export function getSupersetDecorations(category) {
 }
 export function getSupersetBtn(category) {
   const linked = getLinkedCategory(category);
-  if (linked) return `<button class="btn-xs btn-superset active edit-only" onclick="toggleSuperset('${category}')">${icon('link', 14)} Unlink Superset</button>`;
+  if (linked) return `<button class="btn-xs btn-superset active edit-only" data-on-click="toggleSuperset" data-args="${args(category)}">${icon('link', 14)} Unlink Superset</button>`;
   const next = getNextCategory(category);
   if (!next) return '';
-  return `<button class="btn-xs btn-superset edit-only" onclick="toggleSuperset('${category}')">${icon('link', 14)} Superset with next</button>`;
+  return `<button class="btn-xs btn-superset edit-only" data-on-click="toggleSuperset" data-args="${args(category)}">${icon('link', 14)} Superset with next</button>`;
 }
 
 // The catalog stores setup as '⚙️ Setup: …' and cue as '💡 …', and the cue often repeats the setup.
@@ -181,7 +183,7 @@ export function renderExerciseCard(ex, idx) {
 
   return `
   <div class="exercise-card ${dec.cls}" data-category="${ex.category}" data-prefix="${ex.prefix}" data-exercise-type="${esc(ex.exerciseType)}" data-rest="${ex.rest}">
-    <div class="ex-header" role="button" tabindex="0" aria-expanded="true" onclick="toggleExerciseCard(this)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleExerciseCard(this)}">
+    <div class="ex-header" role="button" tabindex="0" aria-expanded="true" data-on-click="toggleExerciseCard" data-on-keydown="onExerciseHeaderKey" data-args="${args('$el', '$event')}">
       <div>
         <div class="ex-title-row"><span class="ex-number">${String(idx).padStart(2,'0')}</span><div class="ex-title">${esc(ex.title)}</div>${dec.badge}<span class="ex-title-end"><span class="ex-progress" aria-label="Sets done">0/0</span><span class="ex-chevron" aria-hidden="true">${icon('chevron-down', { size: 18 })}</span></span></div>
         <div class="ex-target">${esc(ex.target)}</div>
@@ -193,21 +195,21 @@ export function renderExerciseCard(ex, idx) {
     </div>
     <div class="machine-selector-wrapper">
       <label class="machine-label" for="${ex.category}Select">${icon('dumbbell', 15)} Equipment</label>
-      <select class="machine-dropdown" id="${ex.category}Select" onchange="onVariationChange('${ex.category}', '${ex.prefix}', this)">
+      <select class="machine-dropdown" id="${ex.category}Select" data-on-change="onVariationChange" data-args="${args(ex.category, ex.prefix, '$el')}">
         ${options}
       </select>
       <div class="equip-tools edit-only">
-        <button class="btn-xs" title="Move equipment up" aria-label="Move equipment up" onclick="reorderEquipment('${ex.category}', -1)">${icon('arrow-up', 14)}</button>
-        <button class="btn-xs" title="Move equipment down" aria-label="Move equipment down" onclick="reorderEquipment('${ex.category}', 1)">${icon('arrow-down', 14)}</button>
-        <button class="btn-xs" onclick="openAddVarModal('${ex.category}')">${icon('plus', 14)} Variation</button>
-        <button class="btn-xs" onclick="openPresetModal('${ex.category}')">${icon('settings', 14)} Preset</button>
-        <button class="btn-xs btn-xs-danger" title="Remove equipment" aria-label="Remove equipment" onclick="removeEquipment('${ex.category}')">${icon('trash', 14)}</button>
+        <button class="btn-xs" title="Move equipment up" aria-label="Move equipment up" data-on-click="reorderEquipment" data-args="${args(ex.category, -1)}">${icon('arrow-up', 14)}</button>
+        <button class="btn-xs" title="Move equipment down" aria-label="Move equipment down" data-on-click="reorderEquipment" data-args="${args(ex.category, 1)}">${icon('arrow-down', 14)}</button>
+        <button class="btn-xs" data-on-click="openAddVarModal" data-args="${args(ex.category)}">${icon('plus', 14)} Variation</button>
+        <button class="btn-xs" data-on-click="openPresetModal" data-args="${args(ex.category)}">${icon('settings', 14)} Preset</button>
+        <button class="btn-xs btn-xs-danger" title="Remove equipment" aria-label="Remove equipment" data-on-click="removeEquipment" data-args="${args(ex.category)}">${icon('trash', 14)}</button>
       </div>
     </div>
     <div class="ex-info">
       <div class="ex-info-line">
         <span class="ex-setup" id="${ex.prefix}SetupBadge">${esc(info.setup)}</span>
-        <button type="button" class="info-btn" id="${ex.prefix}InfoBtn" onclick="toggleExInfo(this)" aria-expanded="false" aria-label="Setup details and cues" ${info.more ? '' : 'hidden'}>${icon('info', 16)}</button>
+        <button type="button" class="info-btn" id="${ex.prefix}InfoBtn" data-on-click="toggleExInfo" data-args="${args('$el')}" aria-expanded="false" aria-label="Setup details and cues" ${info.more ? '' : 'hidden'}>${icon('info', 16)}</button>
       </div>
       <div class="ex-cue" id="${ex.prefix}CueBadge">${esc(info.cue)}</div>
       <div class="ex-prev" id="${ex.prefix}PrevBadge">${prevLine(storedPreset && storedPreset.length ? 'Preset' : 'Default', sets)}</div>
@@ -219,12 +221,12 @@ export function renderExerciseCard(ex, idx) {
       </table>
     </div>
     <div class="ex-actions-bar">
-      <button class="btn-xs" onclick="addSetRow('table_${ex.prefix}', '${ex.prefix}', ${ex.rest})">${icon('plus', 14)} Add Set</button>
-      <button class="btn-xs" onclick="removeSetRow('table_${ex.prefix}')">${icon('minus', 14)} Remove Set</button>
-      <button class="btn-xs edit-only" onclick="reorderExercise('${ex.category}', -1)">${icon('arrow-up', 14)} Up</button>
-      <button class="btn-xs edit-only" onclick="reorderExercise('${ex.category}', 1)">${icon('arrow-down', 14)} Down</button>
+      <button class="btn-xs" data-on-click="addSetRow" data-args="${args(`table_${ex.prefix}`, ex.prefix, ex.rest)}">${icon('plus', 14)} Add Set</button>
+      <button class="btn-xs" data-on-click="removeSetRow" data-args="${args(`table_${ex.prefix}`)}">${icon('minus', 14)} Remove Set</button>
+      <button class="btn-xs edit-only" data-on-click="reorderExercise" data-args="${args(ex.category, -1)}">${icon('arrow-up', 14)} Up</button>
+      <button class="btn-xs edit-only" data-on-click="reorderExercise" data-args="${args(ex.category, 1)}">${icon('arrow-down', 14)} Down</button>
       ${supBtn}
-      <button class="btn-xs btn-xs-danger edit-only" onclick="removeExercise('${ex.category}')">${icon('trash', 14)} Remove Exercise</button>
+      <button class="btn-xs btn-xs-danger edit-only" data-on-click="removeExercise" data-args="${args(ex.category)}">${icon('trash', 14)} Remove Exercise</button>
     </div>
   </div>`;
 }
@@ -239,9 +241,9 @@ export function renderDay(dayNum) {
       <div class="category-header-row">
         <div class="category-tag tag-${sec.color || 'blue'}" id="${sec.tag}">${esc(displayTitle)} <span class="category-count"><span class="set-count">0</span> sets</span></div>
         <div class="section-actions edit-only">
-          <button class="btn-xs" title="Move section up" onclick="reorderSection('${dayNum}', ${sidx}, -1)">${icon('arrow-up', 14)} Up</button>
-          <button class="btn-xs" title="Move section down" onclick="reorderSection('${dayNum}', ${sidx}, 1)">${icon('arrow-down', 14)} Down</button>
-          <button class="btn-xs btn-xs-danger" title="Remove section" aria-label="Remove section" onclick="removeSection('${dayNum}', ${sidx})">${icon('trash', 14)}</button>
+          <button class="btn-xs" title="Move section up" data-on-click="reorderSection" data-args="${args(dayNum, sidx, -1)}">${icon('arrow-up', 14)} Up</button>
+          <button class="btn-xs" title="Move section down" data-on-click="reorderSection" data-args="${args(dayNum, sidx, 1)}">${icon('arrow-down', 14)} Down</button>
+          <button class="btn-xs btn-xs-danger" title="Remove section" aria-label="Remove section" data-on-click="removeSection" data-args="${args(dayNum, sidx)}">${icon('trash', 14)}</button>
         </div>
       </div>`;
       if (!sec.exercises || sec.exercises.length === 0) {
@@ -585,8 +587,8 @@ export function finishCurrentDayWorkout() {
 
 export function shareLastWorkout() { generateShareCard(lastFinishedRecord); }
 
-export function resetCurrentDayForm() {
-  if (!confirm(`Reset all sets and reload saved presets for Day ${activeDay}?`)) return;
+export async function resetCurrentDayForm() {
+  if (!(await confirmDialog(`Reset all sets and reload saved presets for Day ${activeDay}?`, { confirmLabel: 'Reset', danger: true }))) return;
   const dayView = document.getElementById('view-day-' + activeDay);
   if (dayView) {
     dayView.querySelectorAll('.exercise-card').forEach(card => {
@@ -610,8 +612,8 @@ export function showCelebration() {
     <div class="celebration-badge pr">
       <span>${icon('trophy', 22)} Workout saved!</span>
       <p style="font-size:13px; color:var(--muted); font-weight:600;">Download your cyberpunk stats card to share your accomplishment.</p>
-      <button class="btn btn-primary" onclick="shareLastWorkout()">${icon('share')} Download Share Card</button>
-      <button class="btn btn-secondary" onclick="document.getElementById('celebrationOverlay').classList.remove('active')">Close</button>
+      <button class="btn btn-primary" data-on-click="shareLastWorkout">${icon('share')} Download Share Card</button>
+      <button class="btn btn-secondary" data-on-click="closeCelebration">Close</button>
     </div>
   `;
   overlay.classList.add('active');
@@ -674,6 +676,12 @@ export function refreshExerciseFocus() {
     updateCardProgress(day);
     focusExercise(day, openCards[day]);
   });
+}
+
+export function onExerciseHeaderKey(header, event) {
+  if (event.key !== 'Enter' && event.key !== ' ') return;
+  event.preventDefault();
+  toggleExerciseCard(header);
 }
 
 export function toggleExerciseCard(header) {
