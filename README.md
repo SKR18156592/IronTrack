@@ -29,7 +29,7 @@ at the gym, and track progress over time. Your data syncs across devices through
 | Local storage | IndexedDB for workout history; `localStorage` for everything else (keys prefixed `iron_`) |
 | Backend | Supabase: Auth (email and password), Postgres, Realtime |
 | Offline | Service worker (`src/sw.js`, Workbox via `vite-plugin-pwa`) + web app manifest |
-| Tooling | Vite (dev server and bundling), Vitest + happy-dom (unit tests) |
+| Tooling | Vite (dev server and bundling), Vitest + happy-dom (unit tests), Playwright (smoke tests), ESLint |
 
 ## Project structure
 
@@ -54,6 +54,7 @@ irontrack-pwa/
 │   ├── data/                  # Built-in exercise catalog and nutrition plans
 │   └── render/                # One module per screen or feature
 ├── tests/                     # Vitest unit tests
+├── e2e/                       # Playwright smoke tests
 ├── public/
 │   ├── manifest.webmanifest   # PWA manifest
 │   └── *.png, *.svg           # App icons
@@ -100,8 +101,16 @@ npm install
 npm run dev       # dev server
 npm run build     # static build into dist/
 npm run preview   # serve the build locally
-npm test          # unit tests
+npm test          # unit tests (Vitest)
+npm run lint      # ESLint
+npm run test:e2e  # smoke tests in a browser against the production build (Playwright)
 ```
+
+Before the first `npm run test:e2e`, install its browser once: `npx playwright install chromium`.
+
+GitHub Actions (`.github/workflows/ci.yml`) runs lint, unit tests, the build and the smoke tests on
+every pull request and every push to `main`. If the smoke tests fail, the run uploads the Playwright
+report as an artifact.
 
 ## How it works
 
