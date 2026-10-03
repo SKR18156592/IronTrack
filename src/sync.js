@@ -18,13 +18,16 @@ import { refreshAllUI, refreshHistoryUI, showToast, updateSyncIndicator } from '
 // ==========================================
 // SUPABASE CLIENT & AUTH CONFIGURATION
 // ==========================================
-const SUPABASE_URL = 'https://jlwaebsftvtqghmhhess.supabase.co';
+// Set at build time (see .env.example). The defaults are this project's public values: the anon key is
+// public by design, and Row-Level Security protects the data.
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://jlwaebsftvtqghmhhess.supabase.co';
 const SUPABASE_ANON_KEY =
+  import.meta.env.VITE_SUPABASE_ANON_KEY ||
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impsd2FlYnNmdHZ0cWdobWhoZXNzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg0Mjk1OTgsImV4cCI6MjEwNDAwNTU5OH0.6bb0zIkWxUpX31KIckqNVWVBb0p2QRhl10yeUlA5e_g';
 
 export let supabaseClient = null;
 try {
-  if (SUPABASE_URL !== 'YOUR_SUPABASE_URL') {
+  if (SUPABASE_URL && SUPABASE_ANON_KEY) {
     supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
     });
