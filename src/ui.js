@@ -1,5 +1,11 @@
 import { WORKOUT, rebuildWorkoutDatabase } from './model.js';
-import { analyticRange, render1RMTrends, renderMuscleGroupBarChart, renderMuscleRecoveryHeatmap, setAnalyticRange } from './render/analytics.js';
+import {
+  analyticRange,
+  render1RMTrends,
+  renderMuscleGroupBarChart,
+  renderMuscleRecoveryHeatmap,
+  setAnalyticRange
+} from './render/analytics.js';
 import { populateCompoundSelect, populateHistoryExerciseDropdown, renderHistory } from './render/history.js';
 import { renderNutritionPlan } from './render/nutrition.js';
 import { loadProfileTabUI, loadProfileToCalculator } from './render/profile.js';
@@ -36,11 +42,23 @@ export function updateOnlineStatus() {
 // or signed out (data stays on this device).
 export function updateSyncIndicator() {
   let state, label;
-  if (!currentUser || !supabaseClient) { state = 'local'; label = 'Not signed in: data stays on this device'; }
-  else if (!navigator.onLine) { state = 'offline'; label = 'Offline: changes are saved on this device'; }
-  else if (isSyncDirty()) { state = 'pending'; label = 'Changes waiting to sync'; }
-  else { state = 'synced'; label = 'All changes synced'; }
-  document.querySelectorAll('.sync-dot').forEach(dot => { dot.dataset.state = state; dot.title = label; });
+  if (!currentUser || !supabaseClient) {
+    state = 'local';
+    label = 'Not signed in: data stays on this device';
+  } else if (!navigator.onLine) {
+    state = 'offline';
+    label = 'Offline: changes are saved on this device';
+  } else if (isSyncDirty()) {
+    state = 'pending';
+    label = 'Changes waiting to sync';
+  } else {
+    state = 'synced';
+    label = 'All changes synced';
+  }
+  document.querySelectorAll('.sync-dot').forEach(dot => {
+    dot.dataset.state = state;
+    dot.title = label;
+  });
   const text = document.getElementById('syncStatusText');
   if (text) text.textContent = label;
   const btn = document.getElementById('profileToggleBtn');
@@ -50,11 +68,12 @@ export function updateSyncIndicator() {
 export function refreshAllUI() {
   // If the user is currently editing an exercise or modal, don't destroy their selection
   const isModalOpen = document.getElementById('addExModalOverlay')?.classList.contains('active');
-  
+
   rebuildWorkoutDatabase();
-  
+
   const storedDay = getL('iron_active_day');
-  const targetDay = (storedDay && WORKOUT[storedDay]) ? storedDay : (WORKOUT[activeDay] ? activeDay : Object.keys(WORKOUT)[0] || '1');
+  const targetDay =
+    storedDay && WORKOUT[storedDay] ? storedDay : WORKOUT[activeDay] ? activeDay : Object.keys(WORKOUT)[0] || '1';
 
   if (!isModalOpen) {
     renderAll();
@@ -96,7 +115,7 @@ export function loadTheme() {
 let audioCtx = null;
 let lastActiveTabBeforeProfile = 'workout';
 
-export function haptic(ms=15) {
+export function haptic(ms = 15) {
   const vibe = document.getElementById('vibeToggle');
   if (vibe && vibe.checked && navigator.vibrate) navigator.vibrate(ms);
 }
@@ -120,7 +139,7 @@ export function showTab(tab) {
   }
   document.querySelectorAll('.bottom-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
   document.querySelectorAll('.app-view').forEach(v => v.classList.toggle('active', v.id === 'view-' + tab));
-  
+
   if (tab === 'analytics') {
     setAnalyticRange(analyticRange);
     renderMuscleRecoveryHeatmap();
@@ -138,7 +157,7 @@ export function showTab(tab) {
 export function toggleProfileTab() {
   const profileView = document.getElementById('view-profile');
   const isProfileActive = profileView.classList.contains('active');
-  
+
   if (isProfileActive) {
     showTab(lastActiveTabBeforeProfile || 'workout');
   } else {
@@ -186,6 +205,12 @@ export function fireConfetti(opts) {
   import('canvas-confetti').then(({ default: confetti }) => confetti(opts)).catch(() => {});
 }
 
-export function selectText(input) { input.select(); }
-export function closeClosestModal(el) { el.closest('.modal-overlay')?.remove(); }
-export function closeCelebration() { document.getElementById('celebrationOverlay').classList.remove('active'); }
+export function selectText(input) {
+  input.select();
+}
+export function closeClosestModal(el) {
+  el.closest('.modal-overlay')?.remove();
+}
+export function closeCelebration() {
+  document.getElementById('celebrationOverlay').classList.remove('active');
+}

@@ -44,7 +44,11 @@ async function load() {
     cache = Array.isArray(stored) ? stored : [];
     if (Array.isArray(legacy)) {
       // One-time move out of localStorage. Merged, not replaced, in case an earlier move was cut off.
-      cache = mergeHistories({ localHistory: cache, cloudHistory: legacy, localTombstones: getJ(HISTORY_TOMBSTONES_KEY, []) }).merged;
+      cache = mergeHistories({
+        localHistory: cache,
+        cloudHistory: legacy,
+        localTombstones: getJ(HISTORY_TOMBSTONES_KEY, [])
+      }).merged;
       await run('readwrite', s => s.put(cache, RECORD));
       localStorage.removeItem(HISTORY_KEY);
     }

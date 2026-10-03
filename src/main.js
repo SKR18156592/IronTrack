@@ -70,13 +70,15 @@ async function init() {
   updateOnlineStatus();
   document.getElementById('sessionDate').valueAsDate = new Date();
 
-  document.querySelectorAll('.bottom-tab').forEach(btn => btn.addEventListener('click', () => showTab(btn.dataset.tab)));
+  document
+    .querySelectorAll('.bottom-tab')
+    .forEach(btn => btn.addEventListener('click', () => showTab(btn.dataset.tab)));
   document.addEventListener('click', () => unlockAudio());
 
   FLAT_EXERCISES.forEach(ex => {
     const sel = document.getElementById(ex.category + 'Select');
     if (!sel) return;
-    
+
     let val = getChoice(ex.category);
     if (!val || !ex.variations.some(v => v.value === val)) {
       const history = getHistory();
@@ -91,7 +93,7 @@ async function init() {
         }
         if (foundLastVar) break;
       }
-      val = (foundLastVar && ex.variations.some(v => v.value === foundLastVar)) ? foundLastVar : ex.variations[0].value;
+      val = foundLastVar && ex.variations.some(v => v.value === foundLastVar) ? foundLastVar : ex.variations[0].value;
       setChoice(ex.category, val);
     }
 
@@ -120,7 +122,6 @@ init();
 // The worker is built from src/sw.js by `npm run build`; the dev server doesn't serve one.
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
-      .catch(err => console.warn('Service worker registration failed:', err));
+    navigator.serviceWorker.register('/sw.js').catch(err => console.warn('Service worker registration failed:', err));
   });
 }

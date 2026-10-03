@@ -22,14 +22,14 @@ at the gym, and track progress over time. Your data syncs across devices through
 
 ## Tech stack
 
-| Layer | Used |
-|---|---|
-| App | Vanilla HTML, CSS, and JavaScript as ES modules (no framework) |
-| Libraries | `@supabase/supabase-js@2`, `canvas-confetti`, `lucide` (bundled from npm) |
-| Local storage | IndexedDB for workout history; `localStorage` for everything else (keys prefixed `iron_`) |
-| Backend | Supabase: Auth (email and password), Postgres, Realtime |
-| Offline | Service worker (`src/sw.js`, Workbox via `vite-plugin-pwa`) + web app manifest |
-| Tooling | Vite (dev server and bundling), Vitest + happy-dom (unit tests), Playwright (smoke tests), ESLint |
+| Layer         | Used                                                                                              |
+| ------------- | ------------------------------------------------------------------------------------------------- |
+| App           | Vanilla HTML, CSS, and JavaScript as ES modules (no framework)                                    |
+| Libraries     | `@supabase/supabase-js@2`, `canvas-confetti`, `lucide` (bundled from npm)                         |
+| Local storage | IndexedDB for workout history; `localStorage` for everything else (keys prefixed `iron_`)         |
+| Backend       | Supabase: Auth (email and password), Postgres, Realtime                                           |
+| Offline       | Service worker (`src/sw.js`, Workbox via `vite-plugin-pwa`) + web app manifest                    |
+| Tooling       | Vite (dev server and bundling), Vitest + happy-dom (unit tests), Playwright (smoke tests), ESLint |
 
 ## Project structure
 

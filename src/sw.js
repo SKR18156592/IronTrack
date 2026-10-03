@@ -22,11 +22,12 @@ registerRoute(
 
 self.addEventListener('install', () => self.skipWaiting());
 
-self.addEventListener('activate', (event) => {
+self.addEventListener('activate', event => {
   event.waitUntil(
-    caches.keys()
+    caches
+      .keys()
       // Caches from the hand-written worker before this one ('irontrack-v1'…'irontrack-v4').
-      .then((keys) => Promise.all(keys.filter((k) => /^irontrack-v\d+$/.test(k)).map((k) => caches.delete(k))))
+      .then(keys => Promise.all(keys.filter(k => /^irontrack-v\d+$/.test(k)).map(k => caches.delete(k))))
       .then(() => self.clients.claim())
   );
 });

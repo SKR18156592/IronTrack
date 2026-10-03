@@ -9,7 +9,10 @@ let problems;
 test.beforeEach(async ({ page }) => {
   problems = [];
   page.on('pageerror', e => problems.push(`page error: ${e.message}`));
-  page.on('dialog', d => { problems.push(`native dialog: ${d.message()}`); d.dismiss(); });
+  page.on('dialog', d => {
+    problems.push(`native dialog: ${d.message()}`);
+    d.dismiss();
+  });
   await page.route(/supabase\.co|fonts\.(googleapis|gstatic)\.com/, route => route.abort());
   await page.goto('/');
   await page.click('[data-on-click="skipSignIn"]');
@@ -22,7 +25,7 @@ test.afterEach(() => {
 
 test('logs a set, saves the session, and keeps it after a reload', async ({ page }) => {
   const weight = page.locator(`${openCard} .set-weight`).first();
-  const before = Number(await weight.inputValue() || 0);
+  const before = Number((await weight.inputValue()) || 0);
   await page.locator(`${openCard} .stepper-btn[aria-label="More weight"]`).first().click();
   await expect(weight).toHaveValue(String(before + 2.5));
   await page.locator(`${openCard} .check-btn`).first().click();

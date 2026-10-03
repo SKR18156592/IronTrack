@@ -3,7 +3,10 @@
 // ==========================================
 export const NUTRITION_PLANS = {
   rest: {
-    cals: 2283, prot: 164.5, carbs: 237.8, fat: 72.9,
+    cals: 2283,
+    prot: 164.5,
+    carbs: 237.8,
+    fat: 72.9,
     meals: [
       {
         title: '🌅 Breakfast',
@@ -53,7 +56,10 @@ export const NUTRITION_PLANS = {
     ]
   },
   workout: {
-    cals: 2537, prot: 171.7, carbs: 286.9, fat: 77.4,
+    cals: 2537,
+    prot: 171.7,
+    carbs: 286.9,
+    fat: 77.4,
     meals: [
       {
         title: '🌅 Breakfast',

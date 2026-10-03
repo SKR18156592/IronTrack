@@ -4,13 +4,16 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createFakeSupabase } from './fake-supabase.js';
 
 // The sync engine refreshes the UI after applying data; the DOM isn't under test here.
-vi.mock('../src/ui.js', async (importOriginal) => ({
+vi.mock('../src/ui.js', async importOriginal => ({
   ...(await importOriginal()),
-  showToast: vi.fn(), refreshAllUI: vi.fn(), refreshHistoryUI: vi.fn()
+  showToast: vi.fn(),
+  refreshAllUI: vi.fn(),
+  refreshHistoryUI: vi.fn()
 }));
-vi.mock('../src/render/profile.js', async (importOriginal) => ({
+vi.mock('../src/render/profile.js', async importOriginal => ({
   ...(await importOriginal()),
-  loadProfileTabUI: vi.fn(), shrinkStoredAvatar: vi.fn()
+  loadProfileTabUI: vi.fn(),
+  shrinkStoredAvatar: vi.fn()
 }));
 
 const { mergeCloudRow, flushPush, pullFromCloud, pushToCloud, setSyncContext } = await import('../src/sync.js');
@@ -18,15 +21,23 @@ const { clearHistory, getHistory, loadHistory, setHistory } = await import('../s
 
 const USER = { id: 'user-1' };
 const history = () => getHistory();
-const ids = (list) => list.map(s => s.id).sort();
-const session = (ms) => ({ id: 'session_' + ms, exercises: [] });
-const logSession = (ms) => {
+const ids = list => list.map(s => s.id).sort();
+const session = ms => ({ id: 'session_' + ms, exercises: [] });
+const logSession = ms => {
   setHistory([session(ms), ...history()]);
   pushToCloud();
 };
 // Sessions the cloud has, and those it has as deleted.
-const cloudIds = () => [...server.sessions.values()].filter(r => !r.deleted).map(r => r.id).sort();
-const cloudDeleted = () => [...server.sessions.values()].filter(r => r.deleted).map(r => r.id).sort();
+const cloudIds = () =>
+  [...server.sessions.values()]
+    .filter(r => !r.deleted)
+    .map(r => r.id)
+    .sort();
+const cloudDeleted = () =>
+  [...server.sessions.values()]
+    .filter(r => r.deleted)
+    .map(r => r.id)
+    .sort();
 const tombstones = () => JSON.parse(localStorage.getItem('iron_history_tombstones') || '[]');
 
 let server, pgTime;
@@ -132,7 +143,12 @@ describe('flushPush', () => {
 });
 
 describe('pullFromCloud', () => {
-  const row = (extra = {}) => ({ user_id: USER.id, local_storage_backup: {}, updated_at: pgTime('2026-01-01T00:00:00Z'), ...extra });
+  const row = (extra = {}) => ({
+    user_id: USER.id,
+    local_storage_backup: {},
+    updated_at: pgTime('2026-01-01T00:00:00Z'),
+    ...extra
+  });
 
   it('uploads unsynced local edits instead of overwriting them', async () => {
     server.row = row();
@@ -164,7 +180,7 @@ describe('pullFromCloud', () => {
     expect(tombstones()).toContain('session_1');
   });
 
-  it('takes another device\'s edit to a session this device already synced', async () => {
+  it("takes another device's edit to a session this device already synced", async () => {
     server.row = row();
     logSession(1);
     await flushPush();
@@ -183,7 +199,12 @@ describe('pullFromCloud', () => {
 });
 
 describe('moving history out of user_sync.history', () => {
-  const row = (extra = {}) => ({ user_id: USER.id, local_storage_backup: {}, updated_at: pgTime('2026-01-01T00:00:00Z'), ...extra });
+  const row = (extra = {}) => ({
+    user_id: USER.id,
+    local_storage_backup: {},
+    updated_at: pgTime('2026-01-01T00:00:00Z'),
+    ...extra
+  });
 
   it('merges the old history column once and uploads it as rows', async () => {
     server.row = row({
@@ -223,8 +244,8 @@ describe('moving history out of user_sync.history', () => {
 describe('mergeCloudRow', () => {
   it('removes keys deleted on another device but keeps keys never synced', () => {
     localStorage.setItem('irontrack_synced_keys', JSON.stringify(['iron_preset_a', 'iron_theme']));
-    localStorage.setItem('iron_preset_a', '[]');      // synced before, now gone from the cloud
-    localStorage.setItem('iron_local_only', 'x');      // never synced
+    localStorage.setItem('iron_preset_a', '[]'); // synced before, now gone from the cloud
+    localStorage.setItem('iron_local_only', 'x'); // never synced
     localStorage.setItem('iron_custom_days', '[{"dayNum":"9"}]');
     mergeCloudRow({ local_storage_backup: { iron_theme: 'lime' }, custom_days: [] });
     expect(localStorage.getItem('iron_preset_a')).toBeNull();
@@ -249,7 +270,12 @@ describe('mergeCloudRow', () => {
 describe('settings changed on two devices', () => {
   // Another device uploads its settings: `backup` replaces the row's local_storage_backup.
   const otherDeviceWrites = (backup, columns = {}) => {
-    server.row = { ...server.row, ...columns, local_storage_backup: backup, updated_at: pgTime(new Date(Date.parse(server.row.updated_at) + 5000).toISOString()) };
+    server.row = {
+      ...server.row,
+      ...columns,
+      local_storage_backup: backup,
+      updated_at: pgTime(new Date(Date.parse(server.row.updated_at) + 5000).toISOString())
+    };
   };
   const syncedBackup = () => ({ ...server.row.local_storage_backup });
 
@@ -309,13 +335,13 @@ describe('settings changed on two devices', () => {
     expect(server.row.profile_name).toBe('Alex');
   });
 
-  it('on a clean pull, takes the cloud\'s changes', async () => {
+  it("on a clean pull, takes the cloud's changes", async () => {
     otherDeviceWrites({ ...syncedBackup(), iron_theme: 'rose' });
     await pullFromCloud();
     expect(localStorage.getItem('iron_theme')).toBe('rose');
   });
 
-  it('after updating from the older version, an unsynced edit still keeps the cloud\'s new keys', async () => {
+  it("after updating from the older version, an unsynced edit still keeps the cloud's new keys", async () => {
     localStorage.removeItem('irontrack_synced_fps');
     localStorage.setItem('irontrack_synced_keys', JSON.stringify(Object.keys(syncedBackup())));
     otherDeviceWrites({ ...syncedBackup(), iron_preset_bench_flat: '[]' });

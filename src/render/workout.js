@@ -1,6 +1,16 @@
 import { confirmDialog } from '../dialog.js';
 import { args } from '../actions.js';
-import { FLAT_EXERCISES, WORKOUT, getChoice, getLinkedCategory, getNextCategory, getPreset, getPreviousCategory, getRestForCategory, setChoice } from '../model.js';
+import {
+  FLAT_EXERCISES,
+  WORKOUT,
+  getChoice,
+  getLinkedCategory,
+  getNextCategory,
+  getPreset,
+  getPreviousCategory,
+  getRestForCategory,
+  setChoice
+} from '../model.js';
 import { populateDayDropdown } from './exercises.js';
 import { populateCompoundSelect, populateHistoryDayFilter, populateHistoryExerciseDropdown } from './history.js';
 import { renderDayNav, renderHomeSummary } from './schedule.js';
@@ -18,7 +28,7 @@ let restInterval = null;
 let confettiFired = false;
 let lastFinishedRecord = null;
 let perfIndex = new Map(); // past performance per exercise + equipment, from history
-let openCards = {};        // day -> category of the exercise the user is on
+let openCards = {}; // day -> category of the exercise the user is on
 export let hasStartedWorkout = false;
 export let workoutStartTime = null;
 let workoutTimerInterval = null;
@@ -61,8 +71,10 @@ export function restoreFormValues(data) {
     // Match the row count first: the user may have added or removed sets.
     const tbody = table.querySelector('tbody');
     const rest = Number(table.closest('.exercise-card')?.dataset.rest) || 75;
-    while (data[prefix].length && tbody.children.length < data[prefix].length) addSetRow('table_' + prefix, prefix, rest, false);
-    while (data[prefix].length && tbody.children.length > data[prefix].length) tbody.removeChild(tbody.lastElementChild);
+    while (data[prefix].length && tbody.children.length < data[prefix].length)
+      addSetRow('table_' + prefix, prefix, rest, false);
+    while (data[prefix].length && tbody.children.length > data[prefix].length)
+      tbody.removeChild(tbody.lastElementChild);
     const rows = table.querySelectorAll('tbody tr');
     data[prefix].forEach((s, i) => {
       if (rows[i]) {
@@ -90,13 +102,15 @@ export function restoreFormValues(data) {
 
 export function formatPreset(sets) {
   if (!sets || !sets.length) return '';
-  return sets.map(s => {
-    const w = s.weight === 0 ? 'BW' : (s.weight === '' || s.weight == null ? '' : s.weight);
-    const r = s.reps == null ? '' : s.reps;
-    let txt = w + '×' + r;
-    if (s.tag && s.tag !== 'Working') txt = `[${s.tag}] ` + txt;
-    return txt;
-  }).join(', ');
+  return sets
+    .map(s => {
+      const w = s.weight === 0 ? 'BW' : s.weight === '' || s.weight == null ? '' : s.weight;
+      const r = s.reps == null ? '' : s.reps;
+      let txt = w + '×' + r;
+      if (s.tag && s.tag !== 'Working') txt = `[${s.tag}] ` + txt;
+      return txt;
+    })
+    .join(', ');
 }
 
 const SET_TAGS = ['Warmup', 'Working', 'Drop Set', 'Failure'];
@@ -106,7 +120,7 @@ const SET_TAGS = ['Warmup', 'Working', 'Drop Set', 'Failure'];
 function setRowCells(prefix, n, s, rest) {
   const tag = s.tag || 'Working';
   const rir = s.rir == null ? 1 : s.rir;
-  const wVal = s.weight === 0 ? '0' : (s.weight === '' || s.weight == null ? '' : s.weight);
+  const wVal = s.weight === 0 ? '0' : s.weight === '' || s.weight == null ? '' : s.weight;
   const rVal = s.reps == null ? '' : s.reps;
   const tagOptions = SET_TAGS.map(t => `<option value="${t}" ${t === tag ? 'selected' : ''}>${t}</option>`).join('');
   return `<td class="set-num-cell"><button type="button" class="set-num-btn" data-on-click="toggleSetDetails" data-args="${args('$el')}" aria-label="Set ${n}: tag and RIR" aria-expanded="false">${n}</button></td>
@@ -139,7 +153,8 @@ export function getSupersetDecorations(category) {
 }
 export function getSupersetBtn(category) {
   const linked = getLinkedCategory(category);
-  if (linked) return `<button class="btn-xs btn-superset active edit-only" data-on-click="toggleSuperset" data-args="${args(category)}">${icon('link', 14)} Unlink Superset</button>`;
+  if (linked)
+    return `<button class="btn-xs btn-superset active edit-only" data-on-click="toggleSuperset" data-args="${args(category)}">${icon('link', 14)} Unlink Superset</button>`;
   const next = getNextCategory(category);
   if (!next) return '';
   return `<button class="btn-xs btn-superset edit-only" data-on-click="toggleSuperset" data-args="${args(category)}">${icon('link', 14)} Superset with next</button>`;
@@ -148,9 +163,13 @@ export function getSupersetBtn(category) {
 // The catalog stores setup as '⚙️ Setup: …' and cue as '💡 …', and the cue often repeats the setup.
 // Show the setup as one line; the cue (when it adds something) sits behind the ⓘ button.
 export function exerciseInfo(varObj) {
-  const setup = String(varObj.setup || '').replace(/^\s*⚙️?\s*Setup:\s*/u, '').trim();
-  const cue = String(varObj.cue || '').replace(/^\s*💡\s*/u, '').trim();
-  const norm = (t) => t.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const setup = String(varObj.setup || '')
+    .replace(/^\s*⚙️?\s*Setup:\s*/u, '')
+    .trim();
+  const cue = String(varObj.cue || '')
+    .replace(/^\s*💡\s*/u, '')
+    .trim();
+  const norm = t => t.toLowerCase().replace(/[^a-z0-9]/g, '');
   const repeats = setup && cue && (norm(setup).includes(norm(cue)) || norm(cue).includes(norm(setup)));
   const line = setup || cue;
   const extra = setup && cue && !repeats ? cue : '';
@@ -170,13 +189,13 @@ export function toggleExInfo(btn) {
 export function renderExerciseCard(ex, idx) {
   const firstVar = ex.variations[0];
   const options = ex.variations.map(v => `<option value="${esc(v.value)}">${esc(v.label)}</option>`).join('');
-  
+
   const savedChoice = getChoice(ex.category);
-  const activeVarVal = (savedChoice && ex.variations.some(v => v.value === savedChoice)) ? savedChoice : firstVar.value;
+  const activeVarVal = savedChoice && ex.variations.some(v => v.value === savedChoice) ? savedChoice : firstVar.value;
   const activeVarObj = ex.variations.find(v => v.value === activeVarVal) || firstVar;
-  
+
   const storedPreset = getPreset(ex.category, activeVarObj.value);
-  const sets = (storedPreset && storedPreset.length) ? storedPreset : activeVarObj.defaultSets;
+  const sets = storedPreset && storedPreset.length ? storedPreset : activeVarObj.defaultSets;
   const dec = getSupersetDecorations(ex.category);
   const supBtn = getSupersetBtn(ex.category);
   const info = exerciseInfo(activeVarObj);
@@ -185,7 +204,7 @@ export function renderExerciseCard(ex, idx) {
   <div class="exercise-card ${dec.cls}" data-category="${ex.category}" data-prefix="${ex.prefix}" data-exercise-type="${esc(ex.exerciseType)}" data-rest="${ex.rest}">
     <div class="ex-header" role="button" tabindex="0" aria-expanded="true" data-on-click="toggleExerciseCard" data-on-keydown="onExerciseHeaderKey" data-args="${args('$el', '$event')}">
       <div>
-        <div class="ex-title-row"><span class="ex-number">${String(idx).padStart(2,'0')}</span><div class="ex-title">${esc(ex.title)}</div>${dec.badge}<span class="ex-title-end"><span class="ex-progress" aria-label="Sets done">0/0</span><span class="ex-chevron" aria-hidden="true">${icon('chevron-down', { size: 18 })}</span></span></div>
+        <div class="ex-title-row"><span class="ex-number">${String(idx).padStart(2, '0')}</span><div class="ex-title">${esc(ex.title)}</div>${dec.badge}<span class="ex-title-end"><span class="ex-progress" aria-label="Sets done">0/0</span><span class="ex-chevron" aria-hidden="true">${icon('chevron-down', { size: 18 })}</span></span></div>
         <div class="ex-target">${esc(ex.target)}</div>
       </div>
       <div class="ex-meta">
@@ -236,7 +255,7 @@ export function renderDay(dayNum) {
   if (!day) return '';
   let html = `<div class="day-view" id="view-day-${dayNum}">`;
   day.sections.forEach((sec, sidx) => {
-    const displayTitle = (sec.title && sec.title !== 'undefined') ? sec.title : 'General';
+    const displayTitle = sec.title && sec.title !== 'undefined' ? sec.title : 'General';
     html += `<div class="category-section">
       <div class="category-header-row">
         <div class="category-tag tag-${sec.color || 'blue'}" id="${sec.tag}">${esc(displayTitle)} <span class="category-count"><span class="set-count">0</span> sets</span></div>
@@ -246,11 +265,13 @@ export function renderDay(dayNum) {
           <button class="btn-xs btn-xs-danger" title="Remove section" aria-label="Remove section" data-on-click="removeSection" data-args="${args(dayNum, sidx)}">${icon('trash', 14)}</button>
         </div>
       </div>`;
-      if (!sec.exercises || sec.exercises.length === 0) {
-        html += `<div style="padding:16px; text-align:center; color:var(--muted); font-size:12.5px; background:rgba(15,23,42,0.4); border-radius:var(--radius-sm); border:1px dashed var(--card-border);">No exercises yet in this section. Tap Edit, then Add Exercise.</div>`;
-      } else {
-        sec.exercises.forEach((ex, eidx) => { html += renderExerciseCard(ex, eidx+1); });
-      }
+    if (!sec.exercises || sec.exercises.length === 0) {
+      html += `<div style="padding:16px; text-align:center; color:var(--muted); font-size:12.5px; background:rgba(15,23,42,0.4); border-radius:var(--radius-sm); border:1px dashed var(--card-border);">No exercises yet in this section. Tap Edit, then Add Exercise.</div>`;
+    } else {
+      sec.exercises.forEach((ex, eidx) => {
+        html += renderExerciseCard(ex, eidx + 1);
+      });
+    }
     html += `</div>`;
   });
   html += `</div>`;
@@ -272,7 +293,7 @@ export function renderAll() {
   refreshExerciseFocus();
   if (focusedId) document.getElementById(focusedId)?.focus({ preventScroll: true });
   renderDayNav();
-  
+
   // Only repopulate if the modal is closed to preserve user input
   const isAddOpen = document.getElementById('addExModalOverlay')?.classList.contains('active');
   if (!isAddOpen) {
@@ -284,7 +305,7 @@ export function renderAll() {
   populateCompoundSelect();
 }
 
-export function applyVariation(category, prefix, variation, fillRows=true) {
+export function applyVariation(category, prefix, variation, fillRows = true) {
   const ex = FLAT_EXERCISES.find(e => e.category === category);
   if (!ex) return;
   const varObj = ex.variations.find(v => v.value === variation);
@@ -302,7 +323,7 @@ export function applyVariation(category, prefix, variation, fillRows=true) {
 
   const storedPreset = getPreset(category, variation);
   const defaultSets = varObj.defaultSets;
-  let sourceSets = (storedPreset && storedPreset.length) ? storedPreset : defaultSets;
+  let sourceSets = storedPreset && storedPreset.length ? storedPreset : defaultSets;
   let sourceLabel = storedPreset && storedPreset.length ? 'Preset' : 'Default';
 
   const table = document.getElementById('table_' + prefix);
@@ -318,9 +339,9 @@ export function applyVariation(category, prefix, variation, fillRows=true) {
       const row = tbody.children[i];
       if (!row) continue;
       const s = sourceSets[i] || {};
-      const wRaw = s.weight === 0 ? '0' : (s.weight === '' || s.weight == null ? '' : s.weight);
+      const wRaw = s.weight === 0 ? '0' : s.weight === '' || s.weight == null ? '' : s.weight;
       const rRaw = s.reps == null ? '' : s.reps;
-      
+
       const wInput = row.querySelector('.set-weight');
       const rInput = row.querySelector('.set-reps');
       const tInput = row.querySelector('.set-tag');
@@ -330,7 +351,7 @@ export function applyVariation(category, prefix, variation, fillRows=true) {
       if (rInput) rInput.value = rRaw;
       if (tInput) tInput.value = s.tag || 'Working';
       if (riInput && s.rir != null) riInput.value = s.rir;
-      
+
       const checkBtn = row.querySelector('.check-btn');
       if (checkBtn) checkBtn.classList.remove('completed');
     }
@@ -357,7 +378,7 @@ export function stepValue(id, delta) {
   checkStartWorkoutTimer();
 }
 
-export function addSetRow(tableId, prefix, rest, update=true) {
+export function addSetRow(tableId, prefix, rest, update = true) {
   const table = document.getElementById(tableId);
   if (!table) return;
   const tbody = table.querySelector('tbody');
@@ -366,7 +387,10 @@ export function addSetRow(tableId, prefix, rest, update=true) {
   tbody.appendChild(tr);
   const card = table.closest('.exercise-card');
   if (card) updateLastHints(card);
-  if (update) { updateSectionWorkingSetCounts(); updateProgress(); }
+  if (update) {
+    updateSectionWorkingSetCounts();
+    updateProgress();
+  }
 }
 
 export function removeSetRow(tableId) {
@@ -374,14 +398,19 @@ export function removeSetRow(tableId) {
   if (!table) return;
   const tbody = table.querySelector('tbody');
   if (tbody.children.length > 1) tbody.removeChild(tbody.lastElementChild);
-  updateSectionWorkingSetCounts(); updateProgress();
+  updateSectionWorkingSetCounts();
+  updateProgress();
 }
 
 export function switchDayView(day, resetSession = false) {
   activeDay = String(day);
   setL('iron_active_day', activeDay);
-  document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.toggle('active', btn.classList.contains(`day-${activeDay}`)));
-  document.querySelectorAll('.day-view').forEach((view) => view.classList.toggle('active', view.id === `view-day-${activeDay}`));
+  document
+    .querySelectorAll('.nav-btn')
+    .forEach(btn => btn.classList.toggle('active', btn.classList.contains(`day-${activeDay}`)));
+  document
+    .querySelectorAll('.day-view')
+    .forEach(view => view.classList.toggle('active', view.id === `view-day-${activeDay}`));
   const cfg = WORKOUT[activeDay];
   if (!cfg) return;
   const badge = document.getElementById('currentDayBadge');
@@ -391,12 +420,12 @@ export function switchDayView(day, resetSession = false) {
   updateSectionWorkingSetCounts();
   updateProgress();
   confettiFired = false;
-  
+
   if (resetSession) {
     hasStartedWorkout = false;
     workoutStartTime = null;
     clearInterval(workoutTimerInterval);
-    document.getElementById('timeElapsed').textContent = "00:00:00";
+    document.getElementById('timeElapsed').textContent = '00:00:00';
     if (document.getElementById('sessionNotes')) document.getElementById('sessionNotes').value = '';
     if (hasSessionDraft()) saveSessionDraft();
   }
@@ -422,20 +451,22 @@ export function startWorkoutTimer(startTime) {
 }
 
 export function updateSectionWorkingSetCounts() {
-  Object.values(WORKOUT).forEach(day => day.sections.forEach(sec => {
-    let count = 0;
-    if (sec.exercises) {
-      sec.exercises.forEach(ex => {
-        const table = document.getElementById('table_' + ex.prefix);
-        if (table) count += table.querySelectorAll('tbody tr').length;
-      });
-    }
-    const tag = document.getElementById(sec.tag);
-    if (tag) {
-      const counter = tag.querySelector('.set-count');
-      if (counter) counter.textContent = count;
-    }
-  }));
+  Object.values(WORKOUT).forEach(day =>
+    day.sections.forEach(sec => {
+      let count = 0;
+      if (sec.exercises) {
+        sec.exercises.forEach(ex => {
+          const table = document.getElementById('table_' + ex.prefix);
+          if (table) count += table.querySelectorAll('tbody tr').length;
+        });
+      }
+      const tag = document.getElementById(sec.tag);
+      if (tag) {
+        const counter = tag.querySelector('.set-count');
+        if (counter) counter.textContent = count;
+      }
+    })
+  );
 }
 
 export function getDaySetCounts(day) {
@@ -450,8 +481,13 @@ export function updateSessionStats() {
   const view = document.getElementById('view-day-' + activeDay);
   const setsEl = document.getElementById('statsSets');
   const tonEl = document.getElementById('statsTonnage');
-  if (!view) { if (setsEl) setsEl.textContent = '0'; if (tonEl) tonEl.textContent = '0 kg'; return; }
-  let completed = 0, tonnage = 0;
+  if (!view) {
+    if (setsEl) setsEl.textContent = '0';
+    if (tonEl) tonEl.textContent = '0 kg';
+    return;
+  }
+  let completed = 0,
+    tonnage = 0;
   view.querySelectorAll('.check-btn.completed').forEach(btn => {
     const tr = btn.closest('tr');
     if (!tr) return;
@@ -552,13 +588,29 @@ export function finishCurrentDayWorkout() {
       const riIn = tr.querySelector('.set-rir');
       const tIn = tr.querySelector('.set-tag');
       if (!rIn || rIn.value === '') return;
-      sets.push({ setNum: i + 1, weight: wIn?.value || '0', reps: rIn?.value || '0', rir: riIn?.value || '0', tag: tIn?.value || 'Working', done: tr.querySelector('.check-btn').classList.contains('completed') });
+      sets.push({
+        setNum: i + 1,
+        weight: wIn?.value || '0',
+        reps: rIn?.value || '0',
+        rir: riIn?.value || '0',
+        tag: tIn?.value || 'Working',
+        done: tr.querySelector('.check-btn').classList.contains('completed')
+      });
     });
-    exercises.push({ name, category: card.dataset.category, variationValue, exerciseType: card.dataset.exerciseType, machineOpt, sets });
+    exercises.push({
+      name,
+      category: card.dataset.category,
+      variationValue,
+      exerciseType: card.dataset.exerciseType,
+      machineOpt,
+      sets
+    });
   });
   const notesVal = document.getElementById('sessionNotes')?.value.trim() || '';
   const record = {
-    id: 'session_' + Date.now(), day: activeDay, dayTitle: WORKOUT[activeDay] ? WORKOUT[activeDay].title : `Day ${activeDay}`,
+    id: 'session_' + Date.now(),
+    day: activeDay,
+    dayTitle: WORKOUT[activeDay] ? WORKOUT[activeDay].title : `Day ${activeDay}`,
     date: document.getElementById('sessionDate').value,
     bodyWeight: document.getElementById('bodyWeight').value || 'N/A',
     energy: document.getElementById('energyLevel').value || 'N/A',
@@ -571,7 +623,10 @@ export function finishCurrentDayWorkout() {
   const history = getHistory();
   history.unshift(record);
   if (!setHistory(history)) {
-    showToast('❌ Session NOT saved: device storage is full. Export a full backup from Settings to free space.', 'error');
+    showToast(
+      '❌ Session NOT saved: device storage is full. Export a full backup from Settings to free space.',
+      'error'
+    );
     return;
   }
   requestPersistentStorage();
@@ -585,10 +640,18 @@ export function finishCurrentDayWorkout() {
   renderHomeSummary();
 }
 
-export function shareLastWorkout() { generateShareCard(lastFinishedRecord); }
+export function shareLastWorkout() {
+  generateShareCard(lastFinishedRecord);
+}
 
 export async function resetCurrentDayForm() {
-  if (!(await confirmDialog(`Reset all sets and reload saved presets for Day ${activeDay}?`, { confirmLabel: 'Reset', danger: true }))) return;
+  if (
+    !(await confirmDialog(`Reset all sets and reload saved presets for Day ${activeDay}?`, {
+      confirmLabel: 'Reset',
+      danger: true
+    }))
+  )
+    return;
   const dayView = document.getElementById('view-day-' + activeDay);
   if (dayView) {
     dayView.querySelectorAll('.exercise-card').forEach(card => {
@@ -644,8 +707,15 @@ export function showSetBadge(tr, entry) {
   const card = tr.closest('.exercise-card');
   const done = tr.querySelector('.check-btn')?.classList.contains('completed');
   const index = [...tr.parentElement.children].indexOf(tr);
-  const result = done && card ? compareSet(entry === undefined ? cardPerformance(card) : entry, index,
-    tr.querySelector('.set-weight')?.value, tr.querySelector('.set-reps')?.value) : null;
+  const result =
+    done && card
+      ? compareSet(
+          entry === undefined ? cardPerformance(card) : entry,
+          index,
+          tr.querySelector('.set-weight')?.value,
+          tr.querySelector('.set-reps')?.value
+        )
+      : null;
   badge.textContent = result === 'pr' ? 'PR' : result === 'up' ? '↑ Beat last time' : '';
   badge.dataset.kind = result || '';
   return result;
@@ -659,7 +729,8 @@ function dayCards(day) {
 // Opens `category` (or, if it's not on this day, the first unfinished exercise) and collapses the rest.
 export function focusExercise(day, category, scroll = false) {
   const cards = dayCards(day);
-  const target = cards.find(c => c.dataset.category === category) || cards.find(c => !c.classList.contains('done')) || null;
+  const target =
+    cards.find(c => c.dataset.category === category) || cards.find(c => !c.classList.contains('done')) || null;
   const partner = target ? getLinkedCategory(target.dataset.category) : null;
   cards.forEach(card => {
     const open = card === target || (partner && card.dataset.category === partner);
