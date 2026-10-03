@@ -46,6 +46,7 @@ irontrack-pwa/
 │   ├── session-draft.js       # In-progress workout draft (survives reloads)
 │   ├── history-store.js       # Workout history in IndexedDB, with an in-memory copy
 │   ├── session-sync.js        # Syncs workout history as one workout_sessions row per session
+│   ├── settings-merge.js      # Builds the user_sync row and merges settings per key
 │   ├── performance.js         # Last time's numbers and PRs per exercise and equipment
 │   ├── model.js               # Workout split built from the catalog + local customizations
 │   ├── storage.js             # localStorage helpers, escaping
@@ -90,9 +91,10 @@ method the app uses. If "Confirm email" is on, new users must confirm their addr
 
 ### 3. Point the app at your project
 
-Set `SUPABASE_URL` and `SUPABASE_ANON_KEY` at the top of `src/sync.js`
-(**Project Settings → API**). The anon key is public by design: Row-Level Security protects the
-data, so never put the `service_role` key here.
+Copy `.env.example` to `.env.local` and set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`
+(**Project Settings → API**). Vite builds them into the bundle. Without them, the app uses the project
+hard-coded at the top of `src/sync.js`. The anon key is public by design: Row-Level Security protects
+the data, so never put the `service_role` key here.
 
 ### 4. Run it
 
@@ -178,7 +180,8 @@ Pages, …):
 
 - **Build command:** `npm run build`
 - **Publish directory:** `dist`
-- **Environment variables:** none needed. The Supabase settings live in `src/sync.js`.
+- **Environment variables (optional):** `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`, to build
+  against a different Supabase project than the default in `src/sync.js`.
 
 Serve the site from the domain root: the service worker and manifest use root-relative paths (`/sw.js`, `/`).
 
