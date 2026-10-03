@@ -18,7 +18,8 @@ at the gym, and track progress over time. Your data syncs across devices through
   maintain or gain, at a chosen rate), with a little more on workout days. Today's plan follows your
   schedule, and the example meal plan scales its portions to your targets. A daily log tracks food
   (from the food list, or a whole planned meal at once), water and body weight against those targets;
-  logging your weight updates your profile, so the targets follow it.
+  logging your weight updates your profile, so the targets follow it. Edit the plan (meals, foods,
+  amounts) to make it your own, and add your own foods for the plan and the log.
 - **Tools:** TDEE, 1RM, and plate calculators.
 - **Offline-first:** everything works without a connection. Changes sync when you're back online.
 - **Multi-device sync (optional):** sign in with email and password, and changes reach your other
@@ -54,6 +55,7 @@ irontrack-pwa/
 │   ├── row-sync.js            # Syncs a list as one table row per record (pull, push, deletions)
 │   ├── session-sync.js        # Workout history through row-sync, plus the one-time history move
 │   ├── nutrition-log.js       # Daily food, water and weight log, synced through row-sync
+│   ├── meal-plans.js          # Your own foods and meal plans (or the example plan)
 │   ├── settings-merge.js      # Builds the user_sync row and merges settings per key
 │   ├── performance.js         # Last time's numbers and PRs per exercise and equipment
 │   ├── nutrition-targets.js   # BMR, TDEE, goal-based calorie and macro targets, meal plan scaling
