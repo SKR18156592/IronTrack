@@ -31,19 +31,24 @@ window.addEventListener('online', updateOnlineStatus);
 
 window.addEventListener('offline', updateOnlineStatus);
 
-window.addEventListener('focus', () => {
-  if (currentUser && supabaseClient) pullFromCloud(false);
-});
+// Coming back to the app usually fires both focus and visibilitychange; one pull covers both.
+let lastReturnPullAt = 0;
+function pullOnReturn() {
+  if (!currentUser || !supabaseClient || Date.now() - lastReturnPullAt < 2000) return;
+  lastReturnPullAt = Date.now();
+  pullFromCloud(false);
+}
+
+window.addEventListener('focus', pullOnReturn);
 
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible' && currentUser && supabaseClient) {
-    pullFromCloud(false);
-  }
+  if (document.visibilityState === 'visible') pullOnReturn();
 });
 
-// Fallback in case a realtime event is missed.
+// Fallback in case a realtime event is missed. Not while the app is in the background:
+// coming back pulls anyway.
 setInterval(() => {
-  if (currentUser && supabaseClient && navigator.onLine) {
+  if (currentUser && supabaseClient && navigator.onLine && document.visibilityState === 'visible') {
     pullFromCloud(false);
   }
 }, 30000);
