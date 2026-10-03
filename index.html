@@ -59,6 +59,9 @@
             minlength="6"
             style="padding: 13px; font-size: 14px; text-align: left"
           />
+          <button type="button" class="auth-link auth-forgot" id="authForgotBtn" data-on-click="requestPasswordReset">
+            Forgot password?
+          </button>
 
           <button
             type="submit"
@@ -100,6 +103,35 @@
         <p style="font-size: 12px; color: var(--muted); margin-top: 8px">
           Your data stays on this device. You can sign in later from your profile.
         </p>
+      </div>
+    </div>
+
+    <div class="modal-overlay" id="resetOverlay" role="dialog" aria-modal="true" aria-labelledby="resetTitle">
+      <div class="modal-content auth-card">
+        <h2 id="resetTitle" class="auth-title">Set a new password</h2>
+        <p class="auth-hint">Choose a new password for <strong id="resetEmail"></strong>.</p>
+        <form class="auth-form" data-on-submit="submitNewPassword" data-args='["$event"]'>
+          <input
+            type="password"
+            id="resetPassword"
+            class="input-field auth-input"
+            placeholder="New password (min 6 characters)"
+            autocomplete="new-password"
+            required
+            minlength="6"
+          />
+          <input
+            type="password"
+            id="resetPasswordConfirm"
+            class="input-field auth-input"
+            placeholder="Repeat the new password"
+            autocomplete="new-password"
+            required
+            minlength="6"
+          />
+          <button type="submit" class="btn btn-primary auth-submit" id="resetSubmitBtn">Save password</button>
+          <div id="resetMsg" class="auth-msg" hidden></div>
+        </form>
       </div>
     </div>
 
