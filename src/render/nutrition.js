@@ -16,10 +16,12 @@ import {
   workoutDaysPerWeek
 } from '../nutrition-targets.js';
 import { args } from '../actions.js';
-import { esc, setL } from '../storage.js';
+import { esc, getL, setL } from '../storage.js';
 import { pushToCloud } from '../sync.js';
 import { isEditingPlan, renderPlanEditor, stopPlanEdit } from './meal-plan-editor.js';
 import { renderNutritionLog } from './nutrition-log.js';
+import { renderNutritionInsights } from './nutrition-insights.js';
+import { mealTiming } from '../nutrition-insights.js';
 
 // null: follow today's schedule. Set when the user picks a plan, until the app restarts.
 let chosenDietMode = null;
@@ -40,12 +42,16 @@ export function setNutritionGoal(goal) {
   if (!GOALS[goal]) return;
   setL('iron_nutrition_goal', goal);
   setL('iron_nutrition_rate', String(GOALS[goal].defaultRate));
+  setL('iron_nutrition_adjust', '0'); // worked out for the old goal
+  setL('iron_nutrition_adjusted_at', '');
   pushToCloud();
   renderNutritionPlan();
 }
 
 export function setNutritionRate(rate) {
   setL('iron_nutrition_rate', rate);
+  setL('iron_nutrition_adjust', '0'); // worked out for the old rate
+  setL('iron_nutrition_adjusted_at', '');
   pushToCloud();
   renderNutritionPlan();
 }
@@ -92,13 +98,19 @@ function renderMeals(meals, heading, foods, custom) {
   if (!container) return;
   shownMeals = meals;
   const total = planNutrients(meals, foods);
+  const time = getL('iron_training_time', '');
+  const trainingTime =
+    shownMode === 'workout'
+      ? `<label class="train-time">Training at <input type="time" class="input-field" value="${esc(time)}"
+          data-on-change="setTrainingTime" data-args='["$value"]' /></label>`
+      : '';
   const reset = custom
     ? `<button class="btn btn-secondary btn-sm" data-on-click="resetMealPlan">Use the example plan</button>`
     : '';
   container.innerHTML =
     `<div class="nutri-plan-bar">
       <p class="nutri-plan-heading">${heading} · ≈ ${kcal(total.kcal)} kcal · ${Math.round(total.p)} g protein</p>
-      <div class="nutri-plan-actions">${reset}<button class="btn btn-secondary btn-sm" data-on-click="startPlanEdit">Edit plan</button></div>
+      <div class="nutri-plan-actions">${trainingTime}${reset}<button class="btn btn-secondary btn-sm" data-on-click="startPlanEdit">Edit plan</button></div>
     </div>` +
     meals
       .map((meal, index) => {
@@ -128,7 +140,11 @@ function renderMeals(meals, heading, foods, custom) {
         return `
         <div class="meal-box">
           <div class="meal-header-row">
-            <div class="meal-title">${esc(meal.title)}</div>
+            <div class="meal-title">${esc(meal.title)}${
+              shownMode === 'workout' && mealTiming(meal.title, time)
+                ? ` <span class="meal-timing">${mealTiming(meal.title, time)}</span>`
+                : ''
+            }</div>
             <div class="meal-badge-summary">${kcal(sum.kcal)} kcal • ${round1(sum.p)}g Protein</div>
             <button class="btn btn-secondary btn-sm" data-on-click="logPlannedMeal" data-args="${args(index)}">Log this meal</button>
           </div>
@@ -140,6 +156,7 @@ function renderMeals(meals, heading, foods, custom) {
 
 export function renderNutritionPlan() {
   renderNutritionLog();
+  renderNutritionInsights();
   const microcycle = getMicrocycle();
   const todayType = isWorkoutDay(microcycle) ? 'workout' : 'rest';
   const mode = chosenDietMode || todayType;

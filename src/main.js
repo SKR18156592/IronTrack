@@ -20,6 +20,7 @@ import * as history from './render/history.js';
 import * as nutrition from './render/nutrition.js';
 import * as nutritionLog from './render/nutrition-log.js';
 import * as mealPlanEditor from './render/meal-plan-editor.js';
+import * as nutritionInsights from './render/nutrition-insights.js';
 import * as profile from './render/profile.js';
 import * as schedule from './render/schedule.js';
 import * as shareCard from './render/share-card.js';
@@ -38,6 +39,7 @@ registerActions([
   nutrition,
   nutritionLog,
   mealPlanEditor,
+  nutritionInsights,
   profile,
   schedule,
   shareCard,
