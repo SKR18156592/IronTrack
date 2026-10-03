@@ -1,6 +1,7 @@
 import { HISTORY_KEY, HISTORY_TOMBSTONES_KEY } from './history-store.js';
+import { NUTRITION_LOG_KEY, NUTRITION_TOMBSTONES_KEY } from './nutrition-log.js';
 import { getMicrocycle } from './model.js';
-import { fingerprint } from './session-sync.js';
+import { fingerprint } from './fingerprint.js';
 import { getJ, getL, setJ, setL } from './storage.js';
 
 // Settings sync through one user_sync row. Each synced setting is compared with its value in the cloud
@@ -45,7 +46,14 @@ export const ROW_COLUMNS = [
 
 // Keys local_storage_backup never overwrites or prunes: device-local, or synced through their own
 // column or merge logic. (Rows written by older app versions still carry column keys in the backup.)
-const BACKUP_SKIP_KEYS = new Set(['iron_active_day', HISTORY_TOMBSTONES_KEY, ...Object.values(COLUMN_KEYS)]);
+// Keys never uploaded in local_storage_backup: they sync through their own table.
+const LOCAL_ONLY_KEYS = new Set([NUTRITION_LOG_KEY, NUTRITION_TOMBSTONES_KEY]);
+const BACKUP_SKIP_KEYS = new Set([
+  'iron_active_day',
+  HISTORY_TOMBSTONES_KEY,
+  ...LOCAL_ONLY_KEYS,
+  ...Object.values(COLUMN_KEYS)
+]);
 
 const isList = v => Array.isArray(v);
 const isMap = v => !!v && typeof v === 'object';
@@ -112,7 +120,7 @@ export function buildSyncPayload(userId, updatedAt) {
   const allLocalStorageData = {};
   for (let i = 0; i < localStorage.length; i++) {
     const key = localStorage.key(i);
-    if (key && key.startsWith('iron_') && !COLUMN_KEY_SET.has(key)) {
+    if (key && key.startsWith('iron_') && !COLUMN_KEY_SET.has(key) && !LOCAL_ONLY_KEYS.has(key)) {
       allLocalStorageData[key] = localStorage.getItem(key);
     }
   }
