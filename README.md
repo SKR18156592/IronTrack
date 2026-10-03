@@ -52,7 +52,7 @@ irontrack-pwa/
 │   ├── storage.js             # localStorage helpers, escaping
 │   ├── sw.js                  # Service worker: offline caching (built to dist/sw.js)
 │   ├── ui.js                  # Toasts, tabs, theme, sounds, full UI refresh
-│   ├── data/                  # Built-in exercise catalog and nutrition plans
+│   ├── data/                  # Exercise catalog, nutrition plans, body artwork
 │   └── render/                # One module per screen or feature
 ├── tests/                     # Vitest unit tests
 ├── e2e/                       # Playwright smoke tests
@@ -206,6 +206,10 @@ Serve the site from the domain root: the service worker and manifest use root-re
 ## License
 
 MIT
+
+The muscle recovery figure's body artwork comes from
+[react-native-body-highlighter](https://github.com/HichamELBSI/react-native-body-highlighter)
+(MIT, © 2022 ELABBASSI Hicham). Its license is in `src/data/body-art.js`.
 
 ## Author
 
