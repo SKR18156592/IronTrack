@@ -22,6 +22,7 @@ export const GOALS = {
 export const DEFAULT_GOAL = 'maintain';
 
 const KCAL_PER_KG = 7700; // energy in a kg of body weight change
+export const MAX_ADJUST = 1000;
 const WORKOUT_DAY_SHARE = 0.06; // workout days get this much more than the daily average
 
 const num = v => {
@@ -43,7 +44,9 @@ export function readProfile(get = getL) {
     height: num(get('iron_profile_height', '')),
     activity: Number(activity),
     goal,
-    rate: GOALS[goal].rates.includes(rate) ? rate : GOALS[goal].defaultRate
+    rate: GOALS[goal].rates.includes(rate) ? rate : GOALS[goal].defaultRate,
+    // kcal per day added to the goal's calories (an adjustment taken from the weight trend)
+    adjust: Math.max(-MAX_ADJUST, Math.min(MAX_ADJUST, Math.round(parseFloat(get('iron_nutrition_adjust', '')) || 0)))
   };
 }
 
@@ -73,7 +76,7 @@ export function dailyTargets(p, dayType, workoutDays) {
   const goal = GOALS[p.goal];
   const sign = p.goal === 'lose' ? -1 : p.goal === 'gain' ? 1 : 0;
   const maintenance = tdee(p);
-  const average = maintenance + (sign * p.rate * KCAL_PER_KG) / 7;
+  const average = maintenance + (sign * p.rate * KCAL_PER_KG) / 7 + (p.adjust || 0);
   let kcal = average;
   if (workoutDays > 0 && workoutDays < 7) {
     const extra = average * WORKOUT_DAY_SHARE;

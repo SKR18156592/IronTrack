@@ -2534,6 +2534,70 @@ input[type='range']::-webkit-slider-runnable-track {
     display: none;
   }
 }
+/* ---------- Nutrition: progress and meal timing ---------- */
+.weight-dot {
+  fill: var(--muted);
+  stroke: var(--card-solid);
+  stroke-width: 2;
+}
+.weight-point:hover .weight-dot {
+  fill: var(--text);
+}
+.chart-legend {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--muted);
+}
+.legend-line {
+  width: 16px;
+  height: 2px;
+  margin-left: 10px;
+  background: var(--accent);
+}
+.nutri-suggestion {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(10, 14, 24, 0.7);
+  font-size: 13.5px;
+}
+.nutri-adjust,
+.nutri-week {
+  font-size: 13px;
+  color: var(--muted);
+}
+.nutri-week strong {
+  color: var(--text);
+}
+.train-time {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--muted);
+}
+.train-time .input-field {
+  width: auto;
+  padding: 4px 8px;
+}
+.meal-timing {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
 .btn-sm {
   padding: 6px 12px;
   font-size: 12.5px;
