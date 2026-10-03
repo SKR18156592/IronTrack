@@ -74,14 +74,19 @@ export async function handleAuthSubmit(e) {
   msg.style.display = 'none';
 
   let res;
-  if (isSignUpMode) {
-    res = await supabaseClient.auth.signUp({ email, password });
-  } else {
-    res = await supabaseClient.auth.signInWithPassword({ email, password });
+  try {
+    if (isSignUpMode) {
+      res = await supabaseClient.auth.signUp({ email, password });
+    } else {
+      res = await supabaseClient.auth.signInWithPassword({ email, password });
+    }
+  } catch (err) {
+    // Usually returned as res.error, but a thrown error must not leave the button stuck on "Processing...".
+    res = { error: { message: err?.message || 'Could not reach the server. Try again.' } };
+  } finally {
+    btn.disabled = false;
+    btn.textContent = isSignUpMode ? 'Create account' : 'Sign in';
   }
-
-  btn.disabled = false;
-  btn.textContent = isSignUpMode ? 'Create account' : 'Sign in';
 
   if (res.error) {
     msg.textContent = res.error.message;
