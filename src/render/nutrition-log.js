@@ -1,4 +1,4 @@
-import { FOODS } from '../data/foods.js';
+import { getFoods } from '../meal-plans.js';
 import { getMicrocycle } from '../model.js';
 import {
   addEntries,
@@ -53,14 +53,14 @@ export function shiftLogDate(days) {
 }
 
 export function logFoodSelected(id) {
-  const food = FOODS[id];
+  const food = getFoods()[id];
   if (!food) return;
   document.getElementById('logFoodAmount').value = food.per;
   document.getElementById('logFoodUnit').textContent = food.unit === 'piece' ? 'pieces' : food.unit;
 }
 
 function foodEntry(id, amount, meal) {
-  const food = FOODS[id];
+  const food = getFoods()[id];
   const n = foodNutrients(food, amount);
   const round1 = v => Math.round(v * 10) / 10;
   return {
@@ -82,7 +82,7 @@ export function addLoggedFood(e) {
   e.preventDefault();
   const id = document.getElementById('logFood').value;
   const amount = parseFloat(document.getElementById('logFoodAmount').value);
-  if (!FOODS[id] || !(amount > 0)) {
+  if (!getFoods()[id] || !(amount > 0)) {
     showToast('Pick a food and an amount.', 'error');
     return;
   }
@@ -172,9 +172,9 @@ export function renderNutritionLog() {
         ? 'Yesterday'
         : dateObj(date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 
-  const foods = entriesOn(log, date).filter(e => e.type === 'food');
-  const list = foods.length
-    ? foods
+  const eaten = entriesOn(log, date).filter(e => e.type === 'food');
+  const list = eaten.length
+    ? eaten
         .map(
           e => `
       <li class="log-entry">
@@ -187,15 +187,18 @@ export function renderNutritionLog() {
         .join('')
     : '<li class="log-empty">Nothing logged yet. Add a food below, or log a meal from the plan.</li>';
 
-  const selected = document.getElementById('logFood')?.value || 'chicken_breast';
-  const options = Object.entries(FOODS)
+  const foods = getFoods();
+  const selectedId = foods[document.getElementById('logFood')?.value]
+    ? document.getElementById('logFood').value
+    : 'chicken_breast';
+  const options = Object.entries(foods)
     .sort(([, a], [, b]) => a.name.localeCompare(b.name))
     .map(
       ([id, f]) =>
-        `<option value="${id}"${id === selected ? ' selected' : ''}>${esc(f.name)} (${f.per}${unitLabel(f)})</option>`
+        `<option value="${id}"${id === selectedId ? ' selected' : ''}>${esc(f.name)} (${f.per}${unitLabel(f)})</option>`
     )
     .join('');
-  const food = FOODS[selected];
+  const food = foods[selectedId];
 
   card.innerHTML = `
     <div class="analytics-header nutri-header">
