@@ -1,10 +1,8 @@
 // @vitest-environment happy-dom
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
-// Imported first, as the app does: loaded first, history-store.js would reach settings-merge.js through
-// an import cycle (storage → ui → model → sync) before its own constants exist.
-import { buildSyncPayload, matchesSynced, mergeCloudRow, recordSynced, rowSettings } from '../src/settings-merge.js';
 import { clearHistory, getHistory, loadHistory, setHistory } from '../src/history-store.js';
+import { buildSyncPayload, matchesSynced, mergeCloudRow, recordSynced, rowSettings } from '../src/settings-merge.js';
 
 const session = ms => ({ id: 'session_' + ms, exercises: [] });
 
