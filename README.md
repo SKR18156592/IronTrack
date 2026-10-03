@@ -24,7 +24,7 @@ at the gym, and track progress over time. Your data syncs across devices through
 |---|---|
 | App | Vanilla HTML, CSS, and JavaScript as ES modules (no framework) |
 | Libraries | `@supabase/supabase-js@2`, `canvas-confetti` (loaded from jsDelivr) |
-| Local storage | `localStorage` (keys prefixed `iron_`) |
+| Local storage | IndexedDB for workout history; `localStorage` for everything else (keys prefixed `iron_`) |
 | Backend | Supabase: Auth (email and password), Postgres, Realtime |
 | Offline | Service worker (`public/sw.js`) + web app manifest |
 | Tooling | Vite (dev server and bundling), Vitest + happy-dom (unit tests) |
@@ -39,6 +39,8 @@ irontrack-pwa/
 │   ├── sync.js                # Supabase client, auth, upload/download, realtime
 │   ├── history-merge.js       # Pure workout-history merge (by session id + tombstones)
 │   ├── session-draft.js       # In-progress workout draft (survives reloads)
+│   ├── history-store.js       # Workout history in IndexedDB, with an in-memory copy
+│   ├── session-sync.js        # Syncs workout history as one workout_sessions row per session
 │   ├── model.js               # Workout split built from the catalog + local customizations
 │   ├── storage.js             # localStorage helpers, escaping
 │   ├── ui.js                  # Toasts, tabs, theme, sounds, full UI refresh
@@ -50,7 +52,7 @@ irontrack-pwa/
 │   ├── manifest.webmanifest   # PWA manifest
 │   └── *.png, *.svg           # App icons
 ├── supabase/
-│   └── user_sync.sql          # The table, RLS policies, and realtime setup the app uses
+│   └── user_sync.sql          # The tables, RLS policies, and realtime setup the app uses
 └── package.json               # Vite scripts
 ```
 
@@ -65,9 +67,11 @@ irontrack-pwa/
 
 In the Supabase dashboard, open **SQL Editor** and run `supabase/user_sync.sql`. It:
 
-- creates the `user_sync` table (one row per user), or adds any missing columns to an existing one
-- enables Row-Level Security so each signed-in user can only read and write their own row
-- adds the table to the `supabase_realtime` publication
+- creates the `user_sync` table (one row per user, for settings and profile), or adds any missing
+  columns to an existing one
+- creates the `workout_sessions` table (one row per logged session)
+- enables Row-Level Security so each signed-in user can only read and write their own rows
+- adds `user_sync` to the `supabase_realtime` publication
 
 The script is idempotent, so it's safe to re-run.
 
@@ -96,20 +100,29 @@ npm test          # unit tests
 
 ### Data and sync
 
-`localStorage` is the source of truth. The app reads and writes it directly, so it works fully
-offline. When you're signed in, the data is mirrored to your `user_sync` row:
+Data on the device is the source of truth, so the app works fully offline. Workout history lives in
+IndexedDB (`history-store.js`), which isn't limited to ~5 MB. The app loads it into memory at
+startup and writes changes back in the background; history saved in `localStorage` by older versions
+is moved over on first load. Everything else is small and stays in `localStorage`. When you're signed
+in, workout sessions are mirrored to `workout_sessions` (one row each) and everything else to your
+`user_sync` row:
 
 - **Upload:** every edit marks the data as unsynced and schedules an upload (debounced by 800 ms).
-  Before writing, the app reads the cloud row, merges workout history by session ID, and writes only
-  if the row hasn't changed since it read it. Otherwise it merges again and retries. Sessions
-  logged on two devices while they were out of sync are both kept. Deleted sessions are recorded as
-  tombstones so they don't reappear.
+  The app uploads only the sessions the cloud doesn't have in their current form: it keeps a
+  fingerprint of each session's last synced version. Deleted sessions are uploaded as rows with
+  `deleted = true`, so they don't reappear. Then it writes the `user_sync` row, but only if the row
+  hasn't changed since it read it; otherwise it retries.
 - **Download:** the app pulls on startup, on sign-in, on focus, when the app becomes visible, when the
-  device comes back online, every 30 seconds, and whenever Realtime reports a change. Unsynced local
-  edits are uploaded first, so they're never overwritten.
-- **Conflicts:** workout history is merged. All other data (settings, presets, custom exercises) is
-  last-write-wins at the row level. Deletions sync too: a key that disappears from the cloud row
-  is removed on other devices.
+  device comes back online, every 30 seconds, and whenever Realtime reports a change to `user_sync`.
+  It fetches only sessions changed since its last pull (by the server-set `updated_at`, re-reading a
+  minute back to be safe). Unsynced local edits are uploaded first, so they're never overwritten.
+- **Conflicts:** sessions logged on two devices while they were out of sync are both kept. If a
+  session was changed on both, the unsynced local version wins; a deletion always wins. All other
+  data (settings, presets, custom exercises) is last-write-wins at the row level. Deletions sync
+  too: a key that disappears from the cloud row is removed on other devices.
+- **Upgrading:** older versions kept the whole history in `user_sync.history`. The first time a
+  device syncs on this version, it merges that column in and uploads it as `workout_sessions` rows.
+  After that the column is ignored. Run the updated `supabase/user_sync.sql` before deploying.
 - **Shared devices:** signing out, or signing in as a different user, clears the previous account's
   local data.
 
@@ -154,10 +167,10 @@ Serve the site from the domain root: the service worker and manifest use root-re
 
 ## Limitations
 
-- `localStorage` holds about 5 MB per origin. Profile photos are downscaled to 256 px, but a very
-  long history can still hit that limit. The app then warns that changes weren't saved, and you
-  should export a full backup.
-- Each sync uploads the whole data set, so sync payloads grow with your history.
+- If IndexedDB can't be opened (some private-browsing modes), history falls back to `localStorage`
+  and its ~5 MB limit. The app then warns when a change can't be saved.
+- The `user_sync` row (settings, presets and the profile photo) is still uploaded whole on every sync.
+  It doesn't grow with your history, so it stays small.
 
 ## License
 

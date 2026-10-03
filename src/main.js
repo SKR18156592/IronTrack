@@ -5,7 +5,8 @@ import { renderScheduleRibbon } from './render/schedule.js';
 import { computeTDEE, loadSettings } from './render/tools.js';
 import { applyVariation, renderAll, switchDayView } from './render/workout.js';
 import { restoreSessionDraft, watchSessionForm } from './session-draft.js';
-import { getJ, getL } from './storage.js';
+import { getHistory, loadHistory } from './history-store.js';
+import { getL } from './storage.js';
 import { currentUser, pullFromCloud, startSessionSync, supabaseClient } from './sync.js';
 import { showTab, unlockAudio, updateOnlineStatus } from './ui.js';
 import { hydrateIcons } from './icons.js';
@@ -49,7 +50,8 @@ setInterval(() => {
   }
 }, 30000);
 
-function init() {
+async function init() {
+  await loadHistory();
   hydrateIcons();
   loadSettings();
   loadProfileData();
@@ -72,7 +74,7 @@ function init() {
     
     let val = getChoice(ex.category);
     if (!val || !ex.variations.some(v => v.value === val)) {
-      const history = getJ('iron_workout_history', []);
+      const history = getHistory();
       let foundLastVar = null;
       for (const rec of history) {
         if (!rec.exercises) continue;
