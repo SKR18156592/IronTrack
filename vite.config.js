@@ -2,6 +2,8 @@ import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig({
+  // Keep /*! */ license notices (ours and our dependencies') in the built bundles.
+  esbuild: { legalComments: 'eof' },
   test: {
     include: ['tests/**/*.test.js'] // e2e/ holds Playwright specs: npm run test:e2e
   },
