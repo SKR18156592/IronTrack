@@ -143,6 +143,21 @@ async function pushSessions(client, userId) {
     });
     setJ(SESSIONS_SYNCED_KEY, latest);
   }
+  return pending.length;
+}
+
+// Once the cloud has a session's deletion, its deleted row is what keeps it from coming back
+// (pulled again, it re-adds the tombstone), so the local tombstone and bookkeeping can go.
+function pruneTombstones() {
+  const synced = getJ(SESSIONS_SYNCED_KEY, {});
+  const tombstones = getJ(HISTORY_TOMBSTONES_KEY, []);
+  const kept = tombstones.filter(id => synced[id] !== DELETED);
+  if (kept.length === tombstones.length) return;
+  tombstones.forEach(id => {
+    if (synced[id] === DELETED) delete synced[id];
+  });
+  setJ(HISTORY_TOMBSTONES_KEY, kept);
+  setJ(SESSIONS_SYNCED_KEY, synced);
 }
 
 // One-time per device and account: merge in the history that older versions kept in user_sync.history.
@@ -174,16 +189,18 @@ async function mergeLegacyHistory(client, userId) {
 }
 
 // Pull, then push. Runs one at a time, each after the previous one, so none misses an earlier edit.
-// Resolves whether local history changed; rejects if the cloud can't be reached.
+// Resolves { changed, uploaded }: whether local history changed and how many rows went up.
+// Rejects if the cloud can't be reached.
 let queue = Promise.resolve();
 export function syncSessions(client, userId) {
   const run = async () => {
     let changed = await pullSessions(client, userId);
     const migrating = getL(SESSIONS_MIGRATED_KEY, '') !== userId;
     if (migrating && (await mergeLegacyHistory(client, userId))) changed = true;
-    await pushSessions(client, userId);
+    const uploaded = await pushSessions(client, userId);
     if (migrating) setL(SESSIONS_MIGRATED_KEY, userId);
-    return changed;
+    pruneTombstones();
+    return { changed, uploaded };
   };
   const result = queue.then(run, run);
   queue = result.catch(() => {});

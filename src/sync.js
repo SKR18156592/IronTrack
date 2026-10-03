@@ -252,7 +252,7 @@ export async function pullFromCloud(showIndicator = false) {
       return;
     }
 
-    const sessionsChanged = await syncSessions(supabaseClient, currentUser.id);
+    const { changed: sessionsChanged } = await syncSessions(supabaseClient, currentUser.id);
     if (sessionsChanged) refreshHistoryUI();
 
     const { data, error } = await supabaseClient
@@ -407,6 +407,19 @@ function recordSynced(row) {
   localStorage.removeItem(LEGACY_SYNCED_KEYS_KEY);
 }
 
+// Whether the cloud already holds every setting in `payload`, as of this device's last sync.
+// (A value recordSynced can't tell, like an unset avatar, counts as unchanged, as it does there.)
+function matchesSynced(payload) {
+  const synced = getJ(SYNCED_FPS_KEY, null);
+  if (!synced) return false; // no fingerprints yet (first sync, or updated from an older version)
+  const { keys, valueOf } = rowSettings(payload);
+  for (const k of new Set([...Object.keys(synced), ...keys])) {
+    const raw = valueOf(k);
+    if (raw !== undefined && settingFp(raw) !== (synced[k] ?? ABSENT)) return false;
+  }
+  return true;
+}
+
 // Applies another device's changes from a cloud row. A setting changed in the cloud since this device's
 // last sync is taken, unless keepLocalEdits is set and this device changed it too (its edit uploads next).
 // Returns whether any local setting changed.
@@ -541,8 +554,9 @@ export async function uploadSnapshot() {
   let historyChanged = false;
   let settingsChanged = false;
   try {
-    // Sessions first, so a device woken by the row change below finds them already uploaded.
-    historyChanged = await syncSessions(supabaseClient, currentUser.id);
+    // Sessions first, so a device woken by the row change or ping below finds them already uploaded.
+    const sessions = await syncSessions(supabaseClient, currentUser.id);
+    historyChanged = sessions.changed;
     for (let attempt = 0; attempt < MAX_WRITE_ATTEMPTS; attempt++) {
       let { data: cloudRow, error: readError } = await supabaseClient
         .from('user_sync')
@@ -565,36 +579,30 @@ export async function uploadSnapshot() {
 
       const updatedAt = new Date().toISOString();
       const payload = buildSyncPayload(updatedAt);
-      let result = await writeSyncRow(payload, cloudRow);
 
-      if (result.error && result.error.message) {
-        const problematicCols = ['custom_sections', 'custom_days', 'hidden_days', 'microcycle_config'];
-        let modified = false;
-        problematicCols.forEach(col => {
-          if (result.error.message.includes(col)) {
-            delete payload[col];
-            modified = true;
-          }
-        });
-        if (modified) result = await writeSyncRow(payload, cloudRow);
+      // Only sessions changed: skip rewriting the whole row (profile photo included). The ping
+      // below still tells other devices to pull.
+      const skipRow = cloudRow && matchesSynced(payload);
+      if (skipRow) {
+        setL(SYNC_STAMP_KEY, cloudRow.updated_at);
+      } else {
+        const result = await writeSyncRow(payload, cloudRow);
+        if (result.error) {
+          console.error('Cloud push error:', result.error);
+          return false;
+        }
+        if (!result.written) continue; // the row changed under us: merge again and retry
+        setL(SYNC_STAMP_KEY, updatedAt);
+        recordSynced(payload);
       }
-
-      if (result.error) {
-        console.error('Cloud push error:', result.error);
-        return false;
-      }
-      if (!result.written) continue; // the row changed under us: merge again and retry
-
-      setL(SYNC_STAMP_KEY, updatedAt);
-      recordSynced(payload);
       // Only clear the flag if nothing was edited while this upload was running.
       if (seq === localEditSeq) localStorage.removeItem(SYNC_DIRTY_KEY);
 
-      if (syncChannel) {
+      if (syncChannel && (!skipRow || sessions.uploaded > 0)) {
         syncChannel.send({
           type: 'broadcast',
           event: 'iron_sync_ping',
-          payload: { updated_at: updatedAt }
+          payload: { updated_at: skipRow ? cloudRow.updated_at : updatedAt }
         });
       }
       return true;
