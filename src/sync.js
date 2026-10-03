@@ -1,7 +1,13 @@
 import { confirmDialog } from './dialog.js';
 import { createClient } from '@supabase/supabase-js';
 import { HISTORY_KEY, HISTORY_TOMBSTONES_KEY, clearHistory, flushHistory, loadHistory } from './history-store.js';
-import { SESSIONS_CURSOR_KEY, SESSIONS_MIGRATED_KEY, SESSIONS_SYNCED_KEY, fingerprint, syncSessions } from './session-sync.js';
+import {
+  SESSIONS_CURSOR_KEY,
+  SESSIONS_MIGRATED_KEY,
+  SESSIONS_SYNCED_KEY,
+  fingerprint,
+  syncSessions
+} from './session-sync.js';
 import { getMicrocycle } from './model.js';
 import { loadProfileTabUI, shrinkStoredAvatar } from './render/profile.js';
 import { getJ, getL, setJ, setL } from './storage.js';
@@ -11,7 +17,8 @@ import { refreshAllUI, refreshHistoryUI, showToast, updateSyncIndicator } from '
 // SUPABASE CLIENT & AUTH CONFIGURATION
 // ==========================================
 const SUPABASE_URL = 'https://jlwaebsftvtqghmhhess.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impsd2FlYnNmdHZ0cWdobWhoZXNzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg0Mjk1OTgsImV4cCI6MjEwNDAwNTU5OH0.6bb0zIkWxUpX31KIckqNVWVBb0p2QRhl10yeUlA5e_g';
+const SUPABASE_ANON_KEY =
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impsd2FlYnNmdHZ0cWdobWhoZXNzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg0Mjk1OTgsImV4cCI6MjEwNDAwNTU5OH0.6bb0zIkWxUpX31KIckqNVWVBb0p2QRhl10yeUlA5e_g';
 
 export let supabaseClient = null;
 try {
@@ -20,7 +27,9 @@ try {
       auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
     });
   }
-} catch(e) { console.warn('Supabase initialization fallback active'); }
+} catch (e) {
+  console.warn('Supabase initialization fallback active');
+}
 
 let isSignUpMode = false;
 let isSigningOut = false;
@@ -37,7 +46,9 @@ export function toggleAuthMode() {
   isSignUpMode = !isSignUpMode;
   document.getElementById('authTitle').textContent = isSignUpMode ? 'Create an account' : 'Sign in to sync';
   document.getElementById('authSubmitBtn').textContent = isSignUpMode ? 'Create account' : 'Sign in';
-  document.getElementById('authToggleText').textContent = isSignUpMode ? 'Already have an account?' : 'Need an account?';
+  document.getElementById('authToggleText').textContent = isSignUpMode
+    ? 'Already have an account?'
+    : 'Need an account?';
 }
 
 export async function handleAuthSubmit(e) {
@@ -51,7 +62,10 @@ export async function handleAuthSubmit(e) {
     msg.textContent = 'Supabase client unavailable. Running local standalone mode.';
     msg.style.color = 'var(--accent)';
     msg.style.display = 'block';
-    setTimeout(() => { document.getElementById('authOverlay').classList.remove('active'); document.getElementById('userBar').style.display = 'flex'; }, 1200);
+    setTimeout(() => {
+      document.getElementById('authOverlay').classList.remove('active');
+      document.getElementById('userBar').style.display = 'flex';
+    }, 1200);
     return;
   }
 
@@ -91,7 +105,10 @@ export async function handleAuthSubmit(e) {
 
 export async function handleSignOut() {
   if (currentUser && supabaseClient && !(await flushPush())) {
-    const discard = await confirmDialog('Some changes have not reached the cloud yet (you may be offline).\n\nSign out anyway and discard them from this device?', { confirmLabel: 'Sign out', danger: true });
+    const discard = await confirmDialog(
+      'Some changes have not reached the cloud yet (you may be offline).\n\nSign out anyway and discard them from this device?',
+      { confirmLabel: 'Sign out', danger: true }
+    );
     if (!discard) return;
   }
   isSigningOut = true;
@@ -104,7 +121,9 @@ export async function handleSignOut() {
       const { error } = await supabaseClient.auth.signOut();
       // Offline: the server call fails and the session would survive, so drop it locally.
       if (error) await supabaseClient.auth.signOut({ scope: 'local' });
-    } catch (e) { console.warn('Sign-out error:', e); }
+    } catch (e) {
+      console.warn('Sign-out error:', e);
+    }
   }
   currentUser = null;
   // The next person to sign in on this device must not inherit this account's data.
@@ -148,23 +167,25 @@ export function updateUserSessionUI(user) {
 
 // ---- Sync bookkeeping. These keys are outside the iron_ namespace so they are never synced themselves.
 const SYNC_DIRTY_KEY = 'irontrack_sync_dirty';
-      // '1' while local edits have not reached the cloud
+// '1' while local edits have not reached the cloud
 const SYNC_OWNER_KEY = 'irontrack_owner';
-           // user id the local iron_* data belongs to
+// user id the local iron_* data belongs to
 const SYNC_STAMP_KEY = 'irontrack_last_synced_at';
-  // updated_at of the last row we pushed or applied
+// updated_at of the last row we pushed or applied
 export const SESSION_DRAFT_KEY = 'irontrack_session_draft';
- // in-progress workout form; device-local, never synced
+// in-progress workout form; device-local, never synced
 const SYNCED_FPS_KEY = 'irontrack_synced_fps';
-      // iron_* key -> fingerprint of its value in the cloud as of our last sync
+// iron_* key -> fingerprint of its value in the cloud as of our last sync
 const LEGACY_SYNCED_KEYS_KEY = 'irontrack_synced_keys';
- // older versions: iron_* keys in the last snapshot synced
+// older versions: iron_* keys in the last snapshot synced
 const PUSH_DEBOUNCE_MS = 800;
 let pushTimer = null;
 let pushInFlight = null;
 let localEditSeq = 0;
 
-export function isSyncDirty() { return getL(SYNC_DIRTY_KEY, '') === '1'; }
+export function isSyncDirty() {
+  return getL(SYNC_DIRTY_KEY, '') === '1';
+}
 
 export function clearLocalUserData() {
   const keys = [];
@@ -174,8 +195,17 @@ export function clearLocalUserData() {
   }
   keys.forEach(k => localStorage.removeItem(k));
   clearHistory();
-  [SYNC_DIRTY_KEY, SYNC_OWNER_KEY, SYNC_STAMP_KEY, SESSION_DRAFT_KEY, SYNCED_FPS_KEY, LEGACY_SYNCED_KEYS_KEY,
-   SESSIONS_CURSOR_KEY, SESSIONS_SYNCED_KEY, SESSIONS_MIGRATED_KEY].forEach(k => localStorage.removeItem(k));
+  [
+    SYNC_DIRTY_KEY,
+    SYNC_OWNER_KEY,
+    SYNC_STAMP_KEY,
+    SESSION_DRAFT_KEY,
+    SYNCED_FPS_KEY,
+    LEGACY_SYNCED_KEYS_KEY,
+    SESSIONS_CURSOR_KEY,
+    SESSIONS_SYNCED_KEY,
+    SESSIONS_MIGRATED_KEY
+  ].forEach(k => localStorage.removeItem(k));
 }
 
 // Never let one account's local data leak into another account on a shared device.
@@ -197,7 +227,9 @@ export async function pullFromCloud(showIndicator = false) {
     const label = syncBtn && syncBtn.querySelector('.btn-label');
     if (label && showIndicator) {
       label.textContent = ok ? 'Synced' : 'Sync failed';
-      setTimeout(() => { label.textContent = 'Sync now'; }, 2000);
+      setTimeout(() => {
+        label.textContent = 'Sync now';
+      }, 2000);
     }
     if (showIndicator) showToast(message, ok ? 'success' : 'error');
   };
@@ -208,7 +240,10 @@ export async function pullFromCloud(showIndicator = false) {
     // Local edits that have not been uploaded yet win: upload them instead of overwriting them.
     if (isSyncDirty() || pushTimer || pushInFlight) {
       const ok = await flushPush();
-      finish(ok, ok ? 'Data synchronized successfully!' : 'Offline: changes are saved on this device and will sync later.');
+      finish(
+        ok,
+        ok ? 'Data synchronized successfully!' : 'Offline: changes are saved on this device and will sync later.'
+      );
       return;
     }
 
@@ -280,7 +315,11 @@ const COLUMN_KEYS = {
 };
 
 // Everything in the row except the history column older versions synced through.
-const ROW_COLUMNS = [...Object.keys(COLUMN_KEYS).filter(c => c !== 'history'), 'local_storage_backup', 'updated_at'].join(', ');
+const ROW_COLUMNS = [
+  ...Object.keys(COLUMN_KEYS).filter(c => c !== 'history'),
+  'local_storage_backup',
+  'updated_at'
+].join(', ');
 
 // Keys local_storage_backup never overwrites or prunes: device-local, or synced through their own
 // column or merge logic. (Rows written by older app versions still carry column keys in the backup.)
@@ -295,10 +334,22 @@ const isMap = v => !!v && typeof v === 'object';
 const isText = v => typeof v === 'string'; // including '', so a cleared field clears everywhere
 // Which values each column may hold. Anything else (including null: never set) says nothing about the key.
 const COLUMN_VALID = {
-  microcycle_config: isList, custom_days: isList, custom_sections: isList, hidden_days: isList,
-  custom_exercises: isList, hidden_exercises: isList,
-  custom_variations: isMap, hidden_variations: isMap, var_order: isMap, exercise_orders: isMap, section_orders: isMap,
-  profile_name: isText, profile_age: isText, profile_weight: isText, profile_height: isText, profile_sex: isText,
+  microcycle_config: isList,
+  custom_days: isList,
+  custom_sections: isList,
+  hidden_days: isList,
+  custom_exercises: isList,
+  hidden_exercises: isList,
+  custom_variations: isMap,
+  hidden_variations: isMap,
+  var_order: isMap,
+  exercise_orders: isMap,
+  section_orders: isMap,
+  profile_name: isText,
+  profile_age: isText,
+  profile_weight: isText,
+  profile_height: isText,
+  profile_sex: isText,
   profile_avatar: v => isText(v) && v !== ''
 };
 const COLUMN_KEY_SET = new Set(Object.values(COLUMN_KEYS));
@@ -307,7 +358,9 @@ const ABSENT = '-'; // fingerprint of a key that isn't set (real fingerprints co
 function settingFp(raw) {
   if (raw === null || raw === undefined) return ABSENT;
   let v = raw;
-  try { v = JSON.parse(raw); } catch (e) {} // jsonb doesn't keep key order or formatting
+  try {
+    v = JSON.parse(raw);
+  } catch (e) {} // jsonb doesn't keep key order or formatting
   return fingerprint(v);
 }
 
@@ -331,7 +384,7 @@ function rowSettings(row) {
     }
   }
   // A key the backup leaves out is not set in the cloud; a column key left out is unknown.
-  const valueOf = (k) => (k in out) ? out[k] : (backup && !COLUMN_KEY_SET.has(k)) ? null : undefined;
+  const valueOf = k => (k in out ? out[k] : backup && !COLUMN_KEY_SET.has(k) ? null : undefined);
   return { keys: Object.keys(out), valueOf };
 }
 
@@ -342,7 +395,8 @@ function recordSynced(row) {
   for (const k of new Set([...Object.keys(synced), ...keys])) {
     const raw = valueOf(k);
     if (raw === undefined) continue;
-    if (raw === null) delete synced[k]; else synced[k] = settingFp(raw);
+    if (raw === null) delete synced[k];
+    else synced[k] = settingFp(raw);
   }
   setJ(SYNCED_FPS_KEY, synced);
   localStorage.removeItem(LEGACY_SYNCED_KEYS_KEY);
@@ -363,17 +417,21 @@ export function mergeCloudRow(row, { keepLocalEdits = false } = {}) {
     const remote = valueOf(k);
     if (remote === undefined) continue;
     const local = mine.valueOf(k) ?? localStorage.getItem(k);
-    const remoteFp = settingFp(remote), localFp = settingFp(local);
+    const remoteFp = settingFp(remote),
+      localFp = settingFp(local);
     if (remoteFp === localFp) continue;
     let baseFp;
     if (synced) baseFp = synced[k] ?? ABSENT;
     // First sync since updating from a version without fingerprints.
-    else if (keepLocalEdits) baseFp = local === null ? ABSENT : remoteFp; // keep every local value, add the cloud's new keys
-    else baseFp = (legacySynced.has(k) || remote !== null) ? localFp : ABSENT; // nothing unsynced: local is what was synced
+    else if (keepLocalEdits)
+      baseFp = local === null ? ABSENT : remoteFp; // keep every local value, add the cloud's new keys
+    else baseFp = legacySynced.has(k) || remote !== null ? localFp : ABSENT; // nothing unsynced: local is what was synced
 
-    const remoteChanged = remoteFp !== baseFp, localChanged = localFp !== baseFp;
+    const remoteChanged = remoteFp !== baseFp,
+      localChanged = localFp !== baseFp;
     if (!remoteChanged || (keepLocalEdits && localChanged)) continue;
-    if (remote === null) localStorage.removeItem(k); else setL(k, remote);
+    if (remote === null) localStorage.removeItem(k);
+    else setL(k, remote);
     changed = true;
   }
   recordSynced(row);
@@ -392,7 +450,10 @@ export function pushToCloud() {
   setL(SYNC_DIRTY_KEY, '1');
   updateSyncIndicator();
   clearTimeout(pushTimer);
-  pushTimer = setTimeout(() => { pushTimer = null; flushPush(); }, PUSH_DEBOUNCE_MS);
+  pushTimer = setTimeout(() => {
+    pushTimer = null;
+    flushPush();
+  }, PUSH_DEBOUNCE_MS);
 }
 
 // Uploads pending local edits now. Uploads never overlap. Resolves true once nothing is left unsynced.
@@ -403,10 +464,17 @@ export async function flushPush() {
   if (!currentUser || !supabaseClient) return false;
   // Re-upload if the user edited again while an upload was running.
   while (isSyncDirty()) {
-    if (pushInFlight) { await pushInFlight; continue; }
+    if (pushInFlight) {
+      await pushInFlight;
+      continue;
+    }
     pushInFlight = uploadSnapshot();
     let ok;
-    try { ok = await pushInFlight; } finally { pushInFlight = null; }
+    try {
+      ok = await pushInFlight;
+    } finally {
+      pushInFlight = null;
+    }
     if (!ok) return false;
   }
   return true;
@@ -533,14 +601,22 @@ export async function uploadSnapshot() {
     return false;
   } finally {
     if (historyChanged) refreshHistoryUI();
-    if (settingsChanged) { refreshAllUI(); loadProfileTabUI(); shrinkStoredAvatar(); }
+    if (settingsChanged) {
+      refreshAllUI();
+      loadProfileTabUI();
+      shrinkStoredAvatar();
+    }
     updateSyncIndicator();
   }
 }
 
 // Resumes a saved session (if any) and starts syncing.
 export function startSessionSync() {
-  if (!supabaseClient) { updateUserSessionUI(null); document.getElementById('authOverlay').classList.remove('active'); return; }
+  if (!supabaseClient) {
+    updateUserSessionUI(null);
+    document.getElementById('authOverlay').classList.remove('active');
+    return;
+  }
   supabaseClient.auth.getSession().then(({ data: { session } }) => {
     if (session && session.user) {
       currentUser = session.user;
@@ -548,11 +624,13 @@ export function startSessionSync() {
       updateUserSessionUI(currentUser);
       pullFromCloud();
       subscribeToRealtimeSync();
-    } else { updateUserSessionUI(null); }
+    } else {
+      updateUserSessionUI(null);
+    }
   });
   // Signed out in another tab, or the session could not be refreshed: in-memory state is stale.
   // Local data is kept (an unsynced edit uploads after the next sign-in to the same account).
-  supabaseClient.auth.onAuthStateChange((event) => {
+  supabaseClient.auth.onAuthStateChange(event => {
     if (event === 'SIGNED_OUT' && currentUser && !isSigningOut) window.location.reload();
   });
 }

@@ -42,7 +42,8 @@ export function generateShareCard(record) {
     ex.sets.forEach(s => {
       if (s.done !== false) {
         completedSets++;
-        const w = parseFloat(s.weight), r = parseFloat(s.reps);
+        const w = parseFloat(s.weight),
+          r = parseFloat(s.reps);
         if (!isNaN(w) && !isNaN(r)) totalTonnage += w * r;
       }
     });

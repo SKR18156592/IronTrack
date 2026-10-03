@@ -5,10 +5,14 @@ import { esc } from './storage.js';
 
 // Resolves true only when the user picks the confirm button.
 export function confirmDialog(message, { confirmLabel = 'OK', danger = false } = {}) {
-  return openDialog(message, [
-    { label: 'Cancel', value: false, cls: 'btn-secondary' },
-    { label: confirmLabel, value: true, cls: danger ? 'btn-danger' : 'btn-primary' }
-  ], danger ? 0 : 1); // a destructive action isn't the default: Enter cancels
+  return openDialog(
+    message,
+    [
+      { label: 'Cancel', value: false, cls: 'btn-secondary' },
+      { label: confirmLabel, value: true, cls: danger ? 'btn-danger' : 'btn-primary' }
+    ],
+    danger ? 0 : 1
+  ); // a destructive action isn't the default: Enter cancels
 }
 
 export function alertDialog(message) {
@@ -19,7 +23,7 @@ let dialogCount = 0;
 
 function openDialog(message, buttons, focusIndex) {
   return new Promise(resolve => {
-    const id = 'dialogMessage' + (++dialogCount);
+    const id = 'dialogMessage' + ++dialogCount;
     const overlay = document.createElement('div');
     overlay.className = 'modal-overlay dialog-overlay active';
     overlay.innerHTML = `
@@ -30,16 +34,19 @@ function openDialog(message, buttons, focusIndex) {
         </div>
       </div>`;
     const returnFocus = document.activeElement;
-    const close = (value) => {
+    const close = value => {
       overlay.remove();
       document.removeEventListener('keydown', onKey, true);
       returnFocus?.focus?.();
       resolve(value);
     };
-    const onKey = (e) => {
-      if (e.key === 'Escape') { e.preventDefault(); close(buttons[0].value); }
+    const onKey = e => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        close(buttons[0].value);
+      }
     };
-    overlay.addEventListener('click', (e) => {
+    overlay.addEventListener('click', e => {
       const btn = e.target.closest('[data-dialog-button]');
       if (btn) close(buttons[Number(btn.dataset.dialogButton)].value);
       else if (e.target === overlay) close(buttons[0].value);

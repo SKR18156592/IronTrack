@@ -4,8 +4,12 @@ import { describe, expect, it } from 'vitest';
 import { ICON_NAMES, icon } from '../src/icons.js';
 
 const root = join(import.meta.dirname, '..');
-const sources = [join(root, 'index.html'), ...readdirSync(join(root, 'src'), { recursive: true })
-  .filter(f => f.endsWith('.js')).map(f => join(root, 'src', f))];
+const sources = [
+  join(root, 'index.html'),
+  ...readdirSync(join(root, 'src'), { recursive: true })
+    .filter(f => f.endsWith('.js'))
+    .map(f => join(root, 'src', f))
+];
 
 describe('icons', () => {
   it('every icon referenced in markup and templates exists', () => {

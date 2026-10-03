@@ -67,10 +67,14 @@ export function shrinkImageDataUrl(dataUrl) {
 export function handleAvatarUpload(input) {
   if (input.files && input.files[0]) {
     const reader = new FileReader();
-    reader.onload = async function(e) {
+    reader.onload = async function (e) {
       let small;
-      try { small = await shrinkImageDataUrl(e.target.result); }
-      catch (err) { showToast('❌ That image format is not supported. Try a JPEG or PNG.', 'error'); return; }
+      try {
+        small = await shrinkImageDataUrl(e.target.result);
+      } catch (err) {
+        showToast('❌ That image format is not supported. Try a JPEG or PNG.', 'error');
+        return;
+      }
       if (!setL('iron_profile_avatar', small)) return;
       updateAvatarDisplay(small);
       showToast('📷 Avatar uploaded successfully!', 'success');
@@ -91,7 +95,9 @@ export async function shrinkStoredAvatar() {
       updateAvatarDisplay(small);
       pushToCloud();
     }
-  } catch (e) { console.warn('Could not shrink stored avatar:', e); }
+  } catch (e) {
+    console.warn('Could not shrink stored avatar:', e);
+  }
 }
 
 // Renders the avatar (photo or initials) on the profile screen and on the header button.
@@ -177,9 +183,10 @@ export function computeProfileMetrics() {
   }
 
   if (weight > 0 && height > 0 && age > 0) {
-    let bmr = (10 * weight) + (6.25 * height) - (5 * age);
-    bmr += (sex === 'male') ? 5 : -161;
-    if (bmrEl) bmrEl.textContent = `Estimated BMR: ${bmr.toFixed(0)} kcal/day | Maintenance TDEE: ~${(bmr * 1.55).toFixed(0)} kcal/day`;
+    let bmr = 10 * weight + 6.25 * height - 5 * age;
+    bmr += sex === 'male' ? 5 : -161;
+    if (bmrEl)
+      bmrEl.textContent = `Estimated BMR: ${bmr.toFixed(0)} kcal/day | Maintenance TDEE: ~${(bmr * 1.55).toFixed(0)} kcal/day`;
   } else {
     if (bmrEl) bmrEl.textContent = 'Estimated BMR: -- kcal/day';
   }

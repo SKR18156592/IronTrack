@@ -2,19 +2,20 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('../src/ui.js', async (importOriginal) => ({
+vi.mock('../src/ui.js', async importOriginal => ({
   ...(await importOriginal()),
-  showToast: vi.fn(), refreshAllUI: vi.fn()
+  showToast: vi.fn(),
+  refreshAllUI: vi.fn()
 }));
-vi.mock('../src/sync.js', async (importOriginal) => ({ ...(await importOriginal()), pushToCloud: vi.fn() }));
+vi.mock('../src/sync.js', async importOriginal => ({ ...(await importOriginal()), pushToCloud: vi.fn() }));
 
 const { deleteWorkoutSession } = await import('../src/render/history.js');
 const { clearHistory, getHistory, loadHistory, setHistory } = await import('../src/history-store.js');
 const { pushToCloud } = await import('../src/sync.js');
 
-const session = (ms) => ({ id: 'session_' + ms, date: '2026-10-0' + ms, day: '1', dayTitle: 'Chest', exercises: [] });
+const session = ms => ({ id: 'session_' + ms, date: '2026-10-0' + ms, day: '1', dayTitle: 'Chest', exercises: [] });
 // The delete button lives inside the session's .log-item, which carries the session key.
-const buttonFor = (key) => {
+const buttonFor = key => {
   const item = document.createElement('div');
   item.className = 'log-item';
   item.dataset.sessionKey = key;
@@ -23,7 +24,7 @@ const buttonFor = (key) => {
   return btn;
 };
 // Answers the in-app confirm dialog: its last button confirms, the first cancels.
-const answer = (confirmed) => {
+const answer = confirmed => {
   const buttons = document.querySelectorAll('.dialog [data-dialog-button]');
   buttons[confirmed ? buttons.length - 1 : 0].click();
 };

@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 const model = await import('../src/model.js');
 const { rebuildWorkoutDatabase } = model;
 const set = (k, v) => localStorage.setItem(k, JSON.stringify(v));
-const categories = (day) => model.WORKOUT[day].sections.flatMap(s => s.exercises.map(e => e.category));
+const categories = day => model.WORKOUT[day].sections.flatMap(s => s.exercises.map(e => e.category));
 
 beforeEach(() => localStorage.clear());
 
@@ -25,10 +25,20 @@ describe('rebuildWorkoutDatabase', () => {
   });
 
   it('adds custom exercises to the named section, creating it if needed', () => {
-    set('iron_custom_exercises', [{
-      category: 'cus_1', prefix: 'cp_abc', title: 'Cable Fly', target: '', scheme: '3x12', rest: 60,
-      exerciseType: 'isolation', varLabel: 'Cable', day: '1', sectionTitle: 'Finishers'
-    }]);
+    set('iron_custom_exercises', [
+      {
+        category: 'cus_1',
+        prefix: 'cp_abc',
+        title: 'Cable Fly',
+        target: '',
+        scheme: '3x12',
+        rest: 60,
+        exerciseType: 'isolation',
+        varLabel: 'Cable',
+        day: '1',
+        sectionTitle: 'Finishers'
+      }
+    ]);
     rebuildWorkoutDatabase();
     const sec = model.WORKOUT['1'].sections.find(s => s.title === 'Finishers');
     expect(sec.exercises.map(e => e.category)).toEqual(['cus_1']);
@@ -36,9 +46,17 @@ describe('rebuildWorkoutDatabase', () => {
   });
 
   it('drops entries whose ids could break out of inline handlers', () => {
-    set('iron_custom_exercises', [{
-      category: "x');alert(1);('", prefix: 'cp_ok', title: 'Bad', rest: 60, varLabel: 'v', day: '1', sectionTitle: 'Chest Focus'
-    }]);
+    set('iron_custom_exercises', [
+      {
+        category: "x');alert(1);('",
+        prefix: 'cp_ok',
+        title: 'Bad',
+        rest: 60,
+        varLabel: 'v',
+        day: '1',
+        sectionTitle: 'Chest Focus'
+      }
+    ]);
     set('iron_custom_days', [{ dayNum: "9'><img src=x>", title: 'Bad day', sections: [] }]);
     rebuildWorkoutDatabase();
     expect(model.FLAT_EXERCISES.some(e => e.title === 'Bad')).toBe(false);

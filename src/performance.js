@@ -4,7 +4,10 @@ import { epley1RM } from './model.js';
 // different equipment aren't comparable, so everything is keyed by category + variation.
 
 const key = (category, variation) => `${category}|${variation || ''}`;
-const num = (v) => { const n = parseFloat(v); return Number.isFinite(n) ? n : null; };
+const num = v => {
+  const n = parseFloat(v);
+  return Number.isFinite(n) ? n : null;
+};
 
 // A logged set that counts: it has reps, and it isn't a warm-up.
 function workingSets(exRec) {
@@ -25,7 +28,11 @@ export function buildPerformanceIndex(history) {
       let entry = index.get(k);
       if (!entry) {
         // History is newest first, so the first match is the most recent session.
-        entry = { date: session.date || '', sets: logged.map(s => ({ weight: num(s.weight) ?? 0, reps: num(s.reps) })), best: 0 };
+        entry = {
+          date: session.date || '',
+          sets: logged.map(s => ({ weight: num(s.weight) ?? 0, reps: num(s.reps) })),
+          best: 0
+        };
         index.set(k, entry);
       }
       for (const s of workingSets(exRec)) entry.best = Math.max(entry.best, epley1RM(s.weight, s.reps));
@@ -41,7 +48,8 @@ export function lastPerformance(index, category, variation) {
 // How a just-finished set compares: 'pr' beats the best estimated 1RM ever on this equipment,
 // 'up' beats the same set last time (more weight, or the same weight for more reps).
 export function compareSet(entry, setIndex, weight, reps) {
-  const w = num(weight) ?? 0, r = num(reps);
+  const w = num(weight) ?? 0,
+    r = num(reps);
   if (!entry || !(r > 0)) return null;
   if (entry.best > 0 && epley1RM(w, r) > entry.best + 1e-9) return 'pr';
   const last = entry.sets[setIndex];

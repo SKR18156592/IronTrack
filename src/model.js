@@ -17,10 +17,16 @@ export function getMuscleGroup(category) {
   return 'arms';
 }
 
-export const MUSCLE_GROUP_ORDER = ['chest','back','legs','shoulders','arms'];
+export const MUSCLE_GROUP_ORDER = ['chest', 'back', 'legs', 'shoulders', 'arms'];
 
-export function getExerciseTitle(category) { const ex = FLAT_EXERCISES.find(e => e.category === category); return ex ? ex.title : category; }
-export function getRestForCategory(category) { const ex = FLAT_EXERCISES.find(e => e.category === category); return ex ? ex.rest : 75; }
+export function getExerciseTitle(category) {
+  const ex = FLAT_EXERCISES.find(e => e.category === category);
+  return ex ? ex.title : category;
+}
+export function getRestForCategory(category) {
+  const ex = FLAT_EXERCISES.find(e => e.category === category);
+  return ex ? ex.rest : 75;
+}
 export function getCategoryDayIndex(category) {
   for (const d of Object.keys(WORKOUT)) {
     const list = getDayExerciseCategories(d);
@@ -32,15 +38,18 @@ export function getCategoryDayIndex(category) {
 export function getSupersetId(category) {
   const linked = getLinkedCategory(category);
   if (!linked) return null;
-  const a = getCategoryDayIndex(category), b = getCategoryDayIndex(linked);
+  const a = getCategoryDayIndex(category),
+    b = getCategoryDayIndex(linked);
   if (!a || !b) return null;
   if (a.day < b.day || (a.day === b.day && a.idx < b.idx)) return category;
   return linked;
 }
-export function epley1RM(w, r) { return (r === 1) ? w : (w * (1 + r / 30)); }
+export function epley1RM(w, r) {
+  return r === 1 ? w : w * (1 + r / 30);
+}
 
 export let WORKOUT = {};
- // built from WORKOUT_BASE by rebuildWorkoutDatabase() during init()
+// built from WORKOUT_BASE by rebuildWorkoutDatabase() during init()
 export let FLAT_EXERCISES = [];
 
 // ==========================================
@@ -67,7 +76,7 @@ export function setMicrocycle(cfg) {
 
 export function rebuildWorkoutDatabase() {
   WORKOUT = JSON.parse(JSON.stringify(WORKOUT_BASE));
-  
+
   let customExsCleaned = getJ('iron_custom_exercises', []);
   let hasExChanges = false;
   customExsCleaned = customExsCleaned.filter(c => {
@@ -95,7 +104,7 @@ export function rebuildWorkoutDatabase() {
     if (dayObj && !dayObj.sections.some(s => s.title === cs.title)) {
       dayObj.sections.push({
         title: cs.title,
-        tag: cs.tag || ('sec_' + Math.random().toString(36).substring(2, 7)),
+        tag: cs.tag || 'sec_' + Math.random().toString(36).substring(2, 7),
         color: cs.color || 'blue',
         exercises: []
       });
@@ -115,29 +124,34 @@ export function rebuildWorkoutDatabase() {
     if (dayObj) {
       let targetSec = dayObj.sections.find(s => s.title.toLowerCase() === c.sectionTitle.toLowerCase());
       if (!targetSec) {
-        targetSec = { 
-          title: c.sectionTitle, 
-          tag: `d${targetDayKey}_tag_` + Math.random().toString(36).substring(2, 7), 
-          color: 'blue', 
-          exercises: [] 
+        targetSec = {
+          title: c.sectionTitle,
+          tag: `d${targetDayKey}_tag_` + Math.random().toString(36).substring(2, 7),
+          color: 'blue',
+          exercises: []
         };
         dayObj.sections.push(targetSec);
       }
       targetSec.exercises.push({
-        category: c.category, 
-        prefix: c.prefix, 
-        title: c.title, 
-        target: c.target, 
-        scheme: c.scheme, 
-        rest: c.rest, 
+        category: c.category,
+        prefix: c.prefix,
+        title: c.title,
+        target: c.target,
+        scheme: c.scheme,
+        rest: c.rest,
         exerciseType: c.exerciseType,
-        variations: [{ 
-          value: 'custom_var', 
-          label: c.varLabel, 
-          setup: 'Custom setup', 
-          cue: 'Maintain form', 
-          defaultSets: [[20, 10, 2, 'Working'], [20, 10, 1, 'Working']] 
-        }]
+        variations: [
+          {
+            value: 'custom_var',
+            label: c.varLabel,
+            setup: 'Custom setup',
+            cue: 'Maintain form',
+            defaultSets: [
+              [20, 10, 2, 'Working'],
+              [20, 10, 1, 'Working']
+            ]
+          }
+        ]
       });
     }
   });
@@ -172,7 +186,7 @@ export function rebuildWorkoutDatabase() {
             return idxA - idxB;
           });
         }
-      })
+      });
       const orderKey = `iron_order_${dNum}_${sec.title.replace(/\s+/g, '_')}`;
       const savedOrder = getJ(orderKey) || getJ(`iron_order_${dNum}_${sIdx}`);
       if (savedOrder && Array.isArray(savedOrder)) {
@@ -185,7 +199,6 @@ export function rebuildWorkoutDatabase() {
           return idxA - idxB;
         });
       }
-
     });
 
     if (sectionOrders[dNum] && Array.isArray(sectionOrders[dNum])) {
@@ -203,7 +216,10 @@ export function rebuildWorkoutDatabase() {
 
   // Drop or repair anything whose IDs could break out of inline handlers (e.g. from an imported backup).
   Object.keys(WORKOUT).forEach(dNum => {
-    if (!isSafeId(dNum)) { delete WORKOUT[dNum]; return; }
+    if (!isSafeId(dNum)) {
+      delete WORKOUT[dNum];
+      return;
+    }
     WORKOUT[dNum].sections.forEach(sec => {
       if (!isSafeId(sec.tag)) sec.tag = 'sec_' + safeId(sec.tag);
       if (!isSafeId(sec.color)) sec.color = 'blue';
@@ -211,21 +227,34 @@ export function rebuildWorkoutDatabase() {
       sec.exercises.forEach(ex => {
         ex.rest = Number(ex.rest) || 75;
         ex.variations = (ex.variations || []).filter(v => isSafeId(v.value));
-        if (!ex.variations.length) ex.variations = [{ value: 'custom_var', label: 'Standard', setup: '', cue: '', defaultSets: [] }];
+        if (!ex.variations.length)
+          ex.variations = [{ value: 'custom_var', label: 'Standard', setup: '', cue: '', defaultSets: [] }];
       });
     });
   });
 
   FLAT_EXERCISES = [];
-  Object.values(WORKOUT).forEach(day => day.sections.forEach(sec => sec.exercises.forEach(ex => FLAT_EXERCISES.push(ex))));
+  Object.values(WORKOUT).forEach(day =>
+    day.sections.forEach(sec => sec.exercises.forEach(ex => FLAT_EXERCISES.push(ex)))
+  );
 }
 
-export function choiceKey(cat) { return 'iron_choice_master_' + cat; }
-export function presetKey(cat, varValue) { return 'iron_preset_' + cat + '_' + varValue; }
-export function getChoice(cat) { return getL(choiceKey(cat)); }
-export function setChoice(cat, val) { setL(choiceKey(cat), val); }
-export function getPreset(cat, val) { return getJ(presetKey(cat, val)); }
-export function setPreset(cat, val, sets) { 
+export function choiceKey(cat) {
+  return 'iron_choice_master_' + cat;
+}
+export function presetKey(cat, varValue) {
+  return 'iron_preset_' + cat + '_' + varValue;
+}
+export function getChoice(cat) {
+  return getL(choiceKey(cat));
+}
+export function setChoice(cat, val) {
+  setL(choiceKey(cat), val);
+}
+export function getPreset(cat, val) {
+  return getJ(presetKey(cat, val));
+}
+export function setPreset(cat, val, sets) {
   setJ(presetKey(cat, val), sets);
   pushToCloud();
 }
@@ -256,8 +285,12 @@ export function getPreviousCategory(category) {
   }
   return null;
 }
-export function getSupersetLinks() { return getJ('iron_superset_links', []); }
-export function setSupersetLinks(links) { setJ('iron_superset_links', links); }
+export function getSupersetLinks() {
+  return getJ('iron_superset_links', []);
+}
+export function setSupersetLinks(links) {
+  setJ('iron_superset_links', links);
+}
 export function getLinkedCategory(category) {
   for (const [a, b] of getSupersetLinks()) {
     if (a === category) return b;
