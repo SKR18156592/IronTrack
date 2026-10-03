@@ -1,5 +1,4 @@
-import { FOODS } from '../data/foods.js';
-import { NUTRITION_PLANS } from '../data/nutrition.js';
+import { getFoods, getPlanMeals, isCustomPlan } from '../meal-plans.js';
 import { getMicrocycle } from '../model.js';
 import {
   ACTIVITY_LEVELS,
@@ -19,16 +18,21 @@ import {
 import { args } from '../actions.js';
 import { esc, setL } from '../storage.js';
 import { pushToCloud } from '../sync.js';
+import { isEditingPlan, renderPlanEditor, stopPlanEdit } from './meal-plan-editor.js';
 import { renderNutritionLog } from './nutrition-log.js';
 
 // null: follow today's schedule. Set when the user picks a plan, until the app restarts.
 let chosenDietMode = null;
 let shownMeals = []; // the plan as last rendered, for logging a meal from it
+let shownMode = 'rest';
 
 export const plannedMeals = () => shownMeals;
+// The plan shown ('rest' or 'workout').
+export const shownPlanMode = () => shownMode;
 
 export function setDietMode(mode) {
   chosenDietMode = mode;
+  stopPlanEdit(); // an edit belongs to the plan it started on
   renderNutritionPlan();
 }
 
@@ -83,19 +87,25 @@ function renderTiles({ kcal: k, protein, carbs, fat }) {
   document.getElementById('dietFat').textContent = `${Math.round(fat)} g`;
 }
 
-function renderMeals(meals, heading) {
+function renderMeals(meals, heading, foods, custom) {
   const container = document.getElementById('nutritionMealsContainer');
   if (!container) return;
   shownMeals = meals;
-  const total = planNutrients(meals, FOODS);
+  const total = planNutrients(meals, foods);
+  const reset = custom
+    ? `<button class="btn btn-secondary btn-sm" data-on-click="resetMealPlan">Use the example plan</button>`
+    : '';
   container.innerHTML =
-    `<p class="nutri-plan-heading">${heading} · ≈ ${kcal(total.kcal)} kcal · ${Math.round(total.p)} g protein</p>` +
+    `<div class="nutri-plan-bar">
+      <p class="nutri-plan-heading">${heading} · ≈ ${kcal(total.kcal)} kcal · ${Math.round(total.p)} g protein</p>
+      <div class="nutri-plan-actions">${reset}<button class="btn btn-secondary btn-sm" data-on-click="startPlanEdit">Edit plan</button></div>
+    </div>` +
     meals
       .map((meal, index) => {
-        const sum = mealNutrients(meal, FOODS);
+        const sum = mealNutrients(meal, foods);
         const cards = meal.items
           .map(([id, amount]) => {
-            const food = FOODS[id];
+            const food = foods[id];
             const n = foodNutrients(food, amount);
             const macroKcal = n.p * 4 + n.c * 4 + n.f * 9 || 1;
             const pPct = Math.round(((n.p * 4) / macroKcal) * 100);
@@ -142,16 +152,20 @@ export function renderNutritionPlan() {
 
   const profile = readProfile();
   renderControls(profile);
-  const plan = NUTRITION_PLANS[mode];
+  shownMode = mode;
+  const foods = getFoods();
+  const custom = isCustomPlan(mode);
+  const meals = getPlanMeals(mode);
   const summary = document.getElementById('nutritionProfileSummaryBox');
 
   if (!hasBodyMetrics(profile)) {
-    const example = planNutrients(plan.meals, FOODS);
+    const example = planNutrients(meals, foods);
     renderTiles({ kcal: example.kcal, protein: example.p, carbs: example.c, fat: example.f });
     summary.innerHTML = `<span class="nutri-warning">Add your age, weight and height to get targets made for you.
       Until then, these are the example plan's numbers.</span>
       <button class="btn btn-secondary btn-sm" data-on-click="showTab" data-args='["settings"]'>Open profile</button>`;
-    renderMeals(plan.meals, 'Example plan');
+    if (isEditingPlan()) renderPlanEditor(foods);
+    else renderMeals(meals, custom ? 'Your plan' : 'Example plan', foods, custom);
     return;
   }
 
@@ -168,8 +182,8 @@ export function renderNutritionPlan() {
     <span>${goalLine}. This ${mode} day: ${signed(target.kcal - target.maintenance)} kcal from maintenance,
       protein at ${goal.proteinPerKg} g per kg of body weight.</span>
     ${target.floored ? '<span class="nutri-warning">Raised to your BMR: eating less than that is not recommended. Try a slower rate.</span>' : ''}`;
-  renderMeals(
-    scalePlan(plan.meals, FOODS, { kcal: target.kcal, protein: target.protein }),
-    'Example plan for your targets'
-  );
+  // Your own plan shows its exact amounts; the example scales to your targets.
+  const shown = custom ? meals : scalePlan(meals, foods, { kcal: target.kcal, protein: target.protein });
+  if (isEditingPlan()) renderPlanEditor(foods);
+  else renderMeals(shown, custom ? 'Your plan' : 'Example plan for your targets', foods, custom);
 }
