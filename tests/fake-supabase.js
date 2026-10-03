@@ -1,5 +1,7 @@
 // In-memory stand-in for the parts of supabase-js the sync engine uses: one user_sync row and the
-// workout_sessions table.
+// one-row-per-record tables (workout_sessions, nutrition_log).
+const ROW_TABLES = ['workout_sessions', 'nutrition_log'];
+
 export function createFakeSupabase() {
   const server = {
     row: null,
@@ -7,6 +9,8 @@ export function createFakeSupabase() {
     writes: 0,
     beforeUpdate: null, // async hook run before an update is applied (simulates a concurrent writer)
     sessions: new Map(), // workout_sessions rows by id
+    nutrition: new Map(), // nutrition_log rows by id
+    missingTables: new Set(), // tables that answer like a project that hasn't created them
     uploaded: [], // ids of every workout_sessions row upserted, in order
     sessionReads: [], // the updated_at lower bound of each workout_sessions read (null: full read)
     clock: Date.parse('2026-01-01T00:00:00Z')
@@ -14,8 +18,10 @@ export function createFakeSupabase() {
   // Server-side updated_at, like the workout_sessions trigger: always moves forward.
   const serverNow = () => pgTime(new Date((server.clock += 1000)).toISOString());
   // Stores a session row as another device would have written it.
-  server.putSession = row =>
-    server.sessions.set(row.id, { deleted: false, data: null, ...structuredClone(row), updated_at: serverNow() });
+  const put = (rows, row) =>
+    rows.set(row.id, { deleted: false, data: null, ...structuredClone(row), updated_at: serverNow() });
+  server.putSession = row => put(server.sessions, row);
+  server.putNutrition = row => put(server.nutrition, row);
   const pgTime = iso => new Date(iso).toISOString().replace('Z', '+00:00');
   const matches = filters =>
     filters.every(([op, col, val]) => {
@@ -24,15 +30,17 @@ export function createFakeSupabase() {
       return server.row[col] === val;
     });
 
-  async function runSessions(q) {
+  async function runRows(q) {
+    const sessions = q.table === 'workout_sessions';
+    const table = sessions ? server.sessions : server.nutrition;
     if (q.op === 'upsert') {
-      q.payload.forEach(row => server.putSession(row));
-      server.uploaded.push(...q.payload.map(row => row.id));
+      q.payload.forEach(row => put(table, row));
+      if (sessions) server.uploaded.push(...q.payload.map(row => row.id));
       return { data: null, error: null };
     }
     const since = q.filters.find(([op]) => op === 'gt');
-    server.sessionReads.push(since ? since[2] : null);
-    const rows = [...server.sessions.values()]
+    if (sessions) server.sessionReads.push(since ? since[2] : null);
+    const rows = [...table.values()]
       .filter(r => !since || Date.parse(r.updated_at) > Date.parse(since[2]))
       .sort((a, b) => Date.parse(a.updated_at) - Date.parse(b.updated_at) || a.id.localeCompare(b.id));
     const page = q.window ? rows.slice(q.window[0], q.window[1] + 1) : rows;
@@ -41,7 +49,10 @@ export function createFakeSupabase() {
 
   async function run(q) {
     if (server.offline) return { data: null, error: { message: 'Failed to fetch' } };
-    if (q.table === 'workout_sessions') return runSessions(q);
+    if (server.missingTables.has(q.table)) {
+      return { data: null, error: { code: 'PGRST205', message: `Could not find the table 'public.${q.table}'` } };
+    }
+    if (ROW_TABLES.includes(q.table)) return runRows(q);
     if (q.op === 'select') {
       const hit = server.row && matches(q.filters) ? structuredClone(server.row) : null;
       return { data: q.single ? hit : hit ? [hit] : [], error: null };
@@ -99,7 +110,7 @@ export function createFakeSupabase() {
     }
     order() {
       return this;
-    } // runSessions always sorts by updated_at, id
+    } // runRows always sorts by updated_at, id
     range(from, to) {
       this.window = [from, to];
       return this;

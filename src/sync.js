@@ -1,6 +1,14 @@
 import { confirmDialog } from './dialog.js';
 import { createClient } from '@supabase/supabase-js';
 import { clearHistory, flushHistory, loadHistory } from './history-store.js';
+import {
+  NUTRITION_CURSOR_KEY,
+  NUTRITION_SYNCED_KEY,
+  clearNutritionLog,
+  flushNutritionLog,
+  loadNutritionLog,
+  syncNutritionLog
+} from './nutrition-log.js';
 import { SESSIONS_CURSOR_KEY, SESSIONS_MIGRATED_KEY, SESSIONS_SYNCED_KEY, syncSessions } from './session-sync.js';
 import {
   LEGACY_SYNCED_KEYS_KEY,
@@ -13,7 +21,7 @@ import {
 } from './settings-merge.js';
 import { loadProfileTabUI, shrinkStoredAvatar } from './render/profile.js';
 import { getL, setL } from './storage.js';
-import { refreshAllUI, refreshHistoryUI, showToast, updateSyncIndicator } from './ui.js';
+import { refreshAllUI, refreshHistoryUI, refreshNutritionUI, showToast, updateSyncIndicator } from './ui.js';
 
 // ==========================================
 // SUPABASE CLIENT & AUTH CONFIGURATION
@@ -100,7 +108,7 @@ export async function handleAuthSubmit(e) {
     showToast(res.error.message, 'error');
   } else if (res.data.session) {
     currentUser = res.data.session.user;
-    await loadHistory();
+    await Promise.all([loadHistory(), loadNutritionLog()]);
     prepareLocalDataFor(currentUser);
     updateUserSessionUI(currentUser);
     await pullFromCloud();
@@ -139,7 +147,7 @@ export async function handleSignOut() {
   // The next person to sign in on this device must not inherit this account's data.
   clearLocalUserData();
   localStorage.removeItem(AUTH_SKIPPED_KEY);
-  await flushHistory(); // the reload must not cut off the history wipe
+  await Promise.all([flushHistory(), flushNutritionLog()]); // the reload must not cut off the wipe
   window.location.reload();
 }
 
@@ -201,6 +209,7 @@ export function clearLocalUserData() {
   }
   keys.forEach(k => localStorage.removeItem(k));
   clearHistory();
+  clearNutritionLog();
   [
     SYNC_DIRTY_KEY,
     SYNC_OWNER_KEY,
@@ -210,7 +219,9 @@ export function clearLocalUserData() {
     LEGACY_SYNCED_KEYS_KEY,
     SESSIONS_CURSOR_KEY,
     SESSIONS_SYNCED_KEY,
-    SESSIONS_MIGRATED_KEY
+    SESSIONS_MIGRATED_KEY,
+    NUTRITION_CURSOR_KEY,
+    NUTRITION_SYNCED_KEY
   ].forEach(k => localStorage.removeItem(k));
 }
 
@@ -227,7 +238,8 @@ export function prepareLocalDataFor(user) {
 
 export async function pullFromCloud(showIndicator = false) {
   if (!currentUser || !supabaseClient) return;
-  await loadHistory(); // merging into a not-yet-loaded history would drop the local sessions
+  // Merging into a list not loaded yet would drop the local records.
+  await Promise.all([loadHistory(), loadNutritionLog()]);
   const syncBtn = document.getElementById('manualSyncBtn');
   const finish = (ok, message) => {
     const label = syncBtn && syncBtn.querySelector('.btn-label');
@@ -255,6 +267,8 @@ export async function pullFromCloud(showIndicator = false) {
 
     const { changed: sessionsChanged } = await syncSessions(supabaseClient, currentUser.id);
     if (sessionsChanged) refreshHistoryUI();
+    const { changed: logChanged } = await syncNutritionLog(supabaseClient, currentUser.id);
+    if (logChanged) refreshNutritionUI();
 
     const { data, error } = await supabaseClient
       .from('user_sync')
@@ -356,14 +370,17 @@ export async function writeSyncRow(payload, cloudRow) {
 const MAX_WRITE_ATTEMPTS = 3;
 
 export async function uploadSnapshot() {
-  await loadHistory();
+  await Promise.all([loadHistory(), loadNutritionLog()]);
   const seq = localEditSeq;
   let historyChanged = false;
+  let logChanged = false;
   let settingsChanged = false;
   try {
     // Sessions first, so a device woken by the row change or ping below finds them already uploaded.
     const sessions = await syncSessions(supabaseClient, currentUser.id);
     historyChanged = sessions.changed;
+    const log = await syncNutritionLog(supabaseClient, currentUser.id);
+    logChanged = log.changed;
     for (let attempt = 0; attempt < MAX_WRITE_ATTEMPTS; attempt++) {
       let { data: cloudRow, error: readError } = await supabaseClient
         .from('user_sync')
@@ -405,7 +422,7 @@ export async function uploadSnapshot() {
       // Only clear the flag if nothing was edited while this upload was running.
       if (seq === localEditSeq) localStorage.removeItem(SYNC_DIRTY_KEY);
 
-      if (syncChannel && (!skipRow || sessions.uploaded > 0)) {
+      if (syncChannel && (!skipRow || sessions.uploaded > 0 || log.uploaded > 0)) {
         syncChannel.send({
           type: 'broadcast',
           event: 'iron_sync_ping',
@@ -421,6 +438,7 @@ export async function uploadSnapshot() {
     return false;
   } finally {
     if (historyChanged) refreshHistoryUI();
+    if (logChanged) refreshNutritionUI();
     if (settingsChanged) {
       refreshAllUI();
       loadProfileTabUI();
