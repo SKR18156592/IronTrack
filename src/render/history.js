@@ -377,24 +377,23 @@ export function exportHistoryCSV() {
           session.bodyWeight || '',
           `"${(ex.name || '').replace(/"/g, '""')}"`,
           `"${(ex.machineOpt || '').replace(/"/g, '""')}"`,
-          s.setNum || '',
-          s.weight || '',
-          s.reps || '',
+          s.setNum ?? '',
+          s.weight ?? '', // ?? so a 0 (e.g. a bodyweight set) isn't exported as blank
+          s.reps ?? '',
           s.tag || 'Working',
-          s.rir || ''
+          s.rir ?? ''
         ]);
       });
     });
   });
 
-  const csvContent = 'data:text/csv;charset=utf-8,' + rows.map(e => e.join(',')).join('\n');
-  const encodedUri = encodeURI(csvContent);
-  const link = document.createElement('a');
-  link.setAttribute('href', encodedUri);
-  link.setAttribute('download', `irontrack_history_${new Date().toISOString().slice(0, 10)}.csv`);
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+  // A Blob, not a data: URL: encodeURI leaves '#' alone, so a '#' in any field cut the file off there.
+  const blob = new Blob([rows.map(e => e.join(',')).join('\n')], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `irontrack_history_${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
   showToast('📥 CSV exported successfully!', 'success');
 }
 

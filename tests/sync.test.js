@@ -100,6 +100,54 @@ describe('flushPush', () => {
     expect(cloudDeleted()).toEqual(['session_1']);
   });
 
+  it('drops a tombstone once the cloud has the deletion, and the session stays deleted', async () => {
+    logSession(1);
+    logSession(2);
+    await flushPush();
+    localStorage.setItem('iron_history_tombstones', JSON.stringify(['session_1']));
+    setHistory([session(2)]);
+    pushToCloud();
+    await flushPush();
+    expect(tombstones()).toEqual([]);
+    await pullFromCloud(); // re-reads the deleted row (cursor overlap)
+    expect(ids(history())).toEqual(['session_2']);
+    expect(cloudDeleted()).toEqual(['session_1']);
+  });
+
+  it('keeps a tombstone while its deletion has not reached the cloud', async () => {
+    logSession(1);
+    await flushPush();
+    server.offline = true;
+    localStorage.setItem('iron_history_tombstones', JSON.stringify(['session_1']));
+    setHistory([]);
+    pushToCloud();
+    expect(await flushPush()).toBe(false);
+    expect(tombstones()).toEqual(['session_1']);
+  });
+
+  it('does not rewrite the settings row when only sessions changed', async () => {
+    localStorage.setItem('iron_theme', 'cyan');
+    logSession(1);
+    await flushPush();
+    const writes = server.writes;
+    logSession(2);
+    expect(await flushPush()).toBe(true);
+    expect(cloudIds()).toEqual(['session_1', 'session_2']);
+    expect(server.writes).toBe(writes);
+    expect(localStorage.getItem('irontrack_sync_dirty')).toBeNull();
+  });
+
+  it('still writes the row when a setting changed', async () => {
+    logSession(1);
+    await flushPush();
+    const writes = server.writes;
+    localStorage.setItem('iron_theme', 'cyan');
+    pushToCloud();
+    expect(await flushPush()).toBe(true);
+    expect(server.writes).toBe(writes + 1);
+    expect(server.row.local_storage_backup.iron_theme).toBe('cyan');
+  });
+
   it('re-reads the settings row when it changes between its read and write', async () => {
     server.row = { user_id: USER.id, local_storage_backup: {}, updated_at: pgTime('2026-01-01T00:00:00Z') };
     server.beforeUpdate = async () => {
@@ -177,7 +225,9 @@ describe('pullFromCloud', () => {
     server.putSession({ id: 'session_1', deleted: true });
     await pullFromCloud();
     expect(history()).toEqual([]);
-    expect(tombstones()).toContain('session_1');
+    expect(tombstones()).toEqual([]); // the cloud already has the deletion
+    await pullFromCloud();
+    expect(history()).toEqual([]);
   });
 
   it("takes another device's edit to a session this device already synced", async () => {
