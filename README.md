@@ -25,10 +25,10 @@ at the gym, and track progress over time. Your data syncs across devices through
 | Layer | Used |
 |---|---|
 | App | Vanilla HTML, CSS, and JavaScript as ES modules (no framework) |
-| Libraries | `@supabase/supabase-js@2`, `canvas-confetti` (loaded from jsDelivr) |
+| Libraries | `@supabase/supabase-js@2`, `canvas-confetti`, `lucide` (bundled from npm) |
 | Local storage | IndexedDB for workout history; `localStorage` for everything else (keys prefixed `iron_`) |
 | Backend | Supabase: Auth (email and password), Postgres, Realtime |
-| Offline | Service worker (`public/sw.js`) + web app manifest |
+| Offline | Service worker (`src/sw.js`, Workbox via `vite-plugin-pwa`) + web app manifest |
 | Tooling | Vite (dev server and bundling), Vitest + happy-dom (unit tests) |
 
 ## Project structure
@@ -46,16 +46,17 @@ irontrack-pwa/
 │   ├── performance.js         # Last time's numbers and PRs per exercise and equipment
 │   ├── model.js               # Workout split built from the catalog + local customizations
 │   ├── storage.js             # localStorage helpers, escaping
+│   ├── sw.js                  # Service worker: offline caching (built to dist/sw.js)
 │   ├── ui.js                  # Toasts, tabs, theme, sounds, full UI refresh
 │   ├── data/                  # Built-in exercise catalog and nutrition plans
 │   └── render/                # One module per screen or feature
 ├── tests/                     # Vitest unit tests
 ├── public/
-│   ├── sw.js                  # Service worker: offline caching
 │   ├── manifest.webmanifest   # PWA manifest
 │   └── *.png, *.svg           # App icons
 ├── supabase/
 │   └── user_sync.sql          # The tables, RLS policies, and realtime setup the app uses
+├── vite.config.js             # Vite + vite-plugin-pwa (service worker build)
 └── package.json               # Vite scripts
 ```
 
@@ -63,7 +64,7 @@ irontrack-pwa/
 
 ### Prerequisites
 
-- Node.js 18+
+- Node.js 20+ (`.nvmrc` pins 22)
 - A [Supabase](https://supabase.com/dashboard) project
 
 ### 1. Set up the database
@@ -134,15 +135,18 @@ in, workout sessions are mirrored to `workout_sessions` (one row each) and every
 
 ### Offline caching
 
-The service worker caches the app shell, icons, and the CDN scripts and fonts on install. The
-bundled JavaScript has hashed file names, so after loading, the page sends those URLs to the worker to cache.
+`npm run build` builds the service worker from `src/sw.js` and fills in the list of every file in
+`dist/` (the hashed bundles included), each with a revision. The worker precaches that list on
+install, so `index.html` and the scripts it loads always come from the same build. A new deploy
+installs as a new worker that downloads only the files that changed; the app switches to it on the
+next launch. There is no cache version to bump by hand.
 
-- **Page loads:** network-first, falling back to the cached `index.html`.
-- **Other assets:** stale-while-revalidate.
+- **Page loads:** the precached `index.html`, so the app starts offline.
+- **Google Fonts:** cached the first time the page loads them under the worker (stale-while-revalidate).
+  Until then, offline launches use fallback fonts.
 - **Supabase requests:** never cached.
 
-When changing a CDN URL in `index.html`, update `CDN_ASSETS` in `public/sw.js` to match. When
-changing cached assets, bump `CACHE_NAME` in `public/sw.js`.
+The dev server doesn't run the worker. To try offline behavior, use `npm run build && npm run preview`.
 
 ## Installing the app
 

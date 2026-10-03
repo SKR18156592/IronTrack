@@ -181,6 +181,7 @@ export function playBeep() {
   } catch (e) {}
 }
 
+// Loaded on first use: it's only needed when a session is saved.
 export function fireConfetti(opts) {
-  if (typeof window.confetti === 'function') { try { window.confetti(opts); return; } catch(e){} }
+  import('canvas-confetti').then(({ default: confetti }) => confetti(opts)).catch(() => {});
 }
