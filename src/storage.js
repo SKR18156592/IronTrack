@@ -15,6 +15,6 @@ export function setJ(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); r
 
 // Escape text before it goes into an innerHTML template.
 export function esc(v) { return String(v ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch])); }
-// IDs end up inside inline onclick="fn('...')" handlers, where HTML escaping is not enough.
+// IDs go unescaped into element ids, attributes and selectors, so they are limited to these characters.
 export function isSafeId(v) { return /^[A-Za-z0-9_-]+$/.test(String(v ?? '')); }
 export function safeId(v) { return String(v ?? '').replace(/[^A-Za-z0-9_-]/g, ''); }

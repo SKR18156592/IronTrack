@@ -1,3 +1,4 @@
+import { confirmDialog } from '../dialog.js';
 import { FLAT_EXERCISES, WORKOUT, getNextCategory, getPreset, getSupersetLinks, rebuildWorkoutDatabase, setChoice, setPreset, setSupersetLinks } from '../model.js';
 import { activeDay, applyVariation, captureCurrentFormValues, renderAll, restoreFormValues, switchDayView } from './workout.js';
 import { esc, getJ, setJ, setL } from '../storage.js';
@@ -183,10 +184,10 @@ export function reorderEquipment(category, direction) {
   applyVariation(category, ex.prefix, currentVal, true);
 }
 
-export function removeEquipment(category) {
+export async function removeEquipment(category) {
   const ex = FLAT_EXERCISES.find(e => e.category === category);
   if (!ex || !ex.variations || ex.variations.length <= 1) {
-    alert('Cannot remove the last remaining equipment variation.');
+    showToast('Cannot remove the last remaining equipment variation.', 'error');
     return;
   }
   const select = document.getElementById(category + 'Select');
@@ -194,7 +195,7 @@ export function removeEquipment(category) {
   const currentVal = select.value;
   const varObj = ex.variations.find(v => v.value === currentVal);
 
-  if (!confirm(`Remove variation "${varObj ? varObj.label : currentVal}"?`)) return;
+  if (!(await confirmDialog(`Remove variation "${varObj ? varObj.label : currentVal}"?`, { confirmLabel: 'Remove', danger: true }))) return;
 
   const customVars = getJ('iron_custom_variations', {});
   if (customVars[category]) {
@@ -287,8 +288,8 @@ export function saveActivePresetModal() {
   showToast('📌 Preset updated & synced!', 'success');
 }
 
-export function removeExercise(category) {
-  if (!confirm('Are you sure you want to remove this exercise from your workout day?')) return;
+export async function removeExercise(category) {
+  if (!(await confirmDialog('Remove this exercise from your workout day?', { confirmLabel: 'Remove', danger: true }))) return;
   const hidden = getJ('iron_hidden_exercises', []);
   if (!hidden.includes(category)) hidden.push(category);
   setJ('iron_hidden_exercises', hidden);
