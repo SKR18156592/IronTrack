@@ -1307,6 +1307,127 @@ body.edit-mode .exercise-card {
 .modal-overlay.active {
   display: flex;
 }
+/* ---------- First-run setup ---------- */
+#onboardOverlay {
+  align-items: center;
+  z-index: 305;
+}
+.onboard-progress {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+.onboard-progress span {
+  width: 28px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.25);
+}
+.onboard-progress span.on {
+  background: var(--accent);
+}
+.onboard-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  text-align: left;
+}
+.onboard-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--muted);
+}
+.onboard-grid .input-field,
+.onboard-grid .machine-dropdown {
+  width: 100%;
+  min-width: 0;
+}
+.onboard-wide {
+  grid-column: 1 / -1;
+}
+.onboard-days {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+}
+.onboard-day input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.onboard-day span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 42px;
+  border-radius: 12px;
+  border: 1px solid var(--card-border);
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--muted);
+  cursor: pointer;
+}
+.onboard-day input:checked + span {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.onboard-day input:focus-visible + span {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.onboard-targets {
+  grid-template-columns: repeat(2, 1fr);
+}
+.onboard-buttons {
+  display: flex;
+  gap: 10px;
+}
+.onboard-buttons .btn {
+  flex: 1;
+  justify-content: center;
+}
+.onboard-skip {
+  align-self: center;
+  font-size: 12.5px;
+}
+.onboard-error {
+  color: var(--danger);
+}
+.onboard-card {
+  max-width: 420px;
+  text-align: center;
+}
+.onboard-title {
+  font-size: 20px;
+  font-weight: 700;
+}
+.onboard-hint {
+  font-size: 13.5px;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+.onboard-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.onboard-skip {
+  background: none;
+  border: none;
+  color: var(--accent);
+  cursor: pointer;
+  font-weight: 700;
+  text-decoration: underline;
+}
+.onboard-error {
+  font-size: 13.5px;
+  line-height: 1.4;
+}
 .modal-content {
   width: 100%;
   max-width: 760px;

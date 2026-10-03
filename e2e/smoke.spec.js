@@ -16,14 +16,20 @@ test.beforeEach(async ({ page }) => {
   await page.route(/supabase\.co|fonts\.(googleapis|gstatic)\.com/, route => route.abort());
   await page.goto('/');
   await page.click('[data-on-click="skipSignIn"]');
-  await expect(page.locator(openCard).first()).toBeVisible();
 });
+
+// Most tests skip the first-run setup; 'sets up targets on first run' goes through it.
+async function skipSetup(page) {
+  await page.click('[data-on-click="skipOnboarding"]');
+  await expect(page.locator(openCard).first()).toBeVisible();
+}
 
 test.afterEach(() => {
   expect(problems).toEqual([]);
 });
 
 test('logs a set, saves the session, and keeps it after a reload', async ({ page }) => {
+  await skipSetup(page);
   const weight = page.locator(`${openCard} .set-weight`).first();
   const before = Number((await weight.inputValue()) || 0);
   await page.locator(`${openCard} .stepper-btn[aria-label="More weight"]`).first().click();
@@ -44,6 +50,7 @@ test('logs a set, saves the session, and keeps it after a reload', async ({ page
 });
 
 test('restores an in-progress session after a reload', async ({ page }) => {
+  await skipSetup(page);
   const weight = page.locator(`${openCard} .set-weight`).first();
   await weight.fill('123.5');
   await page.waitForTimeout(500); // the draft saves 300 ms after the last edit
@@ -52,6 +59,7 @@ test('restores an in-progress session after a reload', async ({ page }) => {
 });
 
 test('asks before removing an exercise, and Cancel keeps it', async ({ page }) => {
+  await skipSetup(page);
   const cards = page.locator('.day-view.active .exercise-card');
   const count = await cards.count();
   await page.click('[data-on-click="toggleEditMode"]');
@@ -67,6 +75,7 @@ test('asks before removing an exercise, and Cancel keeps it', async ({ page }) =
 });
 
 test('every tab opens', async ({ page }) => {
+  await skipSetup(page);
   for (const tab of ['analytics', 'nutrition', 'tools', 'settings', 'workout']) {
     await page.click(`.bottom-tab[data-tab="${tab}"]`);
     await expect(page.locator(`#view-${tab}`)).toHaveClass(/active/);
@@ -74,6 +83,7 @@ test('every tab opens', async ({ page }) => {
 });
 
 test('starts offline after the first visit', async ({ page, context }) => {
+  await skipSetup(page);
   await page.evaluate(() => navigator.serviceWorker.ready);
   await expect.poll(() => page.evaluate(() => !!navigator.serviceWorker.controller)).toBe(true);
 
@@ -83,4 +93,24 @@ test('starts offline after the first visit', async ({ page, context }) => {
   // Any other URL in scope (e.g. a launch with a query string) also gets the app shell.
   await page.goto('/?source=homescreen');
   await expect(page.locator('.day-view.active .exercise-card').first()).toBeVisible();
+});
+
+test('sets up targets on first run, and only asks once', async ({ page }) => {
+  await page.fill('#obAge', '30');
+  await page.fill('#obHeight', '180');
+  await page.fill('#obWeight', '80');
+  await page.click('#onboardBody button[type=submit]');
+  await page.selectOption('#obGoal', 'gain');
+  await page.click('#onboardBody button[type=submit]');
+  await page.click('#onboardBody button[type=submit]'); // keep the default training days
+  await expect(page.locator('#onboardBody')).toContainText("You're set");
+  await page.click('#onboardBody button[type=submit]');
+  await expect(page.locator('#onboardOverlay')).not.toHaveClass(/active/);
+
+  await page.click('.bottom-tab[data-tab="nutrition"]');
+  await expect(page.locator('#nutriGoal')).toHaveValue('gain');
+  await expect(page.locator('#dietProt')).toHaveText('144 g'); // 1.8 g per kg
+  await page.reload();
+  await expect(page.locator(openCard).first()).toBeVisible();
+  await expect(page.locator('#onboardOverlay')).not.toHaveClass(/active/);
 });
