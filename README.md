@@ -5,6 +5,8 @@ at the gym, and track progress over time. Your data syncs across devices through
 
 ## Features
 
+- **First-run setup:** a short, skippable welcome asks for your age, height, weight, goal and
+  training days, then shows the calorie and protein targets they give. A synced profile skips it.
 - **Workout planner:** an editable weekly microcycle, custom days and sections, custom exercises
   and equipment variations, saved set presets, supersets, and reordering throughout.
 - **Session logging:** weight, reps, set tag, and RIR per set, with a rest timer (beeps and

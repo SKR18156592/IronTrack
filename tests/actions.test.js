@@ -29,6 +29,7 @@ describe('actions in the markup', () => {
       import('../src/render/nutrition-log.js'),
       import('../src/render/meal-plan-editor.js'),
       import('../src/render/nutrition-insights.js'),
+      import('../src/render/onboarding.js'),
       import('../src/render/profile.js'),
       import('../src/render/schedule.js'),
       import('../src/render/share-card.js'),
