@@ -103,12 +103,13 @@ npm run build     # static build into dist/
 npm run preview   # serve the build locally
 npm test          # unit tests (Vitest)
 npm run lint      # ESLint
+npm run format    # Prettier (CI runs npm run format:check)
 npm run test:e2e  # smoke tests in a browser against the production build (Playwright)
 ```
 
 Before the first `npm run test:e2e`, install its browser once: `npx playwright install chromium`.
 
-GitHub Actions (`.github/workflows/ci.yml`) runs lint, unit tests, the build and the smoke tests on
+GitHub Actions (`.github/workflows/ci.yml`) runs lint, a formatting check, unit tests, the build and the smoke tests on
 every pull request and every push to `main`. If the smoke tests fail, the run uploads the Playwright
 report as an artifact.
 
