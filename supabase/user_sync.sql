@@ -3,7 +3,9 @@
 --   workout_sessions  one row per logged workout session
 -- Idempotent: safe to run on a project where the tables already exist.
 -- It does not change existing columns; it only adds missing ones, enables RLS,
--- replaces the policies below, and adds the tables to realtime.
+-- replaces the policies below, and adds user_sync to realtime. workout_sessions is left out
+-- on purpose: after uploading sessions, the app sends a realtime broadcast that tells the
+-- other devices to pull.
 
 create table if not exists public.user_sync (
   user_id uuid primary key references auth.users on delete cascade
