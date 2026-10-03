@@ -14,7 +14,10 @@ at the gym, and track progress over time. Your data syncs across devices through
   device, so it survives a reload or the OS closing the app.
 - **History & analytics:** session log, per-exercise history, estimated 1RM trends, volume per
   muscle group, a muscle recovery heatmap, and a shareable stats card.
-- **Tools:** TDEE, 1RM, and plate calculators, plus a rest-day and workout-day nutrition plan.
+- **Nutrition:** daily calorie and macro targets from your profile, activity level and goal (lose,
+  maintain or gain, at a chosen rate), with a little more on workout days. Today's plan follows your
+  schedule, and the example meal plan scales its portions to your targets.
+- **Tools:** TDEE, 1RM, and plate calculators.
 - **Offline-first:** everything works without a connection. Changes sync when you're back online.
 - **Multi-device sync (optional):** sign in with email and password, and changes reach your other
   devices via Supabase Realtime. Without an account, everything stays on the device.
@@ -48,6 +51,7 @@ irontrack-pwa/
 │   ├── session-sync.js        # Syncs workout history as one workout_sessions row per session
 │   ├── settings-merge.js      # Builds the user_sync row and merges settings per key
 │   ├── performance.js         # Last time's numbers and PRs per exercise and equipment
+│   ├── nutrition-targets.js   # BMR, TDEE, goal-based calorie and macro targets, meal plan scaling
 │   ├── model.js               # Workout split built from the catalog + local customizations
 │   ├── storage.js             # localStorage helpers, escaping
 │   ├── sw.js                  # Service worker: offline caching (built to dist/sw.js)
