@@ -20,6 +20,7 @@ import {
   recordSynced
 } from './settings-merge.js';
 import { loadProfileTabUI, shrinkStoredAvatar } from './render/profile.js';
+import { maybeStartOnboarding } from './render/onboarding.js';
 import { getL, setL } from './storage.js';
 import { refreshAllUI, refreshHistoryUI, refreshNutritionUI, showToast, updateSyncIndicator } from './ui.js';
 
@@ -114,6 +115,7 @@ export async function handleAuthSubmit(e) {
     await pullFromCloud();
     subscribeToRealtimeSync();
     showToast('Successfully signed in!', 'success');
+    maybeStartOnboarding(); // after the pull: a returning user's profile is already here
   } else if (res.data.user && !res.data.session) {
     msg.textContent = 'Account created successfully!';
     msg.style.color = 'var(--accent)';
@@ -157,6 +159,7 @@ const AUTH_SKIPPED_KEY = 'irontrack_auth_skipped'; // '1' once the user chose to
 export function skipSignIn() {
   setL(AUTH_SKIPPED_KEY, '1');
   document.getElementById('authOverlay').classList.remove('active');
+  maybeStartOnboarding();
 }
 
 export function openSignIn() {
@@ -453,6 +456,7 @@ export function startSessionSync() {
   if (!supabaseClient) {
     updateUserSessionUI(null);
     document.getElementById('authOverlay').classList.remove('active');
+    maybeStartOnboarding();
     return;
   }
   supabaseClient.auth.getSession().then(({ data: { session } }) => {
@@ -460,10 +464,11 @@ export function startSessionSync() {
       currentUser = session.user;
       prepareLocalDataFor(currentUser);
       updateUserSessionUI(currentUser);
-      pullFromCloud();
+      pullFromCloud().then(maybeStartOnboarding); // after the pull: a returning user's profile is here
       subscribeToRealtimeSync();
     } else {
       updateUserSessionUI(null);
+      maybeStartOnboarding(); // only if the sign-in screen isn't showing
     }
   });
   // Signed out in another tab, or the session could not be refreshed: in-memory state is stale.
