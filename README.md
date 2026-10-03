@@ -121,8 +121,11 @@ in, workout sessions are mirrored to `workout_sessions` (one row each) and every
   minute back to be safe). Unsynced local edits are uploaded first, so they're never overwritten.
 - **Conflicts:** sessions logged on two devices while they were out of sync are both kept. If a
   session was changed on both, the unsynced local version wins; a deletion always wins. All other
-  data (settings, presets, custom exercises) is last-write-wins at the row level. Deletions sync
-  too: a key that disappears from the cloud row is removed on other devices.
+  data (settings, presets, custom exercises) merges per setting: each device keeps a fingerprint of
+  every setting as of its last sync, and before uploading it takes the changes another device made
+  since then, so an upload never undoes them. If both devices changed the same setting, the
+  uploading device's version wins. Deletions sync too: a setting removed on one device is removed
+  on the others.
 - **Upgrading:** older versions kept the whole history in `user_sync.history`. The first time a
   device syncs on this version, it merges that column in and uploads it as `workout_sessions` rows.
   After that the column is ignored. Run the updated `supabase/user_sync.sql` before deploying.
