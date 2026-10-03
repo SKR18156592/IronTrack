@@ -1,3 +1,4 @@
+import { createClient } from '@supabase/supabase-js';
 import { HISTORY_KEY, HISTORY_TOMBSTONES_KEY, clearHistory, flushHistory, loadHistory } from './history-store.js';
 import { SESSIONS_CURSOR_KEY, SESSIONS_MIGRATED_KEY, SESSIONS_SYNCED_KEY, fingerprint, syncSessions } from './session-sync.js';
 import { getMicrocycle } from './model.js';
@@ -13,8 +14,8 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 
 export let supabaseClient = null;
 try {
-  if (window.supabase && SUPABASE_URL !== 'YOUR_SUPABASE_URL') {
-    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  if (SUPABASE_URL !== 'YOUR_SUPABASE_URL') {
+    supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
     });
   }

@@ -114,18 +114,10 @@ init();
 // ==========================================
 // PWA: SERVICE WORKER REGISTRATION
 // ==========================================
-if ('serviceWorker' in navigator) {
+// The worker is built from src/sw.js by `npm run build`; the dev server doesn't serve one.
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js')
-      .then(() => navigator.serviceWorker.ready)
-      .then((reg) => {
-        // The bundled JS/CSS (hashed file names) loaded before the worker controlled this page,
-        // so hand it the URLs to cache for offline use.
-        const urls = performance.getEntriesByType('resource')
-          .map(e => e.name)
-          .filter(u => new URL(u).origin === location.origin);
-        if (reg.active) reg.active.postMessage({ type: 'CACHE_URLS', urls });
-      })
       .catch(err => console.warn('Service worker registration failed:', err));
   });
 }
