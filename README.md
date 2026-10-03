@@ -16,7 +16,9 @@ at the gym, and track progress over time. Your data syncs across devices through
   muscle group, a muscle recovery heatmap, and a shareable stats card.
 - **Nutrition:** daily calorie and macro targets from your profile, activity level and goal (lose,
   maintain or gain, at a chosen rate), with a little more on workout days. Today's plan follows your
-  schedule, and the example meal plan scales its portions to your targets.
+  schedule, and the example meal plan scales its portions to your targets. A daily log tracks food
+  (from the food list, or a whole planned meal at once), water and body weight against those targets;
+  logging your weight updates your profile, so the targets follow it.
 - **Tools:** TDEE, 1RM, and plate calculators.
 - **Offline-first:** everything works without a connection. Changes sync when you're back online.
 - **Multi-device sync (optional):** sign in with email and password, and changes reach your other
@@ -25,14 +27,14 @@ at the gym, and track progress over time. Your data syncs across devices through
 
 ## Tech stack
 
-| Layer         | Used                                                                                              |
-| ------------- | ------------------------------------------------------------------------------------------------- |
-| App           | Vanilla HTML, CSS, and JavaScript as ES modules (no framework)                                    |
-| Libraries     | `@supabase/supabase-js@2`, `canvas-confetti`, `lucide` (bundled from npm)                         |
-| Local storage | IndexedDB for workout history; `localStorage` for everything else (keys prefixed `iron_`)         |
-| Backend       | Supabase: Auth (email and password), Postgres, Realtime                                           |
-| Offline       | Service worker (`src/sw.js`, Workbox via `vite-plugin-pwa`) + web app manifest                    |
-| Tooling       | Vite (dev server and bundling), Vitest + happy-dom (unit tests), Playwright (smoke tests), ESLint |
+| Layer         | Used                                                                                                            |
+| ------------- | --------------------------------------------------------------------------------------------------------------- |
+| App           | Vanilla HTML, CSS, and JavaScript as ES modules (no framework)                                                  |
+| Libraries     | `@supabase/supabase-js@2`, `canvas-confetti`, `lucide` (bundled from npm)                                       |
+| Local storage | IndexedDB for workout history and the nutrition log; `localStorage` for everything else (keys prefixed `iron_`) |
+| Backend       | Supabase: Auth (email and password), Postgres, Realtime                                                         |
+| Offline       | Service worker (`src/sw.js`, Workbox via `vite-plugin-pwa`) + web app manifest                                  |
+| Tooling       | Vite (dev server and bundling), Vitest + happy-dom (unit tests), Playwright (smoke tests), ESLint               |
 
 ## Project structure
 
@@ -47,8 +49,11 @@ irontrack-pwa/
 │   ├── sync.js                # Supabase client, auth, upload/download, realtime
 │   ├── history-merge.js       # Pure workout-history merge (by session id + tombstones)
 │   ├── session-draft.js       # In-progress workout draft (survives reloads)
-│   ├── history-store.js       # Workout history in IndexedDB, with an in-memory copy
-│   ├── session-sync.js        # Syncs workout history as one workout_sessions row per session
+│   ├── list-store.js          # Lists kept in IndexedDB with an in-memory copy (history, nutrition log)
+│   ├── history-store.js       # Workout history (a list store)
+│   ├── row-sync.js            # Syncs a list as one table row per record (pull, push, deletions)
+│   ├── session-sync.js        # Workout history through row-sync, plus the one-time history move
+│   ├── nutrition-log.js       # Daily food, water and weight log, synced through row-sync
 │   ├── settings-merge.js      # Builds the user_sync row and merges settings per key
 │   ├── performance.js         # Last time's numbers and PRs per exercise and equipment
 │   ├── nutrition-targets.js   # BMR, TDEE, goal-based calorie and macro targets, meal plan scaling
@@ -83,6 +88,7 @@ In the Supabase dashboard, open **SQL Editor** and run `supabase/user_sync.sql`.
 - creates the `user_sync` table (one row per user, for settings and profile), or adds any missing
   columns to an existing one
 - creates the `workout_sessions` table (one row per logged session)
+- creates the `nutrition_log` table (one row per food, water or body weight entry)
 - enables Row-Level Security so each signed-in user can only read and write their own rows
 - adds `user_sync` to the `supabase_realtime` publication
 
@@ -151,6 +157,9 @@ in, workout sessions are mirrored to `workout_sessions` (one row each) and every
 - **Upgrading:** older versions kept the whole history in `user_sync.history`. The first time a
   device syncs on this version, it merges that column in and uploads it as `workout_sessions` rows.
   After that the column is ignored. Run the updated `supabase/user_sync.sql` before deploying.
+- **Nutrition log:** synced the same way as workout sessions, one `nutrition_log` row per entry. If
+  that table doesn't exist yet, the log stays on the device and everything else still syncs; it uploads
+  once `supabase/user_sync.sql` has been run.
 - **Shared devices:** signing out, or signing in as a different user, clears the previous account's
   local data.
 

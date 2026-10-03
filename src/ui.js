@@ -89,6 +89,10 @@ export function refreshAllUI() {
   if (typeof renderMuscleRecoveryHeatmap === 'function') renderMuscleRecoveryHeatmap();
 }
 
+export function refreshNutritionUI() {
+  renderNutritionPlan();
+}
+
 export function refreshHistoryUI() {
   renderHomeSummary();
   renderHistory();
