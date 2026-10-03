@@ -7,8 +7,8 @@ import { getJ, getL, setJ, setL } from './storage.js';
 
 const TABLE = 'workout_sessions';
 // Bookkeeping, outside the iron_ namespace so it is never synced itself.
-export const SESSIONS_CURSOR_KEY = 'irontrack_sessions_cursor';     // newest server updated_at pulled
-export const SESSIONS_SYNCED_KEY = 'irontrack_sessions_synced';     // session id -> fingerprint of the cloud's version
+export const SESSIONS_CURSOR_KEY = 'irontrack_sessions_cursor'; // newest server updated_at pulled
+export const SESSIONS_SYNCED_KEY = 'irontrack_sessions_synced'; // session id -> fingerprint of the cloud's version
 export const SESSIONS_MIGRATED_KEY = 'irontrack_sessions_migrated'; // user id whose user_sync.history was moved over
 const DELETED = 'deleted';
 // A write can commit with an earlier updated_at than one already pulled, so each pull re-reads a
@@ -21,7 +21,15 @@ const UPLOAD_CHUNK = 100;
 function canonical(v) {
   if (Array.isArray(v)) return '[' + v.map(canonical).join(',') + ']';
   if (v && typeof v === 'object') {
-    return '{' + Object.keys(v).sort().filter(k => v[k] !== undefined).map(k => JSON.stringify(k) + ':' + canonical(v[k])).join(',') + '}';
+    return (
+      '{' +
+      Object.keys(v)
+        .sort()
+        .filter(k => v[k] !== undefined)
+        .map(k => JSON.stringify(k) + ':' + canonical(v[k]))
+        .join(',') +
+      '}'
+    );
   }
   return JSON.stringify(v ?? null);
 }
@@ -62,12 +70,18 @@ export function applySessionRows(rows) {
     if (row.deleted) {
       tombstones.add(row.id);
       synced[row.id] = DELETED;
-      if (mine) { local.delete(row.id); changed = true; }
+      if (mine) {
+        local.delete(row.id);
+        changed = true;
+      }
       continue;
     }
     if (tombstones.has(row.id)) continue; // deleted here; the deletion uploads next
     const theirs = fingerprint(row.data);
-    if (mine && fingerprint(mine) === theirs) { synced[row.id] = theirs; continue; }
+    if (mine && fingerprint(mine) === theirs) {
+      synced[row.id] = theirs;
+      continue;
+    }
     if (mine && fingerprint(mine) !== synced[row.id]) continue; // edited here and not uploaded yet
     local.set(row.id, row.data);
     synced[row.id] = theirs;
@@ -87,13 +101,19 @@ async function pullSessions(client, userId) {
   for (let from = 0; ; from += PAGE_SIZE) {
     let query = client.from(TABLE).select('id, data, deleted, updated_at').eq('user_id', userId);
     if (since) query = query.gt('updated_at', since);
-    const { data, error } = await query.order('updated_at').order('id').range(from, from + PAGE_SIZE - 1);
+    const { data, error } = await query
+      .order('updated_at')
+      .order('id')
+      .range(from, from + PAGE_SIZE - 1);
     if (error) throw error;
     rows.push(...data);
     if (data.length < PAGE_SIZE) break;
   }
   const changed = applySessionRows(rows);
-  const newest = rows.reduce((max, r) => (!max || Date.parse(r.updated_at) > Date.parse(max)) ? r.updated_at : max, cursor);
+  const newest = rows.reduce(
+    (max, r) => (!max || Date.parse(r.updated_at) > Date.parse(max) ? r.updated_at : max),
+    cursor
+  );
   if (newest) setL(SESSIONS_CURSOR_KEY, newest);
   return changed;
 }
@@ -111,11 +131,16 @@ async function pushSessions(client, userId) {
 
   for (let i = 0; i < pending.length; i += UPLOAD_CHUNK) {
     const chunk = pending.slice(i, i + UPLOAD_CHUNK);
-    const { error } = await client.from(TABLE).upsert(chunk.map(p => p.row), { onConflict: 'user_id,id' });
+    const { error } = await client.from(TABLE).upsert(
+      chunk.map(p => p.row),
+      { onConflict: 'user_id,id' }
+    );
     if (error) throw error;
     // Saved per chunk, so an interrupted upload resumes where it stopped.
     const latest = getJ(SESSIONS_SYNCED_KEY, {});
-    chunk.forEach(p => { latest[p.row.id] = p.fp; });
+    chunk.forEach(p => {
+      latest[p.row.id] = p.fp;
+    });
     setJ(SESSIONS_SYNCED_KEY, latest);
   }
 }
@@ -123,13 +148,20 @@ async function pushSessions(client, userId) {
 // One-time per device and account: merge in the history that older versions kept in user_sync.history.
 // Runs after a full pull, so sessions deleted since then on an updated device are already tombstoned.
 async function mergeLegacyHistory(client, userId) {
-  const { data: row, error } = await client.from('user_sync')
-    .select('history, local_storage_backup').eq('user_id', userId).maybeSingle();
+  const { data: row, error } = await client
+    .from('user_sync')
+    .select('history, local_storage_backup')
+    .eq('user_id', userId)
+    .maybeSingle();
   if (error) throw error;
   if (!row) return false;
   const cloudHistory = Array.isArray(row.history) ? row.history : [];
   let cloudTombstones = row.local_storage_backup && row.local_storage_backup[HISTORY_TOMBSTONES_KEY];
-  try { cloudTombstones = typeof cloudTombstones === 'string' ? JSON.parse(cloudTombstones) : cloudTombstones; } catch (e) { cloudTombstones = []; }
+  try {
+    cloudTombstones = typeof cloudTombstones === 'string' ? JSON.parse(cloudTombstones) : cloudTombstones;
+  } catch (e) {
+    cloudTombstones = [];
+  }
   const { merged, tombstones, localChanged } = mergeHistories({
     localHistory: getHistory(),
     cloudHistory,
@@ -148,7 +180,7 @@ export function syncSessions(client, userId) {
   const run = async () => {
     let changed = await pullSessions(client, userId);
     const migrating = getL(SESSIONS_MIGRATED_KEY, '') !== userId;
-    if (migrating && await mergeLegacyHistory(client, userId)) changed = true;
+    if (migrating && (await mergeLegacyHistory(client, userId))) changed = true;
     await pushSessions(client, userId);
     if (migrating) setL(SESSIONS_MIGRATED_KEY, userId);
     return changed;

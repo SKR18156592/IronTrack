@@ -21,7 +21,8 @@ export function registerActions(modules) {
   for (const mod of modules) {
     for (const [name, fn] of Object.entries(mod)) {
       if (typeof fn !== 'function') continue;
-      if (registry.has(name) && registry.get(name) !== fn) throw new Error(`Two modules export a function named ${name}`);
+      if (registry.has(name) && registry.get(name) !== fn)
+        throw new Error(`Two modules export a function named ${name}`);
       registry.set(name, fn);
     }
   }
@@ -33,9 +34,12 @@ export function hasAction(name) {
 
 function run(el, name, event) {
   const fn = registry.get(name);
-  if (!fn) { console.error(`No action named ${name}`); return; }
+  if (!fn) {
+    console.error(`No action named ${name}`);
+    return;
+  }
   const list = el.dataset.args ? JSON.parse(el.dataset.args) : [];
-  fn(...list.map(a => a === '$el' ? el : a === '$value' ? el.value : a === '$event' ? event : a));
+  fn(...list.map(a => (a === '$el' ? el : a === '$value' ? el.value : a === '$event' ? event : a)));
 }
 
 function dispatch(event) {

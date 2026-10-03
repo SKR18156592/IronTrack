@@ -45,7 +45,10 @@ const BODY_MUSCLES = {
 
 function bodyFigure(view, statusByGroup) {
   const muscles = Object.entries(BODY_MUSCLES[view])
-    .map(([g, shapes]) => `<g class="muscle" data-status="${statusByGroup[g].key}"><title>${GROUP_LABEL[g]}: ${statusByGroup[g].label}</title>${shapes}</g>`)
+    .map(
+      ([g, shapes]) =>
+        `<g class="muscle" data-status="${statusByGroup[g].key}"><title>${GROUP_LABEL[g]}: ${statusByGroup[g].label}</title>${shapes}</g>`
+    )
     .join('');
   return `<figure class="body-figure">
     <svg viewBox="0 0 120 246" role="img" aria-label="${view === 'front' ? 'Front' : 'Back'} view, tinted by recovery">
@@ -62,7 +65,7 @@ export function renderMuscleRecoveryHeatmap() {
   const now = new Date();
 
   const muscleLastTrained = {};
-  MUSCLE_GROUP_ORDER.forEach(g => muscleLastTrained[g] = null);
+  MUSCLE_GROUP_ORDER.forEach(g => (muscleLastTrained[g] = null));
 
   history.forEach(h => {
     if (!h.date || !h.exercises) return;
@@ -77,16 +80,20 @@ export function renderMuscleRecoveryHeatmap() {
   });
 
   const status = {};
-  MUSCLE_GROUP_ORDER.forEach(g => { status[g] = recoveryStatus(muscleLastTrained[g]); });
-  const ago = (days) => days === null ? '' : days < 1 ? 'today' : `${Math.floor(days)}d ago`;
+  MUSCLE_GROUP_ORDER.forEach(g => {
+    status[g] = recoveryStatus(muscleLastTrained[g]);
+  });
+  const ago = days => (days === null ? '' : days < 1 ? 'today' : `${Math.floor(days)}d ago`);
 
-  const legend = MUSCLE_GROUP_ORDER.map(g => `
+  const legend = MUSCLE_GROUP_ORDER.map(
+    g => `
     <li class="recovery-row" data-status="${status[g].key}">
       <span class="recovery-swatch"></span>
       <span class="recovery-name">${GROUP_LABEL[g]}</span>
       <span class="recovery-status">${status[g].label}</span>
       <span class="recovery-ago">${ago(muscleLastTrained[g])}</span>
-    </li>`).join('');
+    </li>`
+  ).join('');
 
   const empty = history.length ? '' : '<p class="chart-empty">Log a workout to see which muscles need rest.</p>';
   container.innerHTML = `
@@ -102,15 +109,18 @@ function emptyState(text) {
 export let analyticRange = 7;
 export function setAnalyticRange(days) {
   analyticRange = days;
-  document.querySelectorAll('#view-analytics .range-btn').forEach(b => b.classList.toggle('active', parseInt(b.dataset.range) === days));
+  document
+    .querySelectorAll('#view-analytics .range-btn')
+    .forEach(b => b.classList.toggle('active', parseInt(b.dataset.range) === days));
   renderMuscleGroupBarChart();
 }
 
 export function renderMuscleGroupBarChart() {
   const wrap = document.getElementById('muscleBarChartWrap');
   if (!wrap) return;
-  const data = { chest:0, back:0, legs:0, shoulders:0, arms:0 };
-  const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - analyticRange);
+  const data = { chest: 0, back: 0, legs: 0, shoulders: 0, arms: 0 };
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - analyticRange);
   const history = getHistory().filter(h => h.date && new Date(h.date + 'T00:00:00') >= cutoff);
   history.forEach(h => {
     if (!h.exercises) return;
@@ -119,7 +129,8 @@ export function renderMuscleGroupBarChart() {
       if (!group) return;
       ex.sets.forEach(s => {
         if (s.done === false) return;
-        const w = parseFloat(s.weight), r = parseFloat(s.reps);
+        const w = parseFloat(s.weight),
+          r = parseFloat(s.reps);
         if (!isNaN(w) && !isNaN(r)) data[group] += w * r;
       });
     });
@@ -133,7 +144,12 @@ export function renderMuscleGroupBarChart() {
   }
   const ticks = niceTicks(0, Math.max(...values), 4);
   const max = ticks.at(-1);
-  const w = 500, h = 260, pad = 40, barW = 60, gap = 28, chartH = h - pad - 60;
+  const w = 500,
+    h = 260,
+    pad = 40,
+    barW = 60,
+    gap = 28,
+    chartH = h - pad - 60;
   const startX = (w - (MUSCLE_GROUP_ORDER.length * (barW + gap) - gap)) / 2;
 
   let svg = `<svg class="plate-svg" viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg">`;
@@ -143,13 +159,15 @@ export function renderMuscleGroupBarChart() {
     svg += `<text x="${pad - 8}" y="${y + 4}" text-anchor="end" class="chart-label">${formatTick(t)}</text>`;
   });
   MUSCLE_GROUP_ORDER.forEach((g, i) => {
-    const val = data[g], barH = (val / max) * chartH;
-    const x = startX + i * (barW + gap), y = pad + chartH - barH;
+    const val = data[g],
+      barH = (val / max) * chartH;
+    const x = startX + i * (barW + gap),
+      y = pad + chartH - barH;
     if (val > 0) {
       svg += `<rect class="chart-bar" x="${x}" y="${y}" width="${barW}" height="${barH}" rx="8" />`;
-      svg += `<text x="${x + barW/2}" y="${y - 8}" text-anchor="middle" class="chart-value">${Math.round(val).toLocaleString()} kg</text>`;
+      svg += `<text x="${x + barW / 2}" y="${y - 8}" text-anchor="middle" class="chart-value">${Math.round(val).toLocaleString()} kg</text>`;
     }
-    svg += `<text x="${x + barW/2}" y="${h - 24}" text-anchor="middle" class="chart-label${val > 0 ? '' : ' chart-label-muted'}">${GROUP_LABEL[g]}</text>`;
+    svg += `<text x="${x + barW / 2}" y="${h - 24}" text-anchor="middle" class="chart-label${val > 0 ? '' : ' chart-label-muted'}">${GROUP_LABEL[g]}</text>`;
   });
   svg += `</svg>`;
   wrap.innerHTML = svg;
@@ -163,18 +181,22 @@ export function render1RMTrends() {
 
   // The best estimated 1RM per session for the chosen lift, oldest first.
   const points = [];
-  getHistory().slice().reverse().forEach(h => {
-    let best = 0;
-    (h.exercises || []).forEach(ex => {
-      if (ex.category !== category) return;
-      (ex.sets || []).forEach(s => {
-        if (s.done === false || s.tag === 'Warmup') return;
-        const w = parseFloat(s.weight) || 0, r = parseFloat(s.reps) || 0;
-        if (w > 0 && r > 0) best = Math.max(best, epley1RM(w, r));
+  getHistory()
+    .slice()
+    .reverse()
+    .forEach(h => {
+      let best = 0;
+      (h.exercises || []).forEach(ex => {
+        if (ex.category !== category) return;
+        (ex.sets || []).forEach(s => {
+          if (s.done === false || s.tag === 'Warmup') return;
+          const w = parseFloat(s.weight) || 0,
+            r = parseFloat(s.reps) || 0;
+          if (w > 0 && r > 0) best = Math.max(best, epley1RM(w, r));
+        });
       });
+      if (best > 0) points.push({ date: h.date || '', val: best });
     });
-    if (best > 0) points.push({ date: h.date || '', val: best });
-  });
 
   if (!points.length) {
     wrap.innerHTML = category
@@ -190,7 +212,8 @@ export function render1RMTrends() {
 
   // Change over about the last four weeks (or since the first session, if that's more recent).
   const latestTime = Date.parse(latest.date) || 0;
-  const base = points.find(p => (Date.parse(p.date) || 0) >= latestTime - 28 * 86400000 && p !== latest) || points.at(-2);
+  const base =
+    points.find(p => (Date.parse(p.date) || 0) >= latestTime - 28 * 86400000 && p !== latest) || points.at(-2);
   const delta = latest.val - base.val;
   const days = Math.max(1, Math.round((latestTime - (Date.parse(base.date) || latestTime)) / 86400000));
   const span = days >= 14 ? `${Math.round(days / 7)} weeks` : days === 1 ? '1 day' : `${days} days`;
@@ -199,9 +222,20 @@ export function render1RMTrends() {
 
   const vals = points.map(p => p.val);
   const ticks = niceTicks(Math.min(...vals), Math.max(...vals), 3);
-  const lo = ticks[0], hi = ticks.at(-1);
-  const w = 520, h = 220, padL = 44, padR = 24, padT = 24, padB = 34, chartW = w - padL - padR, chartH = h - padT - padB;
-  const xy = points.map((p, i) => [padL + (i / (points.length - 1)) * chartW, padT + chartH - ((p.val - lo) / (hi - lo)) * chartH]);
+  const lo = ticks[0],
+    hi = ticks.at(-1);
+  const w = 520,
+    h = 220,
+    padL = 44,
+    padR = 24,
+    padT = 24,
+    padB = 34,
+    chartW = w - padL - padR,
+    chartH = h - padT - padB;
+  const xy = points.map((p, i) => [
+    padL + (i / (points.length - 1)) * chartW,
+    padT + chartH - ((p.val - lo) / (hi - lo)) * chartH
+  ]);
 
   let svg = `<svg class="plate-svg" viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg">`;
   ticks.forEach(t => {
@@ -210,10 +244,14 @@ export function render1RMTrends() {
     svg += `<text x="${padL - 8}" y="${y + 4}" text-anchor="end" class="chart-label">${formatTick(t)}</text>`;
   });
   svg += `<polyline points="${xy.map(c => c.join(',')).join(' ')}" class="chart-line" stroke="var(--accent)" fill="none" />`;
-  xy.forEach(([x, y]) => { svg += `<circle cx="${x}" cy="${y}" class="chart-point" fill="var(--accent)" />`; });
+  xy.forEach(([x, y]) => {
+    svg += `<circle cx="${x}" cy="${y}" class="chart-point" fill="var(--accent)" />`;
+  });
   // Up to five evenly spaced dates, always including the first and last.
   const labelCount = Math.min(5, points.length);
-  const labelled = new Set(Array.from({ length: labelCount }, (_, k) => Math.round(k * (points.length - 1) / (labelCount - 1))));
+  const labelled = new Set(
+    Array.from({ length: labelCount }, (_, k) => Math.round((k * (points.length - 1)) / (labelCount - 1)))
+  );
   labelled.forEach(i => {
     const anchor = i === 0 ? 'start' : i === points.length - 1 ? 'end' : 'middle';
     svg += `<text x="${xy[i][0]}" y="${h - 10}" text-anchor="${anchor}" class="chart-label">${esc(String(points[i].date).slice(5))}</text>`;
@@ -223,4 +261,3 @@ export function render1RMTrends() {
   svg += `</svg>`;
   wrap.innerHTML = summary + svg;
 }
-

@@ -7,7 +7,7 @@ describe('mergeHistories', () => {
   it('keeps sessions from both sides, newest first', () => {
     const r = mergeHistories({ localHistory: [s(3), s(1)], cloudHistory: [s(2), s(1)] });
     expect(r.merged.map(sessionKey)).toEqual(['session_3', 'session_2', 'session_1']);
-    expect(r.localChanged).toBe(true);     // gained session_2
+    expect(r.localChanged).toBe(true); // gained session_2
     expect(r.missingFromCloud).toBe(true); // cloud lacks session_3
   });
 
@@ -20,8 +20,10 @@ describe('mergeHistories', () => {
 
   it('drops sessions tombstoned on either side and unions the tombstones', () => {
     const r = mergeHistories({
-      localHistory: [s(1), s(2)], cloudHistory: [s(2), s(3)],
-      localTombstones: ['session_1'], cloudTombstones: ['session_3']
+      localHistory: [s(1), s(2)],
+      cloudHistory: [s(2), s(3)],
+      localTombstones: ['session_1'],
+      cloudTombstones: ['session_3']
     });
     expect(r.merged.map(sessionKey)).toEqual(['session_2']);
     expect(r.tombstones.sort()).toEqual(['session_1', 'session_3']);

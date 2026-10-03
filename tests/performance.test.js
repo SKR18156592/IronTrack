@@ -8,7 +8,7 @@ const ex = (category, variationValue, sets) => ({ category, variationValue, sets
 // Newest first, like the stored history.
 const history = [
   session('2026-09-30', [ex('d1_incline', 'smith', [set(20, 8, 'Warmup'), set(60, 8), set(60, 6)])]),
-  session('2026-09-23', [ex('d1_incline', 'smith', [set(70, 5)]), ex('d1_incline', 'dumbbell', [set(30, 10)])]),
+  session('2026-09-23', [ex('d1_incline', 'smith', [set(70, 5)]), ex('d1_incline', 'dumbbell', [set(30, 10)])])
 ];
 
 describe('buildPerformanceIndex', () => {
@@ -17,7 +17,11 @@ describe('buildPerformanceIndex', () => {
   it('takes the most recent session as last time, warm-ups included', () => {
     const last = lastPerformance(index, 'd1_incline', 'smith');
     expect(last.date).toBe('2026-09-30');
-    expect(last.sets).toEqual([{ weight: 20, reps: 8 }, { weight: 60, reps: 8 }, { weight: 60, reps: 6 }]);
+    expect(last.sets).toEqual([
+      { weight: 20, reps: 8 },
+      { weight: 60, reps: 8 },
+      { weight: 60, reps: 6 }
+    ]);
   });
 
   it('keeps equipment separate', () => {
