@@ -1,4 +1,9 @@
-import { showToast } from './ui.js';
+// storage.js imports nothing, so any module can use it without joining an import cycle. The UI says how
+// to warn the user when a write fails (main.js registers a toast).
+let warnUser = () => {};
+export function onStorageFailure(fn) {
+  warnUser = fn;
+}
 
 export function getL(k, def) {
   try {
@@ -14,7 +19,7 @@ export function reportStorageFailure(err) {
   console.error('localStorage write failed:', err);
   if (Date.now() - lastStorageWarningAt < 10000) return;
   lastStorageWarningAt = Date.now();
-  showToast('⚠️ Device storage is full: recent changes were not saved. Export a full backup from Settings.', 'error');
+  warnUser('⚠️ Device storage is full: recent changes were not saved. Export a full backup from Settings.');
 }
 export function setL(k, v) {
   try {

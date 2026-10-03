@@ -2,8 +2,6 @@
 import { IDBFactory } from 'fake-indexeddb';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('../src/ui.js', () => ({ showToast: vi.fn() }));
-
 const s = ms => ({ id: 'session_' + ms, date: '2026-01-01', exercises: [] });
 const ids = list => list.map(r => r.id);
 
