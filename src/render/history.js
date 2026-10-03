@@ -210,6 +210,7 @@ export function renderHistory() {
   filteredHistory.forEach((h) => {
     const div = document.createElement('div');
     div.className = 'log-item';
+    div.dataset.sessionKey = sessionKey(h);
     
     let exercisesHtml = '';
     if (h.exercises && h.exercises.length) {
@@ -248,7 +249,10 @@ export function renderHistory() {
         <span class="log-item-meta">${icon('timer', 14)} ${esc(h.duration)} ${icon('chevron-down', 14)}</span>
       </div>
       <div class="log-item-body">
-        <div style="font-size: 11.5px; color: var(--muted); margin-top: 6px;">Body Weight: ${esc(h.bodyWeight)}kg | Energy: ${esc(h.energy)}/10 | Sleep: ${esc(h.sleep)}hrs</div>
+        <div class="log-body-top">
+          <div style="font-size: 11.5px; color: var(--muted);">Body weight: ${esc(h.bodyWeight)}kg | Energy: ${esc(h.energy)}/10 | Sleep: ${esc(h.sleep)}hrs</div>
+          <button class="btn-xs btn-xs-danger" onclick="deleteWorkoutSession(this)">${icon('trash', { size: 14 })} Delete</button>
+        </div>
         ${notesBlock}
         ${exercisesHtml}
       </div>
@@ -263,6 +267,21 @@ export function openHistoryModal() {
   document.getElementById('historyModalOverlay').classList.add('active'); 
 }
 export function closeHistoryModal() { document.getElementById('historyModalOverlay').classList.remove('active'); }
+
+// Deletes one logged session. Its id is tombstoned so sync removes it on other devices too.
+export function deleteWorkoutSession(btn) {
+  const key = btn.closest('.log-item')?.dataset.sessionKey;
+  const history = getHistory();
+  const session = history.find(rec => sessionKey(rec) === key);
+  if (!session) return;
+  const title = String(session.dayTitle || `Day ${session.day}`).replace(/^\s*⚡\s*/u, '');
+  if (!confirm(`Delete the ${session.date || 'undated'} session (${title})? This can't be undone.`)) return;
+  setJ(HISTORY_TOMBSTONES_KEY, [...new Set([...getJ(HISTORY_TOMBSTONES_KEY, []), key])]);
+  setHistory(history.filter(rec => sessionKey(rec) !== key));
+  pushToCloud();
+  refreshAllUI(); // history list, charts, header streak and last-time hints
+  showToast('Session deleted.', 'success');
+}
 
 export async function clearWorkoutHistory() {
   if (confirm('Clear workout history?')) {
