@@ -1,6 +1,23 @@
 import { confirmDialog } from '../dialog.js';
-import { FLAT_EXERCISES, WORKOUT, getNextCategory, getPreset, getSupersetLinks, rebuildWorkoutDatabase, setChoice, setPreset, setSupersetLinks } from '../model.js';
-import { activeDay, applyVariation, captureCurrentFormValues, renderAll, restoreFormValues, switchDayView } from './workout.js';
+import {
+  FLAT_EXERCISES,
+  WORKOUT,
+  getNextCategory,
+  getPreset,
+  getSupersetLinks,
+  rebuildWorkoutDatabase,
+  setChoice,
+  setPreset,
+  setSupersetLinks
+} from '../model.js';
+import {
+  activeDay,
+  applyVariation,
+  captureCurrentFormValues,
+  renderAll,
+  restoreFormValues,
+  switchDayView
+} from './workout.js';
 import { esc, getJ, setJ, setL } from '../storage.js';
 import { pushToCloud } from '../sync.js';
 import { showToast } from '../ui.js';
@@ -27,23 +44,28 @@ export function openAddExModal() {
 
   document.getElementById('addExModalOverlay').classList.add('active');
 }
-export function closeAddExModal() { document.getElementById('addExModalOverlay').classList.remove('active'); document.getElementById('addExForm').reset(); }
+export function closeAddExModal() {
+  document.getElementById('addExModalOverlay').classList.remove('active');
+  document.getElementById('addExForm').reset();
+}
 
 export function populateDayDropdown() {
   const sel = document.getElementById('exDay');
   if (!sel) return;
-  sel.innerHTML = Object.keys(WORKOUT).map(d => `<option value="${d}">Day ${d}: ${esc(WORKOUT[d].title.replace('⚡ ', ''))}</option>`).join('');
+  sel.innerHTML = Object.keys(WORKOUT)
+    .map(d => `<option value="${d}">Day ${d}: ${esc(WORKOUT[d].title.replace('⚡ ', ''))}</option>`)
+    .join('');
 }
 
 export function populateSectionDropdown(dayNum) {
   const select = document.getElementById('exSectionSelect');
   if (!select || !WORKOUT[dayNum]) return;
-  
+
   const sections = WORKOUT[dayNum].sections || [];
   let html = sections.map(s => `<option value="${esc(s.title)}">${esc(s.title)}</option>`).join('');
   html += `<option value="__NEW__">+ Create new section…</option>`;
   select.innerHTML = html;
-  
+
   // Preserve or set the initial section value without firing unexpected form resets
   handleSectionSelectChange(select.value);
 }
@@ -68,7 +90,7 @@ export function handleSaveCustomExercise(e) {
   const day = String(daySelect.value);
   const secSelectVal = document.getElementById('exSectionSelect').value;
   const customSecName = document.getElementById('exCustomSection').value.trim();
-  const sectionTitle = secSelectVal === '__NEW__' ? (customSecName || 'Custom Section') : secSelectVal;
+  const sectionTitle = secSelectVal === '__NEW__' ? customSecName || 'Custom Section' : secSelectVal;
 
   const title = document.getElementById('exTitle').value.trim();
   const target = document.getElementById('exTarget').value.trim();
@@ -80,23 +102,23 @@ export function handleSaveCustomExercise(e) {
   const prefix = 'cp_' + Math.random().toString(36).substring(2, 7);
   const rest = exerciseType === 'compound' ? 150 : 75;
 
-  const newEx = { 
-    category, 
-    prefix, 
-    title, 
-    target, 
-    exerciseType, 
-    varLabel, 
-    scheme, 
-    rest, 
-    day: day, 
-    sectionTitle 
+  const newEx = {
+    category,
+    prefix,
+    title,
+    target,
+    exerciseType,
+    varLabel,
+    scheme,
+    rest,
+    day: day,
+    sectionTitle
   };
 
   const customList = getJ('iron_custom_exercises', []);
   customList.push(newEx);
   setJ('iron_custom_exercises', customList);
-  
+
   // Persist the selected day so UI refreshes don't fall back to Day 1
   setL('iron_active_day', day);
 
@@ -105,7 +127,7 @@ export function handleSaveCustomExercise(e) {
   closeAddExModal();
   rebuildWorkoutDatabase();
   renderAll();
-  
+
   // Explicitly activate the day view
   switchDayView(day, false);
   showToast(`✨ Added "${title}" to Day ${day} (${sectionTitle})!`, 'success');
@@ -138,7 +160,10 @@ export function handleSaveNewVariation(e) {
     label,
     setup: setup ? '⚙️ Setup: ' + setup : '',
     cue: cue ? '💡 ' + cue : '',
-    defaultSets: [[20, 10, 2, 'Working'], [20, 10, 1, 'Working']]
+    defaultSets: [
+      [20, 10, 2, 'Working'],
+      [20, 10, 1, 'Working']
+    ]
   };
 
   const customVars = getJ('iron_custom_variations', {});
@@ -195,7 +220,13 @@ export async function removeEquipment(category) {
   const currentVal = select.value;
   const varObj = ex.variations.find(v => v.value === currentVal);
 
-  if (!(await confirmDialog(`Remove variation "${varObj ? varObj.label : currentVal}"?`, { confirmLabel: 'Remove', danger: true }))) return;
+  if (
+    !(await confirmDialog(`Remove variation "${varObj ? varObj.label : currentVal}"?`, {
+      confirmLabel: 'Remove',
+      danger: true
+    }))
+  )
+    return;
 
   const customVars = getJ('iron_custom_variations', {});
   if (customVars[category]) {
@@ -227,11 +258,11 @@ export function openPresetModal(category) {
   document.getElementById('presetModalTitle').textContent = `Edit Preset: ${ex.title} (${varObj.label})`;
 
   const stored = getPreset(category, variationValue);
-  const sets = (stored && stored.length) ? stored : varObj.defaultSets;
+  const sets = stored && stored.length ? stored : varObj.defaultSets;
 
   const tbody = document.getElementById('presetEditTbody');
   tbody.innerHTML = '';
-  sets.forEach((s) => {
+  sets.forEach(s => {
     addPresetRowDOM(s.weight, s.reps, s.tag);
   });
   document.getElementById('presetModalOverlay').classList.add('active');
@@ -242,7 +273,7 @@ export function closePresetModal() {
   activePresetModalData = null;
 }
 
-export function addPresetRowDOM(w='', r='', tag='Working') {
+export function addPresetRowDOM(w = '', r = '', tag = 'Working') {
   const tbody = document.getElementById('presetEditTbody');
   const n = tbody.children.length + 1;
   const tr = document.createElement('tr');
@@ -252,17 +283,19 @@ export function addPresetRowDOM(w='', r='', tag='Working') {
     <td><input type="number" class="input-field preset-r" value="${esc(r)}" placeholder="reps" /></td>
     <td>
       <select class="set-tag preset-tag">
-        <option value="Warmup" ${tag==='Warmup'?'selected':''}>Warmup</option>
-        <option value="Working" ${tag==='Working'?'selected':''}>Working</option>
-        <option value="Drop Set" ${tag==='Drop Set'?'selected':''}>Drop Set</option>
-        <option value="Failure" ${tag==='Failure'?'selected':''}>Failure</option>
+        <option value="Warmup" ${tag === 'Warmup' ? 'selected' : ''}>Warmup</option>
+        <option value="Working" ${tag === 'Working' ? 'selected' : ''}>Working</option>
+        <option value="Drop Set" ${tag === 'Drop Set' ? 'selected' : ''}>Drop Set</option>
+        <option value="Failure" ${tag === 'Failure' ? 'selected' : ''}>Failure</option>
       </select>
     </td>
   `;
   tbody.appendChild(tr);
 }
 
-export function addPresetRow() { addPresetRowDOM(); }
+export function addPresetRow() {
+  addPresetRowDOM();
+}
 export function removePresetRow() {
   const tbody = document.getElementById('presetEditTbody');
   if (tbody.children.length > 1) tbody.removeChild(tbody.lastElementChild);
@@ -289,7 +322,8 @@ export function saveActivePresetModal() {
 }
 
 export async function removeExercise(category) {
-  if (!(await confirmDialog('Remove this exercise from your workout day?', { confirmLabel: 'Remove', danger: true }))) return;
+  if (!(await confirmDialog('Remove this exercise from your workout day?', { confirmLabel: 'Remove', danger: true })))
+    return;
   const hidden = getJ('iron_hidden_exercises', []);
   if (!hidden.includes(category)) hidden.push(category);
   setJ('iron_hidden_exercises', hidden);
@@ -301,12 +335,18 @@ export async function removeExercise(category) {
 }
 
 export function reorderExercise(category, direction) {
-  let targetDay = null, targetSecIdx = -1, targetExIdx = -1;
+  let targetDay = null,
+    targetSecIdx = -1,
+    targetExIdx = -1;
   for (const dNum of Object.keys(WORKOUT)) {
     const day = WORKOUT[dNum];
     day.sections.forEach((sec, sIdx) => {
       const eIdx = sec.exercises.findIndex(e => e.category === category);
-      if (eIdx !== -1) { targetDay = dNum; targetSecIdx = sIdx; targetExIdx = eIdx; }
+      if (eIdx !== -1) {
+        targetDay = dNum;
+        targetSecIdx = sIdx;
+        targetExIdx = eIdx;
+      }
     });
   }
   if (targetDay === null) return;

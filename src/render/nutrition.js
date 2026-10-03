@@ -24,32 +24,37 @@ export function renderNutritionPlan() {
   if (weight > 0 && height > 0) {
     const heightM = height / 100;
     const bmi = weight / (heightM * heightM);
-    document.getElementById('nutriBmiDisplay').textContent = `BMI: ${bmi.toFixed(1)} (${bmi < 18.5 ? 'Underweight' : bmi < 25 ? 'Normal' : bmi < 30 ? 'Overweight' : 'Obese'})`;
+    document.getElementById('nutriBmiDisplay').textContent =
+      `BMI: ${bmi.toFixed(1)} (${bmi < 18.5 ? 'Underweight' : bmi < 25 ? 'Normal' : bmi < 30 ? 'Overweight' : 'Obese'})`;
   }
 
   if (age > 0 && weight > 0 && height > 0) {
-    let bmr = (10 * weight) + (6.25 * height) - (5 * age);
-    bmr += (sex === 'male') ? 5 : -161;
+    let bmr = 10 * weight + 6.25 * height - 5 * age;
+    bmr += sex === 'male' ? 5 : -161;
     const tdee = bmr * 1.55;
-    document.getElementById('nutriTdeeDisplay').textContent = `Calculated Maintenance TDEE: ~${tdee.toFixed(0)} kcal/day (BMR: ${bmr.toFixed(0)})`;
+    document.getElementById('nutriTdeeDisplay').textContent =
+      `Calculated Maintenance TDEE: ~${tdee.toFixed(0)} kcal/day (BMR: ${bmr.toFixed(0)})`;
   }
 
   const container = document.getElementById('nutritionMealsContainer');
   if (!container) return;
-  
-  container.innerHTML = plan.meals.map(meal => `
+
+  container.innerHTML = plan.meals
+    .map(
+      meal => `
     <div class="meal-box">
       <div class="meal-header-row">
         <div class="meal-title">${esc(meal.title.replace(/^\p{Extended_Pictographic}\uFE0F?\s*/u, ''))}</div>
         <div class="meal-badge-summary">${meal.summary}</div>
       </div>
       <div class="food-grid">
-        ${meal.items.map(item => {
-          const totalMacros = (item.p || 0) + (item.c || 0) + (item.f || 0) || 1;
-          const pPct = Math.round(((item.p || 0) / totalMacros) * 100);
-          const cPct = Math.round(((item.c || 0) / totalMacros) * 100);
-          const fPct = Math.max(0, 100 - pPct - cPct);
-          return `
+        ${meal.items
+          .map(item => {
+            const totalMacros = (item.p || 0) + (item.c || 0) + (item.f || 0) || 1;
+            const pPct = Math.round(((item.p || 0) / totalMacros) * 100);
+            const cPct = Math.round(((item.c || 0) / totalMacros) * 100);
+            const fPct = Math.max(0, 100 - pPct - cPct);
+            return `
             <div class="food-card">
               <div class="food-name">${item.name}</div>
               <div class="food-metrics-row">
@@ -63,8 +68,11 @@ export function renderNutritionPlan() {
               </div>
             </div>
           `;
-        }).join('')}
+          })
+          .join('')}
       </div>
     </div>
-  `).join('');
+  `
+    )
+    .join('');
 }

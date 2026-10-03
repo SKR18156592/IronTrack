@@ -27,23 +27,26 @@ export function populateHistoryDayFilter() {
 export function calculateMaxWeightsPerExercise() {
   const history = getHistory();
   const maxMap = {};
-  history.slice().reverse().forEach((h) => {
-    if (h.exercises) {
-      h.exercises.forEach(ex => {
-        const cat = ex.category || ex.name;
-        if (!cat) return;
-        ex.sets.forEach(s => {
-          if (s.done === false) return;
-          const w = parseFloat(s.weight) || 0;
-          if (w > 0) {
-            if (maxMap[cat] === undefined || w > maxMap[cat]) {
-              maxMap[cat] = w;
+  history
+    .slice()
+    .reverse()
+    .forEach(h => {
+      if (h.exercises) {
+        h.exercises.forEach(ex => {
+          const cat = ex.category || ex.name;
+          if (!cat) return;
+          ex.sets.forEach(s => {
+            if (s.done === false) return;
+            const w = parseFloat(s.weight) || 0;
+            if (w > 0) {
+              if (maxMap[cat] === undefined || w > maxMap[cat]) {
+                maxMap[cat] = w;
+              }
             }
-          }
+          });
         });
-      });
-    }
-  });
+      }
+    });
   return maxMap;
 }
 
@@ -59,7 +62,7 @@ export function populateHistoryExerciseDropdown() {
 
   const history = getHistory();
   const exerciseSet = new Set();
-  
+
   history.forEach(h => {
     if (dayFilterVal && String(h.day) !== dayFilterVal) return;
     if (h.exercises) {
@@ -85,12 +88,15 @@ export function populateCompoundSelect() {
   if (!select) return;
   // Lifts with history, by category, most recently logged first (labelled with their latest name).
   const names = new Map();
-  getHistory().forEach(h => (h.exercises || []).forEach(ex => {
-    if (ex.category && !names.has(ex.category)) names.set(ex.category, ex.name || ex.category);
-  }));
+  getHistory().forEach(h =>
+    (h.exercises || []).forEach(ex => {
+      if (ex.category && !names.has(ex.category)) names.set(ex.category, ex.name || ex.category);
+    })
+  );
   const current = select.value;
-  select.innerHTML = [...names].map(([cat, name]) => `<option value="${esc(cat)}">${esc(name)}</option>`).join('')
-    || '<option value="">No lifts logged yet</option>';
+  select.innerHTML =
+    [...names].map(([cat, name]) => `<option value="${esc(cat)}">${esc(name)}</option>`).join('') ||
+    '<option value="">No lifts logged yet</option>';
   select.value = names.has(current) ? current : defaultTrendLift(names);
 }
 
@@ -99,7 +105,7 @@ function defaultTrendLift(names) {
   const day = WORKOUT[activeDay];
   const exercises = day ? day.sections.flatMap(sec => sec.exercises || []) : [];
   const compound = exercises.find(ex => ex.exerciseType === 'compound' && names.has(ex.category));
-  return compound ? compound.category : (names.keys().next().value || '');
+  return compound ? compound.category : names.keys().next().value || '';
 }
 
 export function renderHistoryForSelectedExercise(exerciseName) {
@@ -108,25 +114,28 @@ export function renderHistoryForSelectedExercise(exerciseName) {
   const dayFilterVal = document.getElementById('historyDayFilter')?.value || '';
   const dataPoints = [];
 
-  history.slice().reverse().forEach(h => {
-    if (dayFilterVal && String(h.day) !== dayFilterVal) return;
-    if (h.exercises) {
-      h.exercises.forEach(ex => {
-        if (ex.name === exerciseName) {
-          let maxW = 0;
-          ex.sets.forEach(s => {
-            if (s.done !== false) {
-              const w = parseFloat(s.weight) || 0;
-              if (w > maxW) maxW = w;
+  history
+    .slice()
+    .reverse()
+    .forEach(h => {
+      if (dayFilterVal && String(h.day) !== dayFilterVal) return;
+      if (h.exercises) {
+        h.exercises.forEach(ex => {
+          if (ex.name === exerciseName) {
+            let maxW = 0;
+            ex.sets.forEach(s => {
+              if (s.done !== false) {
+                const w = parseFloat(s.weight) || 0;
+                if (w > maxW) maxW = w;
+              }
+            });
+            if (maxW > 0) {
+              dataPoints.push({ date: h.date, weight: maxW });
             }
-          });
-          if (maxW > 0) {
-            dataPoints.push({ date: h.date, weight: maxW });
           }
-        }
-      });
-    }
-  });
+        });
+      }
+    });
 
   const modal = document.createElement('div');
   modal.className = 'modal-overlay active';
@@ -139,18 +148,22 @@ export function renderHistoryForSelectedExercise(exerciseName) {
     chartSvg = `<p style="color:var(--muted); text-align:center; padding:24px;">No lifting data recorded for ${esc(exerciseName)} in selected filter.</p>`;
   } else {
     const maxW = Math.max(...dataPoints.map(d => d.weight), 10);
-    const w = 520, h = 260, pad = 40, chartW = w - pad * 2, chartH = h - pad * 2;
+    const w = 520,
+      h = 260,
+      pad = 40,
+      chartW = w - pad * 2,
+      chartH = h - pad * 2;
     chartSvg = `<svg class="plate-svg" viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg">`;
     for (let i = 0; i <= 4; i++) {
-      const y = pad + chartH - (i * chartH / 4);
+      const y = pad + chartH - (i * chartH) / 4;
       chartSvg += `<line x1="${pad}" y1="${y}" x2="${w - pad}" y2="${y}" class="chart-grid" />`;
-      chartSvg += `<text x="${pad - 8}" y="${y + 4}" text-anchor="end" class="chart-label">${(maxW - (i * maxW / 4)).toFixed(0)}</text>`;
+      chartSvg += `<text x="${pad - 8}" y="${y + 4}" text-anchor="end" class="chart-label">${(maxW - (i * maxW) / 4).toFixed(0)}</text>`;
     }
 
     let pointsStr = '';
     dataPoints.forEach((d, i) => {
       const x = pad + (dataPoints.length === 1 ? chartW / 2 : (i / (dataPoints.length - 1)) * chartW);
-      const y = pad + chartH - ((d.weight / maxW) * chartH);
+      const y = pad + chartH - (d.weight / maxW) * chartH;
       pointsStr += `${x},${y} `;
       chartSvg += `<circle cx="${x}" cy="${y}" r="6" fill="var(--accent)" stroke="var(--bg)" stroke-width="2" />`;
       chartSvg += `<text x="${x}" y="${y - 12}" text-anchor="middle" class="chart-value">${d.weight}kg</text>`;
@@ -193,7 +206,7 @@ export function renderHistory() {
   const container = document.getElementById('historyListContainer');
   const history = getHistory();
   container.innerHTML = '';
-  
+
   const dayFilter = document.getElementById('historyDayFilter')?.value || '';
 
   const filteredHistory = history.filter(h => {
@@ -209,30 +222,33 @@ export function renderHistory() {
   }
 
   const maxMap = calculateMaxWeightsPerExercise();
-  
-  filteredHistory.forEach((h) => {
+
+  filteredHistory.forEach(h => {
     const div = document.createElement('div');
     div.className = 'log-item';
     div.dataset.sessionKey = sessionKey(h);
-    
+
     let exercisesHtml = '';
     if (h.exercises && h.exercises.length) {
-      exercisesHtml = h.exercises.map(ex => {
-        const workingSets = ex.sets.filter(s => s.done !== false);
-        const setsStr = workingSets.map(s => `${esc(s.weight)}kg×${esc(s.reps)} (${esc(s.tag || 'Working')})`).join(' • ');
-        
-        let hitPr = false;
-        workingSets.forEach(s => {
-          const w = parseFloat(s.weight) || 0;
-          const key = ex.category || ex.name;
-          if (w > 0 && key && maxMap[key] === w) {
-            hitPr = true;
-          }
-        });
+      exercisesHtml = h.exercises
+        .map(ex => {
+          const workingSets = ex.sets.filter(s => s.done !== false);
+          const setsStr = workingSets
+            .map(s => `${esc(s.weight)}kg×${esc(s.reps)} (${esc(s.tag || 'Working')})`)
+            .join(' • ');
 
-        const prBadge = hitPr ? `<span class="log-pr-badge">${icon('trophy', 12)} PR</span>` : '';
+          let hitPr = false;
+          workingSets.forEach(s => {
+            const w = parseFloat(s.weight) || 0;
+            const key = ex.category || ex.name;
+            if (w > 0 && key && maxMap[key] === w) {
+              hitPr = true;
+            }
+          });
 
-        return `
+          const prBadge = hitPr ? `<span class="log-pr-badge">${icon('trophy', 12)} PR</span>` : '';
+
+          return `
           <div class="log-exercise-row">
             <div class="log-exercise-header-line">
               <div class="log-exercise-title">${esc(ex.name)} (${esc(ex.machineOpt || 'Standard')})</div>
@@ -241,7 +257,8 @@ export function renderHistory() {
             <div class="log-sets-summary">${setsStr || 'No sets recorded'}</div>
           </div>
         `;
-      }).join('');
+        })
+        .join('');
     }
 
     const notesBlock = h.notes ? `<div class="log-session-notes">"${esc(h.notes)}"</div>` : '';
@@ -264,13 +281,18 @@ export function renderHistory() {
   });
 }
 
-export function openHistoryModal() { 
+export function openHistoryModal() {
   populateHistoryExerciseDropdown();
-  renderHistory(); 
-  document.getElementById('historyModalOverlay').classList.add('active'); 
+  renderHistory();
+  document.getElementById('historyModalOverlay').classList.add('active');
 }
-export function closeHistoryModal() { document.getElementById('historyModalOverlay').classList.remove('active'); }
-export function closeHistoryAndShowWorkout() { closeHistoryModal(); showTab('workout'); }
+export function closeHistoryModal() {
+  document.getElementById('historyModalOverlay').classList.remove('active');
+}
+export function closeHistoryAndShowWorkout() {
+  closeHistoryModal();
+  showTab('workout');
+}
 
 // Deletes one logged session. Its id is tombstoned so sync removes it on other devices too.
 export async function deleteWorkoutSession(btn) {
@@ -279,7 +301,13 @@ export async function deleteWorkoutSession(btn) {
   const session = history.find(rec => sessionKey(rec) === key);
   if (!session) return;
   const title = String(session.dayTitle || `Day ${session.day}`).replace(/^\s*⚡\s*/u, '');
-  if (!(await confirmDialog(`Delete the ${session.date || 'undated'} session (${title})? This can't be undone.`, { confirmLabel: 'Delete', danger: true }))) return;
+  if (
+    !(await confirmDialog(`Delete the ${session.date || 'undated'} session (${title})? This can't be undone.`, {
+      confirmLabel: 'Delete',
+      danger: true
+    }))
+  )
+    return;
   setJ(HISTORY_TOMBSTONES_KEY, [...new Set([...getJ(HISTORY_TOMBSTONES_KEY, []), key])]);
   setHistory(history.filter(rec => sessionKey(rec) !== key));
   pushToCloud();
@@ -288,7 +316,12 @@ export async function deleteWorkoutSession(btn) {
 }
 
 export async function clearWorkoutHistory() {
-  if (await confirmDialog('Clear all workout history? This can\'t be undone.', { confirmLabel: 'Clear history', danger: true })) {
+  if (
+    await confirmDialog("Clear all workout history? This can't be undone.", {
+      confirmLabel: 'Clear history',
+      danger: true
+    })
+  ) {
     // Tombstone the sessions so the history merge does not bring them back from the cloud.
     const cleared = getHistory().map(sessionKey);
     setJ(HISTORY_TOMBSTONES_KEY, [...new Set([...getJ(HISTORY_TOMBSTONES_KEY, []), ...cleared])]);
@@ -303,7 +336,10 @@ export function exportHistoryJSON() {
   const data = JSON.stringify(getHistory());
   const blob = new Blob([data], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
-  const a = document.createElement('a'); a.href = url; a.download = 'irontrack_history.json'; a.click();
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'irontrack_history.json';
+  a.click();
 }
 
 export function exportHistoryCSV() {
@@ -314,7 +350,20 @@ export function exportHistoryCSV() {
   }
 
   const rows = [
-    ['Date', 'Day', 'Split Title', 'Duration', 'BodyWeight(kg)', 'Exercise', 'Equipment', 'Set', 'Weight(kg)', 'Reps', 'Tag', 'RIR']
+    [
+      'Date',
+      'Day',
+      'Split Title',
+      'Duration',
+      'BodyWeight(kg)',
+      'Exercise',
+      'Equipment',
+      'Set',
+      'Weight(kg)',
+      'Reps',
+      'Tag',
+      'RIR'
+    ]
   ];
 
   history.forEach(session => {
@@ -372,7 +421,7 @@ export function importBackupFile(input) {
   if (!file) return;
 
   const reader = new FileReader();
-  reader.onload = function(e) {
+  reader.onload = function (e) {
     try {
       const data = JSON.parse(e.target.result);
       if (Array.isArray(data)) {

@@ -8,17 +8,28 @@ const { args, hasAction, listenForActions, registerActions } = await import('../
 
 // Every file whose markup can name an action.
 const root = join(import.meta.dirname, '..');
-const sources = [join(root, 'index.html'), ...readdirSync(join(root, 'src'), { recursive: true })
-  .filter(f => f.endsWith('.js') && f !== 'actions.js').map(f => join(root, 'src', f))]; // actions.js: only examples
+const sources = [
+  join(root, 'index.html'),
+  ...readdirSync(join(root, 'src'), { recursive: true })
+    .filter(f => f.endsWith('.js') && f !== 'actions.js')
+    .map(f => join(root, 'src', f))
+]; // actions.js: only examples
 const markup = sources.map(f => [f, readFileSync(f, 'utf8')]);
 
 describe('actions in the markup', () => {
   it('are all exported by a registered module', async () => {
     // The same modules src/main.js registers.
     const mods = await Promise.all([
-      import('../src/ui.js'), import('../src/sync.js'), import('../src/render/analytics.js'), import('../src/render/exercises.js'),
-      import('../src/render/history.js'), import('../src/render/nutrition.js'), import('../src/render/profile.js'),
-      import('../src/render/schedule.js'), import('../src/render/share-card.js'), import('../src/render/tools.js'),
+      import('../src/ui.js'),
+      import('../src/sync.js'),
+      import('../src/render/analytics.js'),
+      import('../src/render/exercises.js'),
+      import('../src/render/history.js'),
+      import('../src/render/nutrition.js'),
+      import('../src/render/profile.js'),
+      import('../src/render/schedule.js'),
+      import('../src/render/share-card.js'),
+      import('../src/render/tools.js'),
       import('../src/render/workout.js')
     ]);
     registerActions(mods);
@@ -28,17 +39,21 @@ describe('actions in the markup', () => {
   });
 
   it('use no inline on* handlers', () => {
-    const inline = markup.filter(([, text]) => /<[^>]*\son(click|change|input|submit|keydown|focus|blur)\s*=/i.test(text)).map(([f]) => f);
+    const inline = markup
+      .filter(([, text]) => /<[^>]*\son(click|change|input|submit|keydown|focus|blur)\s*=/i.test(text))
+      .map(([f]) => f);
     expect(inline).toEqual([]);
   });
 });
 
 describe('dispatch', () => {
   const calls = [];
-  registerActions([{
-    testRecord: (...a) => calls.push(a),
-    testClose: () => calls.push(['close'])
-  }]);
+  registerActions([
+    {
+      testRecord: (...a) => calls.push(a),
+      testClose: () => calls.push(['close'])
+    }
+  ]);
   listenForActions();
 
   it('passes the arguments, element and value, innermost element first', () => {
