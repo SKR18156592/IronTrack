@@ -1,7 +1,7 @@
 import { args } from '../actions.js';
 import { MUSCLE_GROUP_ORDER, epley1RM, getMuscleGroup } from '../model.js';
 import { getHistory } from '../history-store.js';
-import { esc } from '../storage.js';
+import { esc, getL } from '../storage.js';
 import { formatTick, niceTicks } from '../chart-scale.js';
 import { bodyFigure } from './body-figure.js';
 
@@ -55,9 +55,10 @@ export function renderMuscleRecoveryHeatmap() {
     </li>`
   ).join('');
 
+  const body = getL('iron_profile_sex', 'male') === 'female' ? 'female' : 'male';
   const empty = history.length ? '' : '<p class="chart-empty">Log a workout to see which muscles need rest.</p>';
   container.innerHTML = `
-    <div class="body-figures">${bodyFigure('front', status, GROUP_LABEL)}${bodyFigure('back', status, GROUP_LABEL)}</div>
+    <div class="body-figures">${bodyFigure('front', status, GROUP_LABEL, body)}${bodyFigure('back', status, GROUP_LABEL, body)}</div>
     <ul class="recovery-legend">${legend}</ul>${empty}`;
 }
 
