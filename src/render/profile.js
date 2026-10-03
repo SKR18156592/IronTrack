@@ -1,5 +1,6 @@
 import { renderNutritionPlan } from './nutrition.js';
 import { computeTDEE } from './tools.js';
+import { bmi, bmr, hasBodyMetrics, readProfile, tdee } from '../nutrition-targets.js';
 import { esc, getL, setL } from '../storage.js';
 import { currentUser, pushToCloud } from '../sync.js';
 import { showToast } from '../ui.js';
@@ -13,13 +14,23 @@ export function saveProfileData() {
 }
 
 export function loadProfileData() {
-  const w = getL('iron_profile_weight', '72.5');
+  const w = getL('iron_profile_weight', '');
   if (document.getElementById('bodyWeight')) document.getElementById('bodyWeight').value = w;
   if (document.getElementById('calcWeight')) document.getElementById('calcWeight').value = w;
 }
 
+// Fills the Tools calculator with the saved profile (fields the profile doesn't have keep their value).
 export function loadProfileToCalculator() {
   loadProfileData();
+  const p = readProfile();
+  const set = (id, v) => {
+    const el = document.getElementById(id);
+    if (el && v) el.value = v;
+  };
+  set('calcAge', p.age);
+  set('calcHeight', p.height);
+  set('calcSex', p.sex);
+  set('calcActivity', String(p.activity));
   computeTDEE();
 }
 
@@ -28,15 +39,17 @@ export function syncCalculatorToProfile() {
   const h = document.getElementById('calcHeight').value;
   const a = document.getElementById('calcAge').value;
   const sex = document.getElementById('calcSex').value;
+  const activity = document.getElementById('calcActivity').value;
 
   setL('iron_profile_weight', w);
   setL('iron_profile_height', h);
   setL('iron_profile_age', a);
   setL('iron_profile_sex', sex);
+  setL('iron_profile_activity', activity);
 
   if (document.getElementById('bodyWeight')) document.getElementById('bodyWeight').value = w;
 
-  showToast('💾 Weight saved to your profile!', 'success');
+  showToast('💾 Saved to your profile!', 'success');
   renderNutritionPlan();
   pushToCloud();
 }
@@ -119,9 +132,9 @@ export function updateAvatarDisplay(imgSrcOrNull) {
 
 export function loadProfileTabUI() {
   const name = getL('iron_profile_name', '');
-  const age = getL('iron_profile_age', '23');
-  const weight = getL('iron_profile_weight', '72.5');
-  const height = getL('iron_profile_height', '175');
+  const age = getL('iron_profile_age', '');
+  const weight = getL('iron_profile_weight', '');
+  const height = getL('iron_profile_height', '');
   const sex = getL('iron_profile_sex', 'male');
   const avatar = getL('iron_profile_avatar', null);
 
@@ -161,33 +174,28 @@ export function saveProfileTab() {
   if (!avatar) updateAvatarDisplay(null);
 
   computeProfileMetrics();
+  renderNutritionPlan();
   pushToCloud();
 }
 
 export function computeProfileMetrics() {
-  const weight = parseFloat(document.getElementById('profileTabWeight')?.value) || 0;
-  const height = parseFloat(document.getElementById('profileTabHeight')?.value) || 0;
-  const age = parseFloat(document.getElementById('profileTabAge')?.value) || 0;
-  const sex = document.getElementById('profileTabSex')?.value || 'male';
-
+  const p = {
+    ...readProfile(),
+    weight: parseFloat(document.getElementById('profileTabWeight')?.value) || null,
+    height: parseFloat(document.getElementById('profileTabHeight')?.value) || null,
+    age: parseFloat(document.getElementById('profileTabAge')?.value) || null,
+    sex: document.getElementById('profileTabSex')?.value === 'female' ? 'female' : 'male'
+  };
   const bmiEl = document.getElementById('profileBmiResult');
   const bmrEl = document.getElementById('profileBmrResult');
 
-  if (weight > 0 && height > 0) {
-    const heightM = height / 100;
-    const bmi = weight / (heightM * heightM);
-    let category = bmi < 18.5 ? 'Underweight' : bmi < 25 ? 'Normal' : bmi < 30 ? 'Overweight' : 'Obese';
-    if (bmiEl) bmiEl.textContent = `BMI: ${bmi.toFixed(1)} (${category})`;
-  } else {
-    if (bmiEl) bmiEl.textContent = 'BMI: --';
+  if (bmiEl) {
+    const b = p.weight && p.height ? bmi(p) : null;
+    bmiEl.textContent = b ? `BMI: ${b.value.toFixed(1)} (${b.category})` : 'BMI: --';
   }
-
-  if (weight > 0 && height > 0 && age > 0) {
-    let bmr = 10 * weight + 6.25 * height - 5 * age;
-    bmr += sex === 'male' ? 5 : -161;
-    if (bmrEl)
-      bmrEl.textContent = `Estimated BMR: ${bmr.toFixed(0)} kcal/day | Maintenance TDEE: ~${(bmr * 1.55).toFixed(0)} kcal/day`;
-  } else {
-    if (bmrEl) bmrEl.textContent = 'Estimated BMR: -- kcal/day';
+  if (bmrEl) {
+    bmrEl.textContent = hasBodyMetrics(p)
+      ? `Estimated BMR: ${bmr(p).toFixed(0)} kcal/day | Maintenance TDEE: ~${tdee(p).toFixed(0)} kcal/day`
+      : 'Estimated BMR: -- kcal/day';
   }
 }
