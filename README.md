@@ -127,8 +127,10 @@ in, workout sessions are mirrored to `workout_sessions` (one row each) and every
 - **Upload:** every edit marks the data as unsynced and schedules an upload (debounced by 800 ms).
   The app uploads only the sessions the cloud doesn't have in their current form: it keeps a
   fingerprint of each session's last synced version. Deleted sessions are uploaded as rows with
-  `deleted = true`, so they don't reappear. Then it writes the `user_sync` row, but only if the row
-  hasn't changed since it read it; otherwise it retries.
+  `deleted = true`, so they don't reappear; once the cloud has a deletion, the device forgets it.
+  Then it writes the `user_sync` row, but only if a setting changed and only if the row hasn't
+  changed since it read it; otherwise it retries. When only sessions changed, a Realtime broadcast
+  tells the other devices to pull.
 - **Download:** the app pulls on startup, on sign-in, on focus, when the app becomes visible, when the
   device comes back online, every 30 seconds, and whenever Realtime reports a change to `user_sync`.
   It fetches only sessions changed since its last pull (by the server-set `updated_at`, re-reading a
@@ -195,8 +197,8 @@ Serve the site from the domain root: the service worker and manifest use root-re
 
 - If IndexedDB can't be opened (some private-browsing modes), history falls back to `localStorage`
   and its ~5 MB limit. The app then warns when a change can't be saved.
-- The `user_sync` row (settings, presets and the profile photo) is still uploaded whole on every sync.
-  It doesn't grow with your history, so it stays small.
+- The `user_sync` row (settings, presets and the profile photo) is uploaded whole whenever a setting
+  changes. It doesn't grow with your history, so it stays small.
 
 ## License
 
