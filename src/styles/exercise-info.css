@@ -1,0 +1,108 @@
+/* Exercise card info line and details. */
+
+/* ---------- Exercise card info: one line of setup, the rest behind (i) ---------- */
+.ex-info {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.ex-info-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+}
+.ex-setup {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: #cbd5e1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ex-setup:empty {
+  display: none;
+}
+.info-btn {
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(30, 41, 59, 0.7);
+  color: var(--muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition:
+    color 0.2s,
+    border-color 0.2s,
+    background 0.2s;
+}
+.info-btn:hover,
+.ex-info.open .info-btn {
+  color: var(--accent);
+  border-color: var(--accent-glow);
+  background: var(--accent-dim);
+}
+.ex-cue {
+  display: none;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text);
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: rgba(148, 163, 184, 0.08);
+  border-left: 3px solid var(--accent);
+}
+.ex-info.open .ex-setup {
+  white-space: normal;
+}
+.ex-info.open .ex-cue:not(:empty) {
+  display: block;
+}
+.ex-prev {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.ex-prev:empty {
+  display: none;
+}
+.ex-suggest {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 2px 0 8px;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--card-border);
+  background: rgba(10, 14, 24, 0.6);
+  font-size: 13px;
+}
+.ex-suggest[hidden] {
+  display: none;
+}
+.ex-suggest[data-kind='up'] strong {
+  color: var(--success);
+}
+.ex-suggest[data-kind='down'] strong {
+  color: var(--warning);
+}
+.ex-suggest-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.ex-suggest-why {
+  font-size: 12px;
+  color: var(--muted);
+}

@@ -1,0 +1,81 @@
+<!-- TOOLS VIEW -->
+<section id="view-tools" class="app-view">
+  <div class="calc-box">
+    <strong class="calc-title"><i data-icon="flame" data-size="18"></i> Calorie Calculator</strong>
+    <p style="font-size: 12.5px; color: var(--muted)">
+      Your Basal Metabolic Rate (BMR) and maintenance calories (TDEE), using the Mifflin-St Jeor formula.
+    </p>
+    <div class="calc-row">
+      <div class="meta-field">
+        <label>Biological sex</label>
+        <select id="calcSex" class="machine-dropdown" style="width: 100%" data-on-change="computeTDEE">
+          <option value="male">Male (+5)</option>
+          <option value="female">Female (-161)</option>
+        </select>
+      </div>
+      <div class="meta-field">
+        <label>Age (years)</label><input type="number" id="calcAge" placeholder="23" data-on-input="computeTDEE" />
+      </div>
+    </div>
+    <div class="calc-row">
+      <div class="meta-field">
+        <label>Weight (kg)</label
+        ><input type="number" id="calcWeight" placeholder="72.5" step="0.1" data-on-input="computeTDEE" />
+      </div>
+      <div class="meta-field">
+        <label>Height (cm)</label><input type="number" id="calcHeight" placeholder="175" data-on-input="computeTDEE" />
+      </div>
+    </div>
+    <div class="meta-field">
+      <label>Activity multiplier (TDEE factor)</label>
+      <select id="calcActivity" class="machine-dropdown" style="width: 100%" data-on-change="computeTDEE">
+        <option value="1.2">Sedentary (Desk job, little exercise) [1.2]</option>
+        <option value="1.375">Lightly Active (1–3 days/week) [1.375]</option>
+        <option value="1.55" selected>Moderately Active (3–5 days/week) [1.55]</option>
+        <option value="1.725">Very Active (6–7 days/week hard training) [1.725]</option>
+        <option value="1.9">Extremely Active (Athlete / Physical job) [1.9]</option>
+      </select>
+    </div>
+    <div class="calc-result-box" id="calcTdeeResult">BMR: — | Maintenance: —</div>
+    <button
+      class="btn btn-primary"
+      data-on-click="syncCalculatorToProfile"
+      style="justify-content: center; margin-top: 4px"
+    >
+      <i data-icon="save"></i> Save Weight to Profile
+    </button>
+  </div>
+
+  <div class="calc-box">
+    <strong class="calc-title"><i data-icon="trophy" data-size="18"></i> One Rep Max</strong>
+    <p style="font-size: 12.5px; color: var(--muted)">Estimated with the Epley formula.</p>
+    <div class="calc-row">
+      <div class="meta-field">
+        <label>Weight (kg)</label
+        ><input type="number" inputmode="decimal" id="calc1rmWeight" value="80" data-on-input="compute1RM" />
+      </div>
+      <div class="meta-field">
+        <label>Reps done</label
+        ><input type="number" inputmode="numeric" id="calc1rmReps" value="8" data-on-input="compute1RM" />
+      </div>
+    </div>
+    <div class="calc-result-box" id="calc1rmResult">Est. 1RM: —</div>
+  </div>
+  <div class="calc-box">
+    <strong class="calc-title"><i data-icon="dumbbell" data-size="18"></i> Plate Loader</strong>
+    <p style="font-size: 12.5px; color: var(--muted)">Plates per side on an Olympic barbell.</p>
+    <div class="calc-row">
+      <div class="meta-field">
+        <label>Target total weight (kg)</label
+        ><input type="number" inputmode="decimal" id="plateTargetWeight" value="80" data-on-input="computePlates" />
+      </div>
+      <div class="meta-field">
+        <label>Bar weight (kg)</label
+        ><input type="number" inputmode="decimal" id="plateBarWeight" value="20" data-on-input="computePlates" />
+      </div>
+    </div>
+    <div class="calc-result-box" id="plateResultBox">Load each side: —</div>
+    <div id="plateBarbellWrap" class="svg-chart-wrap" style="margin-top: 4px"></div>
+    <div class="plate-breakdown" id="plateBreakdownText"></div>
+  </div>
+</section>

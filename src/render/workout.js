@@ -15,32 +15,30 @@ import { populateDayDropdown } from './exercises.js';
 import { populateCompoundSelect, populateHistoryDayFilter, populateHistoryExerciseDropdown } from './history.js';
 import { renderDayNav, renderHomeSummary } from './schedule.js';
 import { generateShareCard } from './share-card.js';
+import { addSetRow, formatPreset, renderSetRows } from './set-rows.js';
+import { checkStartWorkoutTimer, getRestMultiplier, resetWorkoutTimer, startRestTimer } from './timers.js';
+import { refreshPerformanceIndex, showSetBadge, updateLastHints } from './exercise-hints.js';
+import {
+  advanceFrom,
+  forgetOpenExercises,
+  refreshExerciseFocus,
+  restoreOpenExercises,
+  saveOpenExercises,
+  updateCardProgress
+} from './exercise-focus.js';
 import { clearSessionDraft, hasSessionDraft, saveSessionDraft } from '../session-draft.js';
 import { getHistory, requestPersistentStorage, setHistory } from '../history-store.js';
-import { esc, getL, isSafeId, setL } from '../storage.js';
+import { esc, isSafeId, setL } from '../storage.js';
 import { pushToCloud } from '../sync.js';
-import { buildPerformanceIndex, compareSet, formatSet, lastPerformance, suggestNext } from '../performance.js';
-import { fireConfetti, haptic, playBeep, showToast } from '../ui.js';
+import { fireConfetti, haptic, showToast } from '../ui.js';
 import { icon } from '../icons.js';
 
+// The workout screen: day views and exercise cards, the progress bar and stats, and saving a session.
+// Set rows, timers, last-time hints and which exercise is open live in the modules imported above.
+
 export let activeDay = '1';
-let restInterval = null;
 let confettiFired = false;
 let lastFinishedRecord = null;
-let perfIndex = new Map(); // past performance per exercise + equipment, from history
-let openCards = {}; // day -> category of the exercise the user is on
-export let hasStartedWorkout = false;
-export let workoutStartTime = null;
-let workoutTimerInterval = null;
-export function getRestMultiplier() {
-  const m = parseFloat(getL('iron_setting_rest_multiplier', '1'));
-  return isNaN(m) ? 1 : Math.max(0.5, Math.min(2.0, m));
-}
-export function updateRestMultiplierLabel() {
-  const val = document.getElementById('restMultiplier')?.value || '1';
-  const label = document.getElementById('restMultiplierValue');
-  if (label) label.textContent = parseFloat(val).toFixed(2) + 'x';
-}
 
 export function captureCurrentFormValues() {
   const data = {};
@@ -92,7 +90,7 @@ export function restoreFormValues(data) {
       }
     });
   }
-  openCards = {};
+  forgetOpenExercises();
   document.querySelectorAll('#dayViews .exercise-card').forEach(updateLastHints);
   updateSectionWorkingSetCounts();
   updateProgress();
@@ -100,49 +98,6 @@ export function restoreFormValues(data) {
   refreshExerciseFocus();
 }
 
-export function formatPreset(sets) {
-  if (!sets || !sets.length) return '';
-  return sets
-    .map(s => {
-      const w = s.weight === 0 ? 'BW' : s.weight === '' || s.weight == null ? '' : s.weight;
-      const r = s.reps == null ? '' : s.reps;
-      let txt = w + '×' + r;
-      if (s.tag && s.tag !== 'Working') txt = `[${s.tag}] ` + txt;
-      return txt;
-    })
-    .join(', ');
-}
-
-const SET_TAGS = ['Warmup', 'Working', 'Drop Set', 'Failure'];
-
-// Cells of one set row: number (tap for tag/RIR) · weight · reps · done, plus the tag/RIR panel
-// that wraps onto its own line when the row is expanded. `s` is a preset/default set or {}.
-function setRowCells(prefix, n, s, rest) {
-  const tag = s.tag || 'Working';
-  const rir = s.rir == null ? 1 : s.rir;
-  const wVal = s.weight === 0 ? '0' : s.weight === '' || s.weight == null ? '' : s.weight;
-  const rVal = s.reps == null ? '' : s.reps;
-  const tagOptions = SET_TAGS.map(t => `<option value="${t}" ${t === tag ? 'selected' : ''}>${t}</option>`).join('');
-  return `<td class="set-num-cell"><button type="button" class="set-num-btn" data-on-click="toggleSetDetails" data-args="${args('$el')}" aria-label="Set ${n}: tag and RIR" aria-expanded="false">${n}</button></td>
-    <td><div class="stepper"><button type="button" class="stepper-btn" data-on-click="stepValue" data-args="${args(`${prefix}_w_${n}`, -2.5)}" aria-label="Less weight">−</button><input type="number" inputmode="decimal" class="input-field set-weight" id="${prefix}_w_${n}" value="${esc(wVal)}" placeholder="kg" data-on-focusin="selectText" data-on-input="checkStartWorkoutTimer" data-args="${args('$el')}"><button type="button" class="stepper-btn" data-on-click="stepValue" data-args="${args(`${prefix}_w_${n}`, 2.5)}" aria-label="More weight">+</button></div></td>
-    <td><div class="stepper"><button type="button" class="stepper-btn" data-on-click="stepValue" data-args="${args(`${prefix}_r_${n}`, -1)}" aria-label="Fewer reps">−</button><input type="number" inputmode="numeric" class="input-field set-reps" id="${prefix}_r_${n}" value="${esc(rVal)}" placeholder="reps" data-on-focusin="selectText" data-on-input="checkStartWorkoutTimer" data-args="${args('$el')}"><button type="button" class="stepper-btn" data-on-click="stepValue" data-args="${args(`${prefix}_r_${n}`, 1)}" aria-label="More reps">+</button></div></td>
-    <td class="set-done-cell"><button type="button" class="check-btn" data-on-click="toggleSet" data-args="${args('$el', rest)}" aria-label="Set ${n} done">${icon('check', { size: 22 })}</button></td>
-    <td class="set-last"><span class="set-last-text"></span><span class="set-badge"></span></td>
-    <td class="set-extra">
-      <label>Tag <select class="set-tag" id="${prefix}_t_${n}">${tagOptions}</select></label>
-      <label>RIR <input type="number" inputmode="numeric" class="input-field set-rir" id="${prefix}_ri_${n}" value="${esc(rir)}"></label>
-    </td>`;
-}
-
-export function renderSetRows(prefix, sets, rest) {
-  return sets.map((s, i) => `<tr>${setRowCells(prefix, i + 1, s || {}, rest)}</tr>`).join('');
-}
-
-export function toggleSetDetails(btn) {
-  const tr = btn.closest('tr');
-  const open = tr.classList.toggle('expanded');
-  btn.setAttribute('aria-expanded', String(open));
-}
 export function getSupersetDecorations(category) {
   const linked = getLinkedCategory(category);
   const prev = getPreviousCategory(category);
@@ -285,12 +240,12 @@ export function renderAll() {
   // A sync or an edit can re-render mid-workout: keep what the user has entered so far.
   const formData = hasSessionDraft() ? captureCurrentFormValues() : null;
   const focusedId = container.contains(document.activeElement) ? document.activeElement.id : '';
-  perfIndex = buildPerformanceIndex(getHistory());
+  refreshPerformanceIndex();
   container.innerHTML = days.map(d => renderDay(d)).join('');
   container.querySelectorAll('.exercise-card').forEach(updateLastHints);
-  const keepOpen = openCards; // a re-render mid-workout keeps the exercise the user is on
+  const keepOpen = saveOpenExercises(); // a re-render mid-workout keeps the exercise the user is on
   if (formData) restoreFormValues(formData);
-  openCards = keepOpen;
+  restoreOpenExercises(keepOpen);
   refreshExerciseFocus();
   if (focusedId) document.getElementById(focusedId)?.focus({ preventScroll: true });
   renderDayNav();
@@ -371,38 +326,6 @@ export function onVariationChange(category, prefix, select) {
   updateProgress();
 }
 
-export function stepValue(id, delta) {
-  const input = document.getElementById(id);
-  if (!input) return;
-  const val = parseFloat(input.value) || 0;
-  input.value = Math.max(0, val + delta);
-  checkStartWorkoutTimer();
-}
-
-export function addSetRow(tableId, prefix, rest, update = true) {
-  const table = document.getElementById(tableId);
-  if (!table) return;
-  const tbody = table.querySelector('tbody');
-  const tr = document.createElement('tr');
-  tr.innerHTML = setRowCells(prefix, tbody.children.length + 1, {}, rest);
-  tbody.appendChild(tr);
-  const card = table.closest('.exercise-card');
-  if (card) updateLastHints(card);
-  if (update) {
-    updateSectionWorkingSetCounts();
-    updateProgress();
-  }
-}
-
-export function removeSetRow(tableId) {
-  const table = document.getElementById(tableId);
-  if (!table) return;
-  const tbody = table.querySelector('tbody');
-  if (tbody.children.length > 1) tbody.removeChild(tbody.lastElementChild);
-  updateSectionWorkingSetCounts();
-  updateProgress();
-}
-
 export function switchDayView(day, resetSession = false) {
   activeDay = String(day);
   setL('iron_active_day', activeDay);
@@ -423,32 +346,10 @@ export function switchDayView(day, resetSession = false) {
   confettiFired = false;
 
   if (resetSession) {
-    hasStartedWorkout = false;
-    workoutStartTime = null;
-    clearInterval(workoutTimerInterval);
-    document.getElementById('timeElapsed').textContent = '00:00:00';
+    resetWorkoutTimer();
     if (document.getElementById('sessionNotes')) document.getElementById('sessionNotes').value = '';
     if (hasSessionDraft()) saveSessionDraft();
   }
-}
-
-export function checkStartWorkoutTimer() {
-  if (!hasStartedWorkout) startWorkoutTimer(Date.now());
-}
-
-export function startWorkoutTimer(startTime) {
-  hasStartedWorkout = true;
-  workoutStartTime = startTime;
-  clearInterval(workoutTimerInterval);
-  const tick = () => {
-    const elapsed = Math.max(0, Math.floor((Date.now() - workoutStartTime) / 1000));
-    const h = String(Math.floor(elapsed / 3600)).padStart(2, '0');
-    const m = String(Math.floor((elapsed % 3600) / 60)).padStart(2, '0');
-    const s = String(elapsed % 60).padStart(2, '0');
-    document.getElementById('timeElapsed').textContent = `${h}:${m}:${s}`;
-  };
-  tick();
-  workoutTimerInterval = setInterval(tick, 1000);
 }
 
 export function updateSectionWorkingSetCounts() {
@@ -515,17 +416,6 @@ export function updateProgress() {
   if (completed < total) confettiFired = false;
 }
 
-// Each card's 'done/total' label and its done state.
-export function updateCardProgress(day) {
-  dayCards(day).forEach(card => {
-    const rows = card.querySelectorAll('tbody tr').length;
-    const done = card.querySelectorAll('.check-btn.completed').length;
-    const label = card.querySelector('.ex-progress');
-    if (label) label.textContent = `${done}/${rows}`;
-    card.classList.toggle('done', rows > 0 && done === rows);
-  });
-}
-
 export function toggleSet(btn, restSeconds) {
   checkStartWorkoutTimer();
   btn.classList.toggle('completed');
@@ -545,32 +435,6 @@ export function toggleSet(btn, restSeconds) {
     if (linked) effectiveRest = Math.max(effectiveRest, getRestForCategory(linked));
     startRestTimer(Math.round(effectiveRest * getRestMultiplier()));
   }
-}
-
-export function startRestTimer(seconds) {
-  clearInterval(restInterval);
-  const modal = document.getElementById('restModal');
-  const display = document.getElementById('restTimerDisplay');
-  modal.classList.add('active');
-  const end = Date.now() + seconds * 1000;
-  function tick() {
-    const remaining = Math.max(0, Math.ceil((end - Date.now()) / 1000));
-    const m = String(Math.floor(remaining / 60)).padStart(2, '0');
-    const s = String(remaining % 60).padStart(2, '0');
-    display.textContent = `${m}:${s}`;
-    if (remaining <= 0) {
-      clearInterval(restInterval);
-      modal.classList.remove('active');
-      playBeep();
-    }
-  }
-  tick();
-  restInterval = setInterval(tick, 250);
-}
-
-export function cancelRestTimer() {
-  clearInterval(restInterval);
-  document.getElementById('restModal').classList.remove('active');
 }
 
 export function finishCurrentDayWorkout() {
@@ -682,132 +546,4 @@ export function showCelebration() {
   `;
   overlay.classList.add('active');
   fireConfetti({ particleCount: 140, spread: 90, origin: { y: 0.55 } });
-}
-
-// ---- Last time's numbers and set feedback.
-function cardPerformance(card) {
-  const variation = card.querySelector('.machine-dropdown')?.value || '';
-  return lastPerformance(perfIndex, card.dataset.category, variation);
-}
-
-const fmtKg = w => `${+w.toFixed(2)} kg`;
-
-// The suggestion for this session from last time on the same equipment (see suggestNext).
-function updateSuggestion(card, entry) {
-  const box = card.querySelector('.ex-suggest');
-  if (!box) return;
-  const next = suggestNext(entry, card.dataset.scheme);
-  box.hidden = !next;
-  if (!next) return;
-  const arrow = { up: '↑', down: '↓', reps: '→', hold: '→' }[next.kind];
-  const target = next.weight > 0 ? `${fmtKg(next.weight)} × ${next.reps}` : `Bodyweight × ${next.reps}`;
-  box.dataset.kind = next.kind;
-  box.innerHTML = `<span class="ex-suggest-text"><strong>${arrow} Today: ${esc(target)}</strong>
-      <span class="ex-suggest-why">${esc(next.why)}</span></span>
-    ${next.weight > 0 ? `<button type="button" class="btn-xs" data-on-click="useSuggestion" data-args="${args('$el', next.weight)}">Use</button>` : ''}`;
-}
-
-// Puts the suggested weight in this exercise's working sets that aren't done yet.
-export function useSuggestion(btn, weight) {
-  const card = btn.closest('.exercise-card');
-  card.querySelectorAll('tbody tr').forEach(tr => {
-    const tag = tr.querySelector('.set-tag')?.value;
-    if (tr.querySelector('.check-btn')?.classList.contains('completed') || tag === 'Warmup' || tag === 'Drop Set')
-      return;
-    const input = tr.querySelector('.set-weight');
-    if (input) input.value = weight;
-  });
-  // The tap itself saves the in-progress session (session-draft.js listens for clicks).
-}
-
-// Shows what each set was last time on the same equipment, and what to aim for today.
-export function updateLastHints(card) {
-  const entry = cardPerformance(card);
-  updateSuggestion(card, entry);
-  card.querySelectorAll('tbody tr').forEach((tr, i) => {
-    const text = tr.querySelector('.set-last-text');
-    const last = entry && entry.sets[i];
-    if (text) text.textContent = last ? `Last: ${formatSet(last)}` : '';
-    showSetBadge(tr, entry);
-  });
-}
-
-// 'PR' or '↑' next to a finished set that beats the best ever or last time.
-export function showSetBadge(tr, entry) {
-  const badge = tr && tr.querySelector('.set-badge');
-  if (!badge) return;
-  const card = tr.closest('.exercise-card');
-  const done = tr.querySelector('.check-btn')?.classList.contains('completed');
-  const index = [...tr.parentElement.children].indexOf(tr);
-  const result =
-    done && card
-      ? compareSet(
-          entry === undefined ? cardPerformance(card) : entry,
-          index,
-          tr.querySelector('.set-weight')?.value,
-          tr.querySelector('.set-reps')?.value
-        )
-      : null;
-  badge.textContent = result === 'pr' ? 'PR' : result === 'up' ? '↑ Beat last time' : '';
-  badge.dataset.kind = result || '';
-  return result;
-}
-
-// ---- One exercise open at a time (plus its superset partner), so the day isn't one long scroll.
-function dayCards(day) {
-  return [...document.querySelectorAll(`#view-day-${day} .exercise-card`)];
-}
-
-// Opens `category` (or, if it's not on this day, the first unfinished exercise) and collapses the rest.
-export function focusExercise(day, category, scroll = false) {
-  const cards = dayCards(day);
-  const target =
-    cards.find(c => c.dataset.category === category) || cards.find(c => !c.classList.contains('done')) || null;
-  const partner = target ? getLinkedCategory(target.dataset.category) : null;
-  cards.forEach(card => {
-    const open = card === target || (partner && card.dataset.category === partner);
-    card.classList.toggle('collapsed', !open);
-    card.classList.toggle('highlight', open);
-    card.querySelector('.ex-header')?.setAttribute('aria-expanded', String(open));
-  });
-  openCards[day] = target ? target.dataset.category : null;
-  if (scroll && target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-}
-
-export function refreshExerciseFocus() {
-  Object.keys(WORKOUT).forEach(day => {
-    updateCardProgress(day);
-    focusExercise(day, openCards[day]);
-  });
-}
-
-export function onExerciseHeaderKey(header, event) {
-  if (event.key !== 'Enter' && event.key !== ' ') return;
-  event.preventDefault();
-  toggleExerciseCard(header);
-}
-
-export function toggleExerciseCard(header) {
-  if (document.body.classList.contains('edit-mode')) return; // everything stays open while editing
-  const card = header.closest('.exercise-card');
-  const day = card.closest('.day-view').id.replace('view-day-', '');
-  if (card.classList.contains('collapsed')) {
-    focusExercise(day, card.dataset.category);
-  } else {
-    card.classList.add('collapsed');
-    card.classList.remove('highlight');
-    header.setAttribute('aria-expanded', 'false');
-    openCards[day] = null;
-  }
-}
-
-// After an exercise's last set: open the next unfinished one (wrapping around), or none if all are done.
-function advanceFrom(card) {
-  if (!card.classList.contains('done') || card.classList.contains('collapsed')) return;
-  const day = card.closest('.day-view').id.replace('view-day-', '');
-  const cards = dayCards(day);
-  const i = cards.indexOf(card);
-  const next = [...cards.slice(i + 1), ...cards.slice(0, i)].find(c => !c.classList.contains('done'));
-  if (next) focusExercise(day, next.dataset.category, true);
-  else focusExercise(day, null);
 }

@@ -1,13 +1,6 @@
 import { WORKOUT } from './model.js';
-import {
-  activeDay,
-  captureCurrentFormValues,
-  hasStartedWorkout,
-  restoreFormValues,
-  startWorkoutTimer,
-  switchDayView,
-  workoutStartTime
-} from './render/workout.js';
+import { activeDay, captureCurrentFormValues, restoreFormValues, switchDayView } from './render/workout.js';
+import { hasStartedWorkout, startWorkoutTimer, workoutStartTime } from './render/timers.js';
 import { getJ, getL, setJ } from './storage.js';
 import { SESSION_DRAFT_KEY } from './sync.js';
 

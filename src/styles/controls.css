@@ -1,0 +1,129 @@
+/* Buttons, rest timer, modals. */
+
+.btn {
+  padding: 12px 20px;
+  font-weight: 700;
+  font-size: 13.5px;
+  border-radius: var(--radius-sm);
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.25s ease;
+  min-height: 48px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+.btn-primary {
+  background: var(--accent);
+  color: #07090e;
+  box-shadow: 0 8px 25px var(--accent-glow);
+}
+.btn-primary:hover {
+  background: #fff;
+  transform: translateY(-2px);
+  box-shadow: 0 10px 30px var(--accent-glow);
+}
+.btn-secondary {
+  background: rgba(30, 41, 59, 0.85);
+  color: #e2e8f0;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+.btn-secondary:hover {
+  background: rgba(51, 65, 85, 0.95);
+  color: #fff;
+  transform: translateY(-2px);
+}
+.btn-warning {
+  background: rgba(251, 191, 36, 0.16);
+  color: #fcd34d;
+  border: 1px solid rgba(251, 191, 36, 0.35);
+}
+.btn-warning:hover {
+  background: rgba(251, 191, 36, 0.25);
+  transform: translateY(-2px);
+}
+.btn-info {
+  background: rgba(2, 132, 199, 0.85);
+  color: #fff;
+}
+.btn-info:hover {
+  background: var(--accent);
+  color: #07090e;
+  transform: translateY(-2px);
+}
+.btn-danger {
+  background: rgba(239, 68, 68, 0.16);
+  color: #fca5a5;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+}
+.btn-danger:hover {
+  background: rgba(239, 68, 68, 0.25);
+  transform: translateY(-2px);
+}
+.btn:active,
+.btn-xs:active,
+.bottom-tab:active,
+.check-btn:active {
+  transform: scale(0.96) !important;
+}
+
+.rest-modal {
+  position: fixed;
+  bottom: 84px;
+  right: 20px;
+  background: var(--card-solid);
+  border: 1px solid var(--accent-glow);
+  border-radius: var(--radius-md);
+  padding: 16px 22px;
+  display: none;
+  align-items: center;
+  gap: 14px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7);
+  z-index: 95;
+  backdrop-filter: blur(18px);
+}
+.rest-modal.active {
+  display: flex;
+  animation: slideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes slideUp {
+  from {
+    transform: translateY(24px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+.rest-timer-val {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--accent);
+}
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(5, 6, 9, 0.88);
+  backdrop-filter: blur(14px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 20px 14px;
+  z-index: 100;
+  overflow-y: auto;
+  animation: fadeIn 0.25s ease;
+}
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.modal-overlay.active {
+  display: flex;
+}
