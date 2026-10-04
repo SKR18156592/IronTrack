@@ -6,17 +6,18 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 vi.stubEnv('VITE_TURNSTILE_SITE_KEY', 'test-site-key');
 vi.mock('../src/ui.js', async importOriginal => ({ ...(await importOriginal()), showToast: vi.fn() }));
 
-let onToken;
+let onToken, onError;
 window.turnstile = {
   render: vi.fn((el, opts) => {
     onToken = opts.callback;
+    onError = opts['error-callback'];
     return 'widget-1';
   }),
   reset: vi.fn()
 };
 
 const captcha = await import('../src/captcha.js');
-const { handleAuthSubmit, requestPasswordReset, setSyncContext } = await import('../src/sync.js');
+const { handleAuthSubmit, openSignIn, requestPasswordReset, setSyncContext } = await import('../src/sync.js');
 
 const auth = {
   signInWithPassword: vi.fn(async () => ({
@@ -73,5 +74,26 @@ describe('the bot check', () => {
       redirectTo: location.origin + location.pathname,
       captchaToken: 'token-xyz'
     });
+  });
+
+  it('says when it could not load, right away and on submit', async () => {
+    openSignIn(); // registers the failure handler, as opening the sign-in form does
+    expect(onError('110200')).toBe(true);
+    expect(el('authMsg').style.display).toBe('block');
+    expect(el('authMsg').textContent).toMatch(/couldn't load \(error 110200\).*reload the page/);
+    el('authMsg').style.display = 'none';
+    await handleAuthSubmit({ preventDefault() {} });
+    expect(auth.signInWithPassword).not.toHaveBeenCalled();
+    expect(el('authMsg').textContent).toMatch(/couldn't load \(error 110200\)/);
+  });
+
+  it('clears the failure once a retry succeeds', async () => {
+    openSignIn();
+    onError('300030');
+    expect(captcha.captchaFailure()).toBe('300030');
+    onToken('token-ok');
+    expect(captcha.captchaFailure()).toBe('');
+    expect(el('authMsg').style.display).toBe('none');
+    expect(captcha.captchaReady()).toBe(true);
   });
 });
