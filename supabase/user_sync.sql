@@ -2,6 +2,7 @@
 --   user_sync         one row per user: settings, customizations, profile
 --   workout_sessions  one row per logged workout session
 --   nutrition_log     one row per nutrition log entry (food, water, body weight)
+--   delete_own_account()  lets a signed-in user delete their own account and data
 -- Idempotent: safe to run on a project where the tables already exist.
 -- It does not change existing columns; it only adds missing ones, enables RLS,
 -- replaces the policies below, and adds user_sync to realtime. workout_sessions is left out
@@ -144,8 +145,24 @@ create policy "nutrition_log_update_own" on public.nutrition_log
 create policy "nutrition_log_delete_own" on public.nutrition_log
   for delete to authenticated using (user_id = (select auth.uid()));
 
+-- Account deletion: the app's "Delete account" button calls this. It deletes only the signed-in user;
+-- user_sync, workout_sessions and nutrition_log rows go with it (on delete cascade). security definer
+-- lets it delete from auth.users, which users can't touch directly.
+create or replace function public.delete_own_account() returns void
+language plpgsql security definer set search_path = '' as $$
+begin
+  if auth.uid() is null then
+    raise exception 'not signed in';
+  end if;
+  delete from auth.users where id = auth.uid();
+end $$;
+
+revoke all on function public.delete_own_account() from public, anon;
+grant execute on function public.delete_own_account() to authenticated;
+
 -- Verify afterwards:
 --   select relrowsecurity from pg_class where relname = 'user_sync';   -- expect: true
 --   select policyname, cmd from pg_policies where tablename = 'user_sync';
 --   select relrowsecurity from pg_class where relname = 'workout_sessions';  -- expect: true
+--   select proname, prosecdef from pg_proc where proname = 'delete_own_account';  -- expect: one row, true
 --   select relrowsecurity from pg_class where relname = 'nutrition_log';     -- expect: true

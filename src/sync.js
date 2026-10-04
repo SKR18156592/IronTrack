@@ -1,4 +1,4 @@
-import { confirmDialog } from './dialog.js';
+import { alertDialog, confirmDialog } from './dialog.js';
 import { createClient } from '@supabase/supabase-js';
 import { clearHistory, flushHistory, loadHistory } from './history-store.js';
 import {
@@ -332,6 +332,61 @@ export async function handleSignOut() {
   clearLocalUserData();
   localStorage.removeItem(AUTH_SKIPPED_KEY);
   await Promise.all([flushHistory(), flushNutritionLog()]); // the reload must not cut off the wipe
+  window.location.reload();
+}
+
+// Deletes the signed-in account and everything synced to it (delete_own_account in supabase/user_sync.sql),
+// then clears this device, as signing out does.
+export async function deleteAccount() {
+  if (!currentUser || !supabaseClient) return;
+  if (!navigator.onLine) {
+    showToast('Connect to the internet to delete your account.', 'error');
+    return;
+  }
+  const confirmed = await confirmDialog(
+    `Delete the account ${currentUser.email}?\n\n` +
+      'This permanently deletes your synced workouts, nutrition log, profile and settings, and clears them from ' +
+      "this device. It can't be undone. To keep a copy, cancel and export a full backup from Settings first.\n\n" +
+      'Type DELETE to confirm.',
+    { confirmLabel: 'Delete account', danger: true, typeToConfirm: 'DELETE' }
+  );
+  if (!confirmed) return;
+
+  // Nothing may upload for an account that's about to disappear.
+  isSigningOut = true;
+  clearTimeout(pushTimer);
+  pushTimer = null;
+  while (pushInFlight) await pushInFlight;
+
+  const { error } = await supabaseClient.rpc('delete_own_account');
+  if (error) {
+    isSigningOut = false;
+    if (isSyncDirty()) pushToCloud(); // resume the upload stopped above
+    const missing = error.code === 'PGRST202' || /could not find the function/i.test(error.message || '');
+    if (missing) console.error('delete_own_account is missing: run supabase/user_sync.sql.');
+    await alertDialog(
+      missing
+        ? "Account deletion isn't available on this server yet. Nothing was deleted."
+        : `Your account couldn't be deleted (${error.message || 'unknown error'}). Nothing was deleted. Try again later.`
+    );
+    return;
+  }
+
+  // The account is gone, and with it the session: tidy up locally and start over, signed out.
+  currentUser = null;
+  if (syncChannel) {
+    supabaseClient.removeChannel(syncChannel);
+    syncChannel = null;
+  }
+  try {
+    await supabaseClient.auth.signOut({ scope: 'local' });
+  } catch (e) {
+    console.warn('Sign-out after account deletion:', e);
+  }
+  clearLocalUserData();
+  localStorage.removeItem(AUTH_SKIPPED_KEY);
+  await Promise.all([flushHistory(), flushNutritionLog()]); // the reload must not cut off the wipe
+  await alertDialog('Your account and its synced data have been deleted.');
   window.location.reload();
 }
 
