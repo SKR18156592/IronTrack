@@ -1,5 +1,5 @@
 import { bmr, tdee } from '../nutrition-targets.js';
-import { updateRestMultiplierLabel } from './workout.js';
+import { updateRestMultiplierLabel } from './timers.js';
 import { getL, setL } from '../storage.js';
 import { loadTheme } from '../ui.js';
 

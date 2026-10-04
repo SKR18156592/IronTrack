@@ -1,0 +1,100 @@
+<section id="view-workout" class="app-view active">
+  <details class="schedule-card week-strip">
+    <summary class="week-summary">
+      <span class="week-title">This week</span>
+      <span class="week-dots" id="weekDots"></span>
+      <span class="week-count" id="microcycleSummary">3 lift • 4 rest</span>
+      <span class="week-chevron" aria-hidden="true">▾</span>
+    </summary>
+    <div class="schedule-ribbon" id="scheduleRibbon"></div>
+    <button
+      class="btn-xs week-edit"
+      style="color: var(--accent); border-color: var(--accent-glow)"
+      data-on-click="openMicrocycleModal"
+    >
+      <i data-icon="settings" data-size="14"></i> Edit Microcycle
+    </button>
+  </details>
+
+  <div class="day-nav-wrapper" id="dayNavContainer"></div>
+
+  <div class="header-card">
+    <div class="header-top">
+      <div class="title-group">
+        <div class="title-badges">
+          <span class="badge-day" id="currentDayBadge">Day 1 Focus</span>
+          <button
+            class="btn-xs edit-only"
+            id="deleteSplitBtn"
+            style="color: var(--coral); border-color: rgba(255, 77, 77, 0.35); padding: 3px 8px; font-size: 10.5px"
+            data-on-click="deleteCurrentSplit"
+          >
+            <i data-icon="trash" data-size="13"></i> Delete Day
+          </button>
+        </div>
+        <h1 id="currentDayTitle">⚡ Chest • Shoulders • Biceps</h1>
+        <p id="currentDaySub">Push Hypertrophy &amp; Arm Specialization</p>
+      </div>
+      <button class="btn-xs edit-toggle" id="editModeBtn" aria-pressed="false" data-on-click="toggleEditMode">
+        <i data-icon="pencil" data-size="14"></i> <span class="edit-toggle-label">Edit</span>
+      </button>
+    </div>
+
+    <details class="session-details">
+      <summary>
+        <i data-icon="notes" data-size="16"></i> Session details
+        <span class="session-details-hint">date, body weight, energy, sleep, notes</span>
+      </summary>
+      <div class="session-meta">
+        <div class="meta-field">
+          <label><i data-icon="calendar" data-size="13"></i> Date</label><input type="date" id="sessionDate" />
+        </div>
+        <div class="meta-field">
+          <label><i data-icon="scale" data-size="13"></i> Weight (kg)</label
+          ><input type="number" id="bodyWeight" placeholder="72.5" step="0.1" data-on-input="saveProfileData" />
+        </div>
+        <div class="meta-field">
+          <label><i data-icon="flame" data-size="13"></i> Energy (1-10)</label
+          ><input type="number" id="energyLevel" min="1" max="10" placeholder="8" />
+        </div>
+        <div class="meta-field">
+          <label><i data-icon="moon" data-size="13"></i> Sleep (hrs)</label
+          ><input type="number" id="sleepHours" placeholder="7.5" step="0.5" />
+        </div>
+      </div>
+      <div class="meta-field">
+        <label><i data-icon="notes" data-size="13"></i> Session Notes &amp; Mood</label>
+        <textarea
+          id="sessionNotes"
+          rows="2"
+          placeholder="e.g., Felt strong today, great sleep or nagging shoulder stiffness..."
+        ></textarea>
+      </div>
+    </details>
+  </div>
+
+  <!-- Stays pinned while scrolling through the exercises -->
+  <div class="session-bar" id="statBar">
+    <div class="session-bar-row">
+      <span class="session-timer"><i data-icon="timer" data-size="17"></i> <span id="timeElapsed">00:00:00</span></span>
+      <span class="session-progress-text" id="progressText">0 / 0 sets</span>
+      <span class="stat-pill lime"><strong id="statsTonnage">0 kg</strong></span>
+    </div>
+    <div class="progress-bar-bg"><div class="progress-bar-fill" id="progressBar"></div></div>
+  </div>
+
+  <div id="dayViews"></div>
+
+  <!-- Bottom action bar -->
+  <div class="bottom-bar">
+    <button class="btn btn-secondary" data-on-click="openHistoryModal"><i data-icon="history"></i> Log History</button>
+    <button class="btn btn-info edit-only" data-on-click="openAddExModal"><i data-icon="plus"></i> Add Exercise</button>
+    <button class="btn btn-warning edit-only" data-on-click="openAddSecModal">
+      <i data-icon="list-plus"></i> Add Section
+    </button>
+    <button class="btn btn-secondary" data-on-click="resetCurrentDayForm"><i data-icon="reset"></i> Reset Day</button>
+    <button class="btn btn-primary" data-on-click="finishCurrentDayWorkout">
+      <i data-icon="save"></i> Save Session
+    </button>
+  </div>
+</section>

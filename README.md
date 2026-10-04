@@ -49,12 +49,12 @@ at the gym, and track progress over time. Your data syncs across devices through
 
 ```text
 irontrack-pwa/
-├── index.html                 # Markup; loads src/styles.css and src/main.js
+├── index.html                 # Page shell; includes src/partials/, loads src/styles.css and src/main.js
 ├── src/
 │   ├── main.js                # Startup, event listeners, service worker registration
 │   ├── actions.js             # Dispatches data-on-* attributes to exported functions
 │   ├── dialog.js              # In-app confirm and alert dialogs
-│   ├── styles.css             # All app styles
+│   ├── styles.css             # Imports src/styles/*.css in cascade order
 │   ├── sync.js                # Supabase client, auth, upload/download, realtime
 │   ├── history-merge.js       # Pure workout-history merge (by session id + tombstones)
 │   ├── session-draft.js       # In-progress workout draft (survives reloads)
@@ -73,7 +73,10 @@ irontrack-pwa/
 │   ├── sw.js                  # Service worker: offline caching (built to dist/sw.js)
 │   ├── ui.js                  # Toasts, tabs, theme, sounds, full UI refresh
 │   ├── data/                  # Exercise catalog, nutrition plans, body artwork
-│   └── render/                # One module per screen or feature
+│   ├── partials/              # index.html blocks: sign-in, each tab, the modals (<!-- @include x.html -->)
+│   ├── styles/                # Styles, one file per area
+│   └── render/                # One module per screen or feature (workout.js plus set-rows, timers,
+│                              #   exercise-hints and exercise-focus for the workout screen)
 ├── tests/                     # Vitest unit tests
 ├── e2e/                       # Playwright smoke tests
 ├── public/
@@ -81,7 +84,7 @@ irontrack-pwa/
 │   └── *.png, *.svg           # App icons
 ├── supabase/
 │   └── user_sync.sql          # The tables, RLS policies, and realtime setup the app uses
-├── vite.config.js             # Vite + vite-plugin-pwa (service worker build)
+├── vite.config.js             # Vite, the HTML include plugin, vite-plugin-pwa (service worker build)
 └── package.json               # Vite scripts
 ```
 
@@ -89,7 +92,7 @@ irontrack-pwa/
 
 ### Prerequisites
 
-- Node.js 22.12+ (`.nvmrc` pins 22)
+- Node.js 22.13 or later 22.x (`package.json` `engines`; `.nvmrc` pins 22)
 - A [Supabase](https://supabase.com/dashboard) project
 
 ### 1. Set up the database
@@ -145,8 +148,8 @@ To turn it off, reverse the order: switch it off in Supabase first, then remove 
 ### 3. Point the app at your project
 
 Copy `.env.example` to `.env.local` and set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`
-(**Project Settings → API**). Vite builds them into the bundle. Without them, the app uses the project
-hard-coded at the top of `src/sync.js`. The anon key is public by design: Row-Level Security protects
+(**Project Settings → API**). Vite builds them into the bundle. Without them there is no sign-in or
+sync: the app keeps everything on the device. The anon key is public by design: Row-Level Security protects
 the data, so never put the `service_role` key here.
 
 ### 4. Run it
@@ -211,8 +214,9 @@ in, workout sessions are mirrored to `workout_sessions` (one row each) and every
 `npm run build` builds the service worker from `src/sw.js` and fills in the list of every file in
 `dist/` (the hashed bundles included), each with a revision. The worker precaches that list on
 install, so `index.html` and the scripts it loads always come from the same build. A new deploy
-installs as a new worker that downloads only the files that changed; the app switches to it on the
-next launch. There is no cache version to bump by hand.
+installs as a new worker that downloads only the files that changed. It takes over right away
+(`skipWaiting` and `clients.claim`), but a page that's already open keeps running the code it loaded;
+the new version shows on the next launch or reload. There is no cache version to bump by hand.
 
 - **Page loads:** the precached `index.html`, so the app starts offline.
 - **Google Fonts:** cached the first time the page loads them under the worker (stale-while-revalidate).
@@ -236,8 +240,8 @@ Pages, …):
 
 - **Build command:** `npm run build`
 - **Publish directory:** `dist`
-- **Environment variables (optional):** `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`, to build
-  against a different Supabase project than the default in `src/sync.js`.
+- **Environment variables:** `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` (required for sign-in
+  and sync; without them the build is device-only), plus the optional `VITE_TURNSTILE_SITE_KEY`.
 
 Serve the site from the domain root: the service worker and manifest use root-relative paths (`/sw.js`, `/`).
 

@@ -95,6 +95,7 @@ export function handleSaveCustomExercise(e) {
   const title = document.getElementById('exTitle').value.trim();
   const target = document.getElementById('exTarget').value.trim();
   const exerciseType = document.getElementById('exType').value;
+  const muscleGroup = document.getElementById('exMuscleGroup').value;
   const varLabel = document.getElementById('exVarLabel').value.trim();
   const scheme = document.getElementById('exScheme').value.trim();
 
@@ -108,6 +109,7 @@ export function handleSaveCustomExercise(e) {
     title,
     target,
     exerciseType,
+    ...(muscleGroup && { muscleGroup }), // unset: guessed from the title and target (model.js)
     varLabel,
     scheme,
     rest,
