@@ -46,7 +46,8 @@ export default defineConfig({
       injectRegister: false, // src/main.js registers it
       manifest: false, // public/manifest.webmanifest is used as is
       injectManifest: {
-        globPatterns: ['**/*.{js,css,html,svg,png,webmanifest}']
+        globPatterns: ['**/*.{js,css,html,svg,png,webmanifest}'],
+        globIgnores: ['**/og-image.png'] // only for link previews; not worth caching offline
       }
     })
   ]
