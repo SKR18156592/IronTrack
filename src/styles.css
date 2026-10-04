@@ -3004,6 +3004,12 @@ body:not(.edit-mode) .exercise-card.collapsed .ex-chevron {
 .auth-link[hidden] {
   display: none;
 }
+.auth-captcha:empty {
+  display: none;
+}
+.auth-captcha {
+  min-height: 65px;
+}
 .auth-card {
   max-width: 400px;
   text-align: center;
