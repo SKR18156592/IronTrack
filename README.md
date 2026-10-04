@@ -3,6 +3,10 @@
 IronTrack is an installable, offline-first workout tracker. Plan a weekly training split, log sets
 at the gym, and track progress over time. Your data syncs across devices through Supabase.
 
+**Open the app:** [track-sr-8532.vercel.app](https://track-sr-8532.vercel.app/) ·
+**Website:** [irontrack-landing.vercel.app](https://irontrack-landing.vercel.app/)
+([source](https://github.com/SKR18156592/irontrack-landing))
+
 ## Features
 
 - **First-run setup:** a short, skippable welcome asks for your age, height, weight, goal and
