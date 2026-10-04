@@ -15,6 +15,15 @@
   font-size: 15px;
 }
 
+.dialog-input {
+  width: 100%;
+  margin-top: 14px;
+  padding: 12px;
+  text-align: left;
+  font-family: 'JetBrains Mono', monospace;
+  letter-spacing: 0.08em;
+}
+
 .calc-box,
 .settings-card,
 .placeholder-card,

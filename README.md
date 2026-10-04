@@ -109,6 +109,8 @@ In the Supabase dashboard, open **SQL Editor** and run `supabase/user_sync.sql`.
 - creates the `nutrition_log` table (one row per food, water or body weight entry)
 - enables Row-Level Security so each signed-in user can only read and write their own rows
 - adds `user_sync` to the `supabase_realtime` publication
+- creates `delete_own_account()`, which the app's **Delete account** button calls. It deletes only the
+  signed-in user, and their rows in all three tables go with it
 
 The script is idempotent, so it's safe to re-run.
 
@@ -212,6 +214,10 @@ in, workout sessions are mirrored to `workout_sessions` (one row each) and every
   once `supabase/user_sync.sql` has been run.
 - **Shared devices:** signing out, or signing in as a different user, clears the previous account's
   local data.
+- **Deleting an account:** **Profile → Delete account** (type DELETE to confirm) calls
+  `delete_own_account()`, which deletes the user from Supabase Auth; `on delete cascade` removes their
+  `user_sync`, `workout_sessions` and `nutrition_log` rows. The device's local data is then cleared, as on
+  sign-out. It needs a connection, and nothing is deleted if the call fails.
 
 ### Offline caching
 
