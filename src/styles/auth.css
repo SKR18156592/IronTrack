@@ -58,3 +58,22 @@
   align-items: center;
   z-index: 310;
 }
+
+/* Links to the privacy policy and terms (sign-in screen, Settings → About) */
+.legal-note {
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--muted);
+  margin-top: 6px;
+}
+.legal-note a,
+.legal-links a {
+  color: var(--accent);
+  font-weight: 600;
+}
+.legal-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  font-size: 13.5px;
+}

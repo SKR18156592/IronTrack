@@ -269,7 +269,13 @@ Serve the site from the domain root: the service worker and manifest use root-re
 
 ## License
 
-MIT
+MIT (see `LICENSE.txt`). Anyone can use, copy and host the code.
+
+The hosted app at [track-sr-8532.vercel.app](https://track-sr-8532.vercel.app/) is run by the maintainer.
+Its [privacy policy](https://irontrack-landing.vercel.app/privacy.html) and
+[terms of use](https://irontrack-landing.vercel.app/terms.html) live on the website. Logging, offline use
+and exports stay free; any paid features would be optional extras on the hosted service, such as
+coach tools. A self-hosted copy uses its own Supabase project and is the responsibility of whoever runs it.
 
 The muscle recovery figure's body artwork comes from
 [react-native-body-highlighter](https://github.com/HichamELBSI/react-native-body-highlighter)
