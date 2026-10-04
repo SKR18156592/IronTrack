@@ -29,7 +29,8 @@ function updateSuggestion(card, entry) {
   const target = next.weight > 0 ? `${fmtKg(next.weight)} × ${next.reps}` : `Bodyweight × ${next.reps}`;
   box.dataset.kind = next.kind;
   box.innerHTML = `<span class="ex-suggest-text"><strong>${arrow} Today: ${esc(target)}</strong>
-      <span class="ex-suggest-why">${esc(next.why)}</span></span>
+      <span class="ex-suggest-why">${esc(next.why)}</span>
+      <span class="ex-suggest-note">An estimate, not a coach's prescription. Pick a weight you can lift with good form.</span></span>
     ${next.weight > 0 ? `<button type="button" class="btn-xs" data-on-click="useSuggestion" data-args="${args('$el', next.weight)}">Use</button>` : ''}`;
 }
 
