@@ -77,3 +77,22 @@
   gap: 8px 18px;
   font-size: 13.5px;
 }
+
+/* Profile: delete account, set apart from Log out */
+.account-delete {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+  padding-top: 14px;
+  border-top: 1px solid var(--card-border);
+}
+.account-delete .btn {
+  justify-content: center;
+  color: var(--danger);
+}
+.account-delete p {
+  font-size: 12px;
+  color: var(--muted);
+  text-align: center;
+}
