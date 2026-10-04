@@ -74,23 +74,22 @@
 
           <div style="font-size: 12.5px; color: var(--muted); margin-top: 6px">
             <span id="authToggleText">Need an account?</span>
-            <button
-              type="button"
-              data-on-click="toggleAuthMode"
-              style="
-                background: none;
-                border: none;
-                color: var(--accent);
-                cursor: pointer;
-                font-weight: 700;
-                text-decoration: underline;
-              "
-            >
+            <button type="button" class="auth-link" id="authToggleBtn" data-on-click="toggleAuthMode">
               Create one
             </button>
           </div>
 
           <div id="authMsg" style="font-size: 13.5px; display: none; line-height: 1.4"></div>
+          <button
+            type="button"
+            class="auth-link"
+            id="authFixEmailBtn"
+            data-on-click="useSuggestedEmail"
+            hidden
+          ></button>
+          <button type="button" class="auth-link" id="authResendBtn" data-on-click="resendConfirmation" hidden>
+            Resend the email
+          </button>
         </form>
         <button
           type="button"
