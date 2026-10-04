@@ -34,6 +34,10 @@ import { refreshAllUI, refreshHistoryUI, refreshNutritionUI, showToast, updateSy
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || '';
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
+// The privacy policy version a new account agrees to (its effective date). Saved with the account as a record of
+// consent; bump it when the policy changes what data is processed or why.
+const CONSENT_VERSION = '2026-10-04';
+
 // A password-reset link opens the app with type=recovery in the URL. supabase-js reads and clears it while
 // the client starts, possibly before any listener is attached, so note it now.
 const OPENED_FROM_RESET_LINK =
@@ -75,6 +79,8 @@ export function toggleAuthMode() {
     : 'Need an account?';
   document.getElementById('authToggleBtn').textContent = isSignUpMode ? 'Sign in' : 'Create one';
   document.getElementById('authForgotBtn').hidden = isSignUpMode;
+  const consentRow = document.getElementById('authConsentRow');
+  if (consentRow) consentRow.hidden = !isSignUpMode;
   document.getElementById('authMsg').style.display = 'none';
   warnedEmail = '';
   setAuthExtras();
@@ -246,6 +252,18 @@ export async function handleAuthSubmit(e) {
     return;
   }
 
+  // Creating an account needs explicit consent (age and health data), not just a notice.
+  const consent = document.getElementById('authConsent');
+  if (isSignUpMode && consent && !consent.checked) {
+    showAuthMessage(
+      'authMsg',
+      'To create an account, tick the box to confirm your age and agree to how your data is stored.',
+      true
+    );
+    consent.focus();
+    return;
+  }
+
   if (needsCaptcha()) return;
   btn.disabled = true;
   btn.textContent = 'Processing...';
@@ -255,7 +273,14 @@ export async function handleAuthSubmit(e) {
   try {
     if (isSignUpMode) {
       // With "Confirm email" on in Supabase, this sends a link and creates no session until it's opened.
-      res = await supabaseClient.auth.signUp({ email, password, options: withCaptcha({ emailRedirectTo: appUrl() }) });
+      res = await supabaseClient.auth.signUp({
+        email,
+        password,
+        options: withCaptcha({
+          emailRedirectTo: appUrl(),
+          data: { consent_version: CONSENT_VERSION, consent_at: new Date().toISOString() } // kept in user metadata
+        })
+      });
     } else {
       const options = withCaptcha();
       res = await supabaseClient.auth.signInWithPassword(
