@@ -11,7 +11,7 @@ const root = join(import.meta.dirname, '..');
 const sources = [
   join(root, 'index.html'),
   ...readdirSync(join(root, 'src'), { recursive: true })
-    .filter(f => f.endsWith('.js') && f !== 'actions.js')
+    .filter(f => /\.(js|html)$/.test(f) && f !== 'actions.js') // html: src/partials/
     .map(f => join(root, 'src', f))
 ]; // actions.js: only examples
 const markup = sources.map(f => [f, readFileSync(f, 'utf8')]);
@@ -34,7 +34,11 @@ describe('actions in the markup', () => {
       import('../src/render/schedule.js'),
       import('../src/render/share-card.js'),
       import('../src/render/tools.js'),
-      import('../src/render/workout.js')
+      import('../src/render/workout.js'),
+      import('../src/render/set-rows.js'),
+      import('../src/render/timers.js'),
+      import('../src/render/exercise-hints.js'),
+      import('../src/render/exercise-focus.js')
     ]);
     registerActions(mods);
     const names = new Set(markup.flatMap(([, text]) => [...text.matchAll(/data-on-[a-z-]+="(\w+)"/g)].map(m => m[1])));

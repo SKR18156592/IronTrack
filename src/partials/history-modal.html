@@ -1,0 +1,37 @@
+<div class="modal-overlay" id="historyModalOverlay" data-on-self-click="closeHistoryModal">
+  <div class="modal-content" style="max-width: 780px">
+    <div class="modal-header">
+      <h2>Workout Session History</h2>
+      <button class="btn-xs" data-on-click="closeHistoryModal" aria-label="Close">
+        <i data-icon="x" data-size="16"></i>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="history-filter-bar">
+        <select
+          id="historyDayFilter"
+          class="machine-dropdown"
+          data-on-change="onHistoryDayFilterChange"
+          style="padding: 10px"
+        >
+          <option value="">All Days / Splits</option>
+        </select>
+        <select
+          id="historyExerciseSelect"
+          class="machine-dropdown"
+          data-on-change="renderHistoryForSelectedExercise"
+          data-args='["$value"]'
+          style="padding: 10px"
+        >
+          <option value="">View progression graph…</option>
+        </select>
+      </div>
+      <div id="historyListContainer" style="display: flex; flex-direction: column; gap: 12px; margin-top: 6px"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-danger" data-on-click="clearWorkoutHistory"><i data-icon="trash"></i> Clear Logs</button>
+      <button class="btn btn-info" data-on-click="exportHistoryCSV"><i data-icon="download"></i> Export CSV</button>
+      <button class="btn btn-primary" data-on-click="exportHistoryJSON"><i data-icon="package"></i> Export JSON</button>
+    </div>
+  </div>
+</div>

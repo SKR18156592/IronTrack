@@ -27,6 +27,10 @@ import * as schedule from './render/schedule.js';
 import * as shareCard from './render/share-card.js';
 import * as tools from './render/tools.js';
 import * as workout from './render/workout.js';
+import * as setRows from './render/set-rows.js';
+import * as timers from './render/timers.js';
+import * as exerciseHints from './render/exercise-hints.js';
+import * as exerciseFocus from './render/exercise-focus.js';
 
 onStorageFailure(message => showToast(message, 'error'));
 
@@ -46,7 +50,11 @@ registerActions([
   schedule,
   shareCard,
   tools,
-  workout
+  workout,
+  setRows,
+  timers,
+  exerciseHints,
+  exerciseFocus
 ]);
 listenForActions();
 

@@ -49,12 +49,12 @@ at the gym, and track progress over time. Your data syncs across devices through
 
 ```text
 irontrack-pwa/
-├── index.html                 # Markup; loads src/styles.css and src/main.js
+├── index.html                 # Page shell; includes src/partials/, loads src/styles.css and src/main.js
 ├── src/
 │   ├── main.js                # Startup, event listeners, service worker registration
 │   ├── actions.js             # Dispatches data-on-* attributes to exported functions
 │   ├── dialog.js              # In-app confirm and alert dialogs
-│   ├── styles.css             # All app styles
+│   ├── styles.css             # Imports src/styles/*.css in cascade order
 │   ├── sync.js                # Supabase client, auth, upload/download, realtime
 │   ├── history-merge.js       # Pure workout-history merge (by session id + tombstones)
 │   ├── session-draft.js       # In-progress workout draft (survives reloads)
@@ -73,7 +73,10 @@ irontrack-pwa/
 │   ├── sw.js                  # Service worker: offline caching (built to dist/sw.js)
 │   ├── ui.js                  # Toasts, tabs, theme, sounds, full UI refresh
 │   ├── data/                  # Exercise catalog, nutrition plans, body artwork
-│   └── render/                # One module per screen or feature
+│   ├── partials/              # index.html blocks: sign-in, each tab, the modals (<!-- @include x.html -->)
+│   ├── styles/                # Styles, one file per area
+│   └── render/                # One module per screen or feature (workout.js plus set-rows, timers,
+│                              #   exercise-hints and exercise-focus for the workout screen)
 ├── tests/                     # Vitest unit tests
 ├── e2e/                       # Playwright smoke tests
 ├── public/
@@ -81,7 +84,7 @@ irontrack-pwa/
 │   └── *.png, *.svg           # App icons
 ├── supabase/
 │   └── user_sync.sql          # The tables, RLS policies, and realtime setup the app uses
-├── vite.config.js             # Vite + vite-plugin-pwa (service worker build)
+├── vite.config.js             # Vite, the HTML include plugin, vite-plugin-pwa (service worker build)
 └── package.json               # Vite scripts
 ```
 

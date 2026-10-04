@@ -1,0 +1,36 @@
+<!-- ANALYTICS VIEW -->
+<section id="view-analytics" class="app-view">
+  <div class="analytics-card">
+    <div class="analytics-header"><i data-icon="battery" data-size="20"></i> Muscle Recovery</div>
+    <p style="font-size: 12.5px; color: var(--muted)">
+      Real-time muscle recovery status calculated from your recent workout volume.
+    </p>
+    <div class="recovery-grid" id="recoveryGridContainer"></div>
+  </div>
+
+  <div class="analytics-card">
+    <div class="analytics-header"><i data-icon="chart" data-size="20"></i> Muscle Group Tonnage</div>
+    <div class="range-toggle">
+      <button class="range-btn active" data-range="7" data-on-click="setAnalyticRange" data-args="[7]">
+        Last 7 days
+      </button>
+      <button class="range-btn" data-range="28" data-on-click="setAnalyticRange" data-args="[28]">Last 28 days</button>
+    </div>
+    <div class="svg-chart-wrap" id="muscleBarChartWrap"></div>
+  </div>
+  <div class="analytics-card">
+    <div class="analytics-header">
+      <i data-icon="trend" data-size="20"></i> Strength trend <span class="analytics-sub">estimated 1RM</span>
+    </div>
+    <div class="compound-select-row" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap">
+      <label for="compoundSelect" style="font-size: 12.5px; color: var(--muted); font-weight: 700">Lift</label>
+      <select
+        id="compoundSelect"
+        class="machine-dropdown"
+        data-on-change="render1RMTrends"
+        style="min-width: 200px"
+      ></select>
+    </div>
+    <div class="svg-chart-wrap" id="oneRmTrendWrap"></div>
+  </div>
+</section>
