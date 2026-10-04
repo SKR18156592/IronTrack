@@ -96,3 +96,29 @@
   color: var(--muted);
   text-align: center;
 }
+
+/* Sign-up: age and data-processing consent (required to create an account) */
+.auth-consent {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  text-align: left;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--muted);
+  cursor: pointer;
+}
+.auth-consent[hidden] {
+  display: none;
+}
+.auth-consent input {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  margin-top: 1px;
+  accent-color: var(--accent);
+}
+.auth-consent a {
+  color: var(--accent);
+  font-weight: 600;
+}
