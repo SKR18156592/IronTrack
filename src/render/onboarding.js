@@ -122,7 +122,7 @@ function render(override = {}) {
   if (!body) return;
   const p = readProfile();
   const name = STEPS[step];
-  let html = '';
+  let html;
   if (name === 'about') {
     html = `
       <h2 class="onboard-title">Welcome to IronTrack</h2>
