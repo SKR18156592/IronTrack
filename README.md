@@ -119,6 +119,29 @@ sends people back to allowed addresses: under **Authentication → URL Configura
 URL** to your deployed app and add it (plus `http://localhost:5173` for development) to **Redirect
 URLs**.
 
+### Optional: clean up unconfirmed accounts
+
+An account made with a mistyped or made-up address can never be confirmed, so it can never sign in,
+but it stays in **Authentication → Users**. To delete such accounts 7 days after sign-up, run
+`supabase/cleanup_unconfirmed.sql` once in the SQL editor. It enables `pg_cron` and schedules a nightly
+job; confirmed accounts are never touched.
+
+### Optional: bot check on sign-up and sign-in (Cloudflare Turnstile)
+
+Stops bots from mass-creating accounts, each of which sends an email from your SMTP allowance. Once
+CAPTCHA protection is on in Supabase, **every** sign-up, sign-in, password reset and resend needs a
+token, so do these steps in this order or sign-in stops working:
+
+1. In the [Cloudflare dashboard](https://dash.cloudflare.com/) (a free account), open **Turnstile → Add
+   widget**. Add your app's domain (and `localhost` for development), choose **Managed**, and create it.
+   Note the **site key** and the **secret key**.
+2. Set `VITE_TURNSTILE_SITE_KEY` to the site key in your host's environment variables (Vercel:
+   **Settings → Environment Variables**) and redeploy. The sign-in form now shows the check.
+3. In Supabase, **Authentication → Attack Protection**: turn on **CAPTCHA protection**, choose
+   **Turnstile**, paste the **secret key**, and save.
+
+To turn it off, reverse the order: switch it off in Supabase first, then remove the variable.
+
 ### 3. Point the app at your project
 
 Copy `.env.example` to `.env.local` and set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`

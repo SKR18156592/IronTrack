@@ -22,6 +22,7 @@ import {
 import { loadProfileTabUI, shrinkStoredAvatar } from './render/profile.js';
 import { maybeStartOnboarding } from './render/onboarding.js';
 import { suggestEmailFix } from './email-check.js';
+import { captchaReady, renderCaptcha, resetCaptcha, withCaptcha } from './captcha.js';
 import { getL, setL } from './storage.js';
 import { refreshAllUI, refreshHistoryUI, refreshNutritionUI, showToast, updateSyncIndicator } from './ui.js';
 
@@ -81,6 +82,13 @@ export function toggleAuthMode() {
   setAuthExtras();
 }
 
+// The bot check must be passed before any auth request (when one is configured; see captcha.js).
+function needsCaptcha() {
+  if (captchaReady()) return false;
+  showAuthMessage('authMsg', 'Complete the security check above first.', true);
+  return true;
+}
+
 function showAuthMessage(id, text, isError) {
   const msg = document.getElementById(id);
   msg.textContent = text;
@@ -99,12 +107,11 @@ export async function requestPasswordReset() {
     emailInput.focus();
     return;
   }
+  if (needsCaptcha()) return;
   const btn = document.getElementById('authForgotBtn');
   btn.disabled = true;
   try {
-    const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
-      redirectTo: appUrl()
-    });
+    const { error } = await supabaseClient.auth.resetPasswordForEmail(email, withCaptcha({ redirectTo: appUrl() }));
     if (error) throw error;
     // The same answer whether or not the account exists, so the form can't be used to find accounts.
     showAuthMessage('authMsg', `If there's an account for ${email}, a link to reset its password is on its way.`);
@@ -112,6 +119,7 @@ export async function requestPasswordReset() {
     showAuthMessage('authMsg', err?.message || 'Could not send the email. Try again.', true);
   } finally {
     btn.disabled = false;
+    resetCaptcha();
   }
 }
 
@@ -169,14 +177,14 @@ export function useSuggestedEmail() {
 // Asks Supabase to send the sign-up confirmation email again.
 export async function resendConfirmation() {
   const email = pendingEmail || document.getElementById('authEmail').value.trim();
-  if (!email || !supabaseClient) return;
+  if (!email || !supabaseClient || needsCaptcha()) return;
   const btn = document.getElementById('authResendBtn');
   btn.disabled = true;
   try {
     const { error } = await supabaseClient.auth.resend({
       type: 'signup',
       email,
-      options: { emailRedirectTo: appUrl() }
+      options: withCaptcha({ emailRedirectTo: appUrl() })
     });
     if (error) throw error;
     showAuthMessage('authMsg', `Sent again to ${email}. Check your spam folder too.`);
@@ -184,6 +192,7 @@ export async function resendConfirmation() {
     showAuthMessage('authMsg', err?.message || 'Could not send the email. Try again in a minute.', true);
   } finally {
     btn.disabled = false;
+    resetCaptcha();
   }
 }
 
@@ -218,6 +227,7 @@ export async function handleAuthSubmit(e) {
     return;
   }
 
+  if (needsCaptcha()) return;
   btn.disabled = true;
   btn.textContent = 'Processing...';
   msg.style.display = 'none';
@@ -226,9 +236,12 @@ export async function handleAuthSubmit(e) {
   try {
     if (isSignUpMode) {
       // With "Confirm email" on in Supabase, this sends a link and creates no session until it's opened.
-      res = await supabaseClient.auth.signUp({ email, password, options: { emailRedirectTo: appUrl() } });
+      res = await supabaseClient.auth.signUp({ email, password, options: withCaptcha({ emailRedirectTo: appUrl() }) });
     } else {
-      res = await supabaseClient.auth.signInWithPassword({ email, password });
+      const options = withCaptcha();
+      res = await supabaseClient.auth.signInWithPassword(
+        Object.keys(options).length ? { email, password, options } : { email, password }
+      );
     }
   } catch (err) {
     // Usually returned as res.error, but a thrown error must not leave the button stuck on "Processing...".
@@ -236,6 +249,7 @@ export async function handleAuthSubmit(e) {
   } finally {
     btn.disabled = false;
     btn.textContent = isSignUpMode ? 'Create account' : 'Sign in';
+    resetCaptcha();
   }
 
   if (res.error && isUnconfirmed(res.error)) {
@@ -255,7 +269,8 @@ export async function handleAuthSubmit(e) {
     pendingEmail = email;
     showAuthMessage(
       'authMsg',
-      `Almost done: we sent a link to ${email}. Open it to confirm your address and finish creating your account.`
+      `Almost done: we sent a link to ${email}. Open it to confirm your address and finish creating your account. ` +
+        'Nothing after a few minutes? Check your spam folder and that the address is spelled right, then sign up again.'
     );
     setAuthExtras({ resend: true });
   }
@@ -312,6 +327,7 @@ export function skipSignIn() {
 
 export function openSignIn() {
   document.getElementById('authOverlay').classList.add('active');
+  renderCaptcha(document.getElementById('authCaptcha'));
   document.getElementById('authEmail')?.focus();
 }
 
@@ -330,6 +346,7 @@ export function updateUserSessionUI(user) {
     if (syncBadge) syncBadge.textContent = 'Cloud Synced';
   } else {
     overlay.classList.toggle('active', getL(AUTH_SKIPPED_KEY, '') !== '1');
+    if (overlay.classList.contains('active')) renderCaptcha(document.getElementById('authCaptcha'));
   }
   updateSyncIndicator();
 }
