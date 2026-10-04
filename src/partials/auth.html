@@ -39,6 +39,18 @@
         Forgot password?
       </button>
 
+      <label class="auth-consent" id="authConsentRow" hidden>
+        <input type="checkbox" id="authConsent" />
+        <span>
+          I'm 18 or older, and I agree that IronTrack stores the fitness and health data I log, such as body weight and
+          nutrition, to sync it across my devices (<a
+            href="https://irontrack-landing.vercel.app/privacy.html"
+            target="_blank"
+            rel="noopener"
+            >Privacy policy</a
+          >, <a href="https://irontrack-landing.vercel.app/terms.html" target="_blank" rel="noopener">Terms of use</a>).
+        </span>
+      </label>
       <div id="authCaptcha" class="auth-captcha"></div>
       <button type="submit" class="btn btn-primary" id="authSubmitBtn" style="justify-content: center; margin-top: 4px">
         Sign in
@@ -67,9 +79,8 @@
       Your data stays on this device. You can sign in later from your profile.
     </p>
     <p class="legal-note">
-      By creating an account you agree to the
-      <a href="https://irontrack-landing.vercel.app/terms.html" target="_blank" rel="noopener">Terms of use</a> and
-      <a href="https://irontrack-landing.vercel.app/privacy.html" target="_blank" rel="noopener">Privacy policy</a>.
+      <a href="https://irontrack-landing.vercel.app/terms.html" target="_blank" rel="noopener">Terms of use</a> ·
+      <a href="https://irontrack-landing.vercel.app/privacy.html" target="_blank" rel="noopener">Privacy policy</a>
     </p>
   </div>
 </div>

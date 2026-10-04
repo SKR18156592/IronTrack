@@ -15,9 +15,10 @@ const auth = {
 };
 const el = id => document.getElementById(id);
 const submit = () => handleAuthSubmit({ preventDefault() {} });
-const fill = (email, password = 'secret123') => {
+const fill = (email, password = 'secret123', { consent = true } = {}) => {
   el('authEmail').value = email;
   el('authPassword').value = password;
+  el('authConsent').checked = consent;
 };
 
 beforeEach(() => {
@@ -26,6 +27,7 @@ beforeEach(() => {
     <div id="authOverlay" class="active"><h2 id="authTitle"></h2>
       <input id="authEmail" /><input id="authPassword" /><button id="authForgotBtn"></button>
       <button id="authSubmitBtn"></button><span id="authToggleText"></span><button id="authToggleBtn"></button>
+      <label id="authConsentRow" hidden><input type="checkbox" id="authConsent" /></label>
       <div id="authMsg"></div><button id="authFixEmailBtn" hidden></button><button id="authResendBtn" hidden></button>
     </div>`;
   setSyncContext({ client: { auth }, user: null });
@@ -56,7 +58,10 @@ describe('creating an account', () => {
     expect(auth.signUp).toHaveBeenCalledWith({
       email: 'sam@gmail.com',
       password: 'secret123',
-      options: { emailRedirectTo: location.origin + location.pathname }
+      options: {
+        emailRedirectTo: location.origin + location.pathname,
+        data: { consent_version: '2026-10-04', consent_at: expect.any(String) }
+      }
     });
     expect(el('authMsg').textContent).toMatch(/we sent a link to sam@gmail.com/);
     expect(el('authMsg').textContent).toMatch(/spelled right, then sign up again/);
@@ -66,6 +71,25 @@ describe('creating an account', () => {
 
   it('labels the switch back to signing in', () => {
     expect(el('authToggleBtn').textContent).toBe('Sign in');
+  });
+
+  it('shows the consent box, and needs it ticked before creating the account', async () => {
+    expect(el('authConsentRow').hidden).toBe(false);
+    fill('sam@gmail.com', 'secret123', { consent: false });
+    await submit();
+    expect(auth.signUp).not.toHaveBeenCalled();
+    expect(el('authMsg').textContent).toMatch(/tick the box to confirm your age/);
+    el('authConsent').checked = true;
+    await submit();
+    expect(auth.signUp).toHaveBeenCalledTimes(1);
+  });
+
+  it('records when consent was given', async () => {
+    fill('sam@gmail.com');
+    const before = Date.now();
+    await submit();
+    const { consent_at } = auth.signUp.mock.calls[0][0].options.data;
+    expect(Date.parse(consent_at)).toBeGreaterThanOrEqual(before);
   });
 
   it('warns once about a likely typo, and goes ahead if the user insists', async () => {
@@ -121,5 +145,18 @@ describe('without a bot check configured', () => {
     fill('sam@gmail.com');
     await submit();
     expect(auth.signInWithPassword).toHaveBeenCalledWith({ email: 'sam@gmail.com', password: 'secret123' });
+  });
+});
+
+describe('signing in', () => {
+  it('hides the consent box and does not ask for it', async () => {
+    expect(el('authConsentRow').hidden).toBe(true);
+    auth.signInWithPassword.mockResolvedValue({
+      data: { user: null, session: null },
+      error: { message: 'Invalid login credentials' }
+    });
+    fill('sam@gmail.com', 'secret123', { consent: false });
+    await submit();
+    expect(auth.signInWithPassword).toHaveBeenCalled();
   });
 });
