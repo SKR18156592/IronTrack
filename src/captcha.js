@@ -9,6 +9,8 @@ const SCRIPT_URL = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render
 let loading = null;
 let widgetId = null;
 let token = '';
+let failure = ''; // why the check isn't working: a Turnstile error code, or 'load' if its script didn't load
+let onFailure = () => {};
 
 export const captchaEnabled = () => !!SITE_KEY;
 
@@ -27,23 +29,45 @@ function loadScript() {
   }));
 }
 
-// Shows the check in `container` (once). Resolves when it's on screen; never rejects.
-export async function renderCaptcha(container) {
-  if (!SITE_KEY || !container || widgetId !== null) return;
+function fail(reason) {
+  token = '';
+  failure = reason;
+  onFailure(reason);
+}
+
+// Shows the check in `container` (once). Resolves when it's on screen; never rejects. failed(reason) runs
+// when the check can't be completed (see captchaFailure), and failed('') if it works again after that.
+export async function renderCaptcha(container, { failed = () => {} } = {}) {
+  if (!SITE_KEY || !container) return;
+  onFailure = failed;
+  if (widgetId !== null) return;
   try {
     await loadScript();
-    widgetId = window.turnstile.render(container, {
-      sitekey: SITE_KEY,
-      theme: 'dark',
-      size: 'flexible',
-      callback: t => (token = t),
-      'expired-callback': () => (token = ''),
-      'error-callback': () => (token = '')
-    });
   } catch (e) {
     console.warn(e);
+    return fail('load');
   }
+  widgetId = window.turnstile.render(container, {
+    sitekey: SITE_KEY,
+    theme: 'dark',
+    size: 'flexible',
+    callback: t => {
+      token = t;
+      if (!failure) return;
+      failure = '';
+      onFailure('');
+    },
+    'expired-callback': () => (token = ''),
+    // With retries on (the default), Turnstile tries again; a later success clears the failure.
+    'error-callback': code => {
+      fail(String(code || 'unknown'));
+      return true; // handled: no uncaught error in the console
+    }
+  });
 }
+
+// '' while the check works; otherwise a Turnstile error code, or 'load' when its script couldn't be loaded.
+export const captchaFailure = () => failure;
 
 // The current token, or undefined (no check configured, or not passed yet).
 export const captchaToken = () => token || undefined;

@@ -22,7 +22,7 @@ import {
 import { loadProfileTabUI, shrinkStoredAvatar } from './render/profile.js';
 import { maybeStartOnboarding } from './render/onboarding.js';
 import { suggestEmailFix } from './email-check.js';
-import { captchaReady, renderCaptcha, resetCaptcha, withCaptcha } from './captcha.js';
+import { captchaFailure, captchaReady, renderCaptcha, resetCaptcha, withCaptcha } from './captcha.js';
 import { getL, setL } from './storage.js';
 import { refreshAllUI, refreshHistoryUI, refreshNutritionUI, showToast, updateSyncIndicator } from './ui.js';
 
@@ -83,8 +83,29 @@ export function toggleAuthMode() {
 // The bot check must be passed before any auth request (when one is configured; see captcha.js).
 function needsCaptcha() {
   if (captchaReady()) return false;
-  showAuthMessage('authMsg', 'Complete the security check above first.', true);
+  showAuthMessage('authMsg', captchaMessage(), true);
   return true;
+}
+
+// What to tell the user while the bot check has no token: pass it, or why it can't be passed.
+function captchaMessage() {
+  const failure = captchaFailure();
+  if (!failure) return 'Complete the security check above first.';
+  const code = failure === 'load' ? '' : ` (error ${failure})`;
+  return (
+    `The security check couldn't load${code}. Check your connection, turn off ad blockers and VPNs for this ` +
+    'site, then reload the page.'
+  );
+}
+
+// The bot check on the sign-in form. A failure shows right away, instead of on the next submit.
+function showAuthCaptcha() {
+  renderCaptcha(document.getElementById('authCaptcha'), {
+    failed: reason => {
+      if (reason) showAuthMessage('authMsg', captchaMessage(), true);
+      else document.getElementById('authMsg').style.display = 'none'; // it works again
+    }
+  });
 }
 
 function showAuthMessage(id, text, isError) {
@@ -325,7 +346,7 @@ export function skipSignIn() {
 
 export function openSignIn() {
   document.getElementById('authOverlay').classList.add('active');
-  renderCaptcha(document.getElementById('authCaptcha'));
+  showAuthCaptcha();
   document.getElementById('authEmail')?.focus();
 }
 
@@ -344,7 +365,7 @@ export function updateUserSessionUI(user) {
     if (syncBadge) syncBadge.textContent = 'Cloud Synced';
   } else {
     overlay.classList.toggle('active', getL(AUTH_SKIPPED_KEY, '') !== '1');
-    if (overlay.classList.contains('active')) renderCaptcha(document.getElementById('authCaptcha'));
+    if (overlay.classList.contains('active')) showAuthCaptcha();
   }
   updateSyncIndicator();
 }
