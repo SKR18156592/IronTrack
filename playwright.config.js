@@ -16,6 +16,9 @@ export default defineConfig({
     command: 'npm run build && npm run preview -- --port 4173 --strictPort',
     url: 'http://localhost:4173',
     reuseExistingServer: !process.env.CI,
-    timeout: 120000
+    timeout: 120000,
+    // A stand-in project, so the sign-in screen shows; the tests block every *.supabase.co request.
+    // (Variables set here take priority over .env.local.)
+    env: { VITE_SUPABASE_URL: 'https://e2e-test.supabase.co', VITE_SUPABASE_ANON_KEY: 'e2e-test-key' }
   }
 });

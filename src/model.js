@@ -1,4 +1,5 @@
 import { BASE_EXERCISE_TYPES, BASE_MUSCLE_GROUP, WORKOUT_BASE } from './data/exercises.js';
+import { fingerprint } from './fingerprint.js';
 import { getJ, getL, isSafeId, safeId, setJ, setL } from './storage.js';
 import { pushToCloud } from './sync.js';
 
@@ -8,16 +9,35 @@ export function getExerciseType(cat) {
   return custom ? custom.exerciseType : 'isolation';
 }
 
-export function getMuscleGroup(category) {
-  if (BASE_MUSCLE_GROUP[category]) return BASE_MUSCLE_GROUP[category];
-  const day = getCategoryDayIndex(category)?.day;
-  if (day === '1' || day === 1) return 'chest';
-  if (day === '2' || day === 2) return 'legs';
-  if (day === '3' || day === 3) return 'back';
-  return 'arms';
+export const MUSCLE_GROUP_ORDER = ['chest', 'back', 'legs', 'shoulders', 'arms'];
+
+// Words in an exercise's title or target that point to a muscle group. Checked in order, so the more
+// specific words come first: 'rear delt row' is shoulders, 'Romanian deadlift' (hamstrings) is legs,
+// 'chest-supported row' is back.
+const MUSCLE_KEYWORDS = [
+  ['shoulders', /delt|shoulder|overhead press|military|lateral raise|upright row|shrug|trap/],
+  ['arms', /bicep|tricep|curl|brachialis|forearm|skull|pushdown|kickback/],
+  ['legs', /leg|quad|hamstring|glute|calf|calves|squat|lunge|adductor|abductor|hip thrust/],
+  ['back', /back|\blats?\b|\brows?\b|pull-?up|chin-?up|pulldown|deadlift/],
+  ['chest', /chest|pec|bench|fly|flye|push-?up|dip/]
+];
+
+// The muscle group a custom exercise's words point to, or null (abs, cardio, or nothing recognisable).
+export function guessMuscleGroup(text) {
+  const t = String(text || '').toLowerCase();
+  const hit = MUSCLE_KEYWORDS.find(([, re]) => re.test(t));
+  return hit ? hit[0] : null;
 }
 
-export const MUSCLE_GROUP_ORDER = ['chest', 'back', 'legs', 'shoulders', 'arms'];
+// One of MUSCLE_GROUP_ORDER, or null for exercises that count toward none (abs, unknown).
+export function getMuscleGroup(category) {
+  if (BASE_MUSCLE_GROUP[category]) return BASE_MUSCLE_GROUP[category];
+  const custom = getJ('iron_custom_exercises', []).find(e => e.category === category);
+  if (!custom) return null;
+  if (MUSCLE_GROUP_ORDER.includes(custom.muscleGroup)) return custom.muscleGroup;
+  if (custom.muscleGroup === 'none') return null;
+  return guessMuscleGroup(`${custom.title} ${custom.target}`);
+}
 
 export function getExerciseTitle(category) {
   const ex = FLAT_EXERCISES.find(e => e.category === category);
@@ -27,25 +47,13 @@ export function getRestForCategory(category) {
   const ex = FLAT_EXERCISES.find(e => e.category === category);
   return ex ? ex.rest : 75;
 }
-export function getCategoryDayIndex(category) {
-  for (const d of Object.keys(WORKOUT)) {
-    const list = getDayExerciseCategories(d);
-    const i = list.indexOf(category);
-    if (i >= 0) return { day: d, idx: i };
-  }
-  return null;
-}
-export function getSupersetId(category) {
-  const linked = getLinkedCategory(category);
-  if (!linked) return null;
-  const a = getCategoryDayIndex(category),
-    b = getCategoryDayIndex(linked);
-  if (!a || !b) return null;
-  if (a.day < b.day || (a.day === b.day && a.idx < b.idx)) return category;
-  return linked;
-}
 export function epley1RM(w, r) {
   return r === 1 ? w : w * (1 + r / 30);
+}
+
+// A section's element id, the same on every rebuild for the same day and title.
+function sectionTag(day, title) {
+  return `d${safeId(day)}_sec_` + fingerprint(String(title).toLowerCase()).replace('.', '_');
 }
 
 export let WORKOUT = {};
@@ -104,7 +112,7 @@ export function rebuildWorkoutDatabase() {
     if (dayObj && !dayObj.sections.some(s => s.title === cs.title)) {
       dayObj.sections.push({
         title: cs.title,
-        tag: cs.tag || 'sec_' + Math.random().toString(36).substring(2, 7),
+        tag: cs.tag || sectionTag(cs.day, cs.title),
         color: cs.color || 'blue',
         exercises: []
       });
@@ -126,7 +134,7 @@ export function rebuildWorkoutDatabase() {
       if (!targetSec) {
         targetSec = {
           title: c.sectionTitle,
-          tag: `d${targetDayKey}_tag_` + Math.random().toString(36).substring(2, 7),
+          tag: sectionTag(targetDayKey, c.sectionTitle),
           color: 'blue',
           exercises: []
         };
