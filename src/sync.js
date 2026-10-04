@@ -29,12 +29,10 @@ import { refreshAllUI, refreshHistoryUI, refreshNutritionUI, showToast, updateSy
 // ==========================================
 // SUPABASE CLIENT & AUTH CONFIGURATION
 // ==========================================
-// Set at build time (see .env.example). The defaults are this project's public values: the anon key is
-// public by design, and Row-Level Security protects the data.
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://jlwaebsftvtqghmhhess.supabase.co';
-const SUPABASE_ANON_KEY =
-  import.meta.env.VITE_SUPABASE_ANON_KEY ||
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impsd2FlYnNmdHZ0cWdobWhoZXNzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg0Mjk1OTgsImV4cCI6MjEwNDAwNTU5OH0.6bb0zIkWxUpX31KIckqNVWVBb0p2QRhl10yeUlA5e_g';
+// Set at build time (see .env.example). Without them there is no cloud sync: the app runs on this device
+// only. The anon key is public by design; Row-Level Security protects the data.
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || '';
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
 // A password-reset link opens the app with type=recovery in the URL. supabase-js reads and clears it while
 // the client starts, possibly before any listener is attached, so note it now.
@@ -258,7 +256,7 @@ export async function handleAuthSubmit(e) {
     setAuthExtras({ resend: true });
   } else if (res.error) {
     msg.textContent = res.error.message;
-    msg.style.color = '#ef4444';
+    msg.style.color = 'var(--danger)';
     msg.style.display = 'block';
     showToast(res.error.message, 'error');
   } else if (res.data.session) {

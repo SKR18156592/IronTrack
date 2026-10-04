@@ -7,7 +7,7 @@ const root = join(import.meta.dirname, '..');
 const sources = [
   join(root, 'index.html'),
   ...readdirSync(join(root, 'src'), { recursive: true })
-    .filter(f => f.endsWith('.js'))
+    .filter(f => /\.(js|html)$/.test(f)) // html: src/partials/
     .map(f => join(root, 'src', f))
 ];
 

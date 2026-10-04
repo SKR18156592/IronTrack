@@ -1,0 +1,61 @@
+<!-- NUTRITION VIEW -->
+<section id="view-nutrition" class="app-view">
+  <div class="nutrition-card">
+    <div class="analytics-header nutri-header">
+      <span><i data-icon="salad" data-size="20"></i> Nutrition &amp; Meal Planner</span>
+      <div class="range-toggle">
+        <button class="range-btn" id="dietRestBtn" data-on-click="setDietMode" data-args='["rest"]'>
+          Rest Day <span class="today-tag" hidden>· today</span>
+        </button>
+        <button class="range-btn" id="dietWorkoutBtn" data-on-click="setDietMode" data-args='["workout"]'>
+          Workout Day <span class="today-tag" hidden>· today</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="nutri-controls">
+      <div class="meta-field">
+        <label for="nutriGoal">Goal</label>
+        <select
+          id="nutriGoal"
+          class="machine-dropdown"
+          data-on-change="setNutritionGoal"
+          data-args='["$value"]'
+        ></select>
+      </div>
+      <div class="meta-field">
+        <label for="nutriRate">Rate</label>
+        <select
+          id="nutriRate"
+          class="machine-dropdown"
+          data-on-change="setNutritionRate"
+          data-args='["$value"]'
+        ></select>
+      </div>
+      <div class="meta-field">
+        <label for="nutriActivity">Activity level</label>
+        <select
+          id="nutriActivity"
+          class="machine-dropdown"
+          data-on-change="setActivityLevel"
+          data-args='["$value"]'
+        ></select>
+      </div>
+    </div>
+
+    <div class="macro-summary">
+      <div class="macro-tile"><span>Calories</span><strong id="dietCals">—</strong></div>
+      <div class="macro-tile"><span>Protein</span><strong id="dietProt">—</strong></div>
+      <div class="macro-tile"><span>Carbs</span><strong id="dietCarbs">—</strong></div>
+      <div class="macro-tile"><span>Fat</span><strong id="dietFat">—</strong></div>
+    </div>
+
+    <div class="calc-result-box nutri-summary" id="nutritionProfileSummaryBox"></div>
+  </div>
+
+  <div class="nutrition-card" id="nutriLogCard"></div>
+
+  <div class="nutrition-card" id="nutriProgressCard"></div>
+
+  <div id="nutritionMealsContainer" class="nutri-meals"></div>
+</section>

@@ -1,0 +1,782 @@
+/* Workout screen: session bar, microcycle, session details, edit mode, exercise cards, set rows. */
+
+/* Session bar: timer + progress, pinned while scrolling through the exercises */
+.session-bar {
+  position: sticky;
+  top: calc(env(safe-area-inset-top, 0px) + 8px);
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  background: var(--card-solid);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+}
+.session-bar-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.session-timer {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--accent);
+  white-space: nowrap;
+}
+.session-progress-text {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.session-bar .progress-bar-bg {
+  height: 6px;
+}
+
+/* Weekly microcycle, collapsed to one line of day dots */
+.week-strip {
+  display: block;
+  padding: 12px 16px;
+}
+.week-strip > summary {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--muted);
+}
+.week-strip > summary::-webkit-details-marker {
+  display: none;
+}
+.week-title {
+  white-space: nowrap;
+}
+.week-dots {
+  display: flex;
+  gap: 4px;
+  flex: 1;
+  justify-content: center;
+  min-width: 0;
+}
+.week-dot {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9.5px;
+  font-weight: 800;
+  color: var(--muted);
+  background: rgba(148, 163, 184, 0.12);
+  border: 1px solid transparent;
+  letter-spacing: 0;
+}
+.week-dot.lift {
+  background: var(--accent-dim);
+  color: var(--accent);
+  border-color: var(--accent-glow);
+}
+.week-dot.today {
+  box-shadow:
+    0 0 0 2px var(--bg),
+    0 0 0 3.5px var(--accent);
+}
+.week-count {
+  white-space: nowrap;
+  font-size: 10.5px;
+}
+.week-chevron {
+  transition: transform 0.2s;
+  font-size: 12px;
+}
+.week-strip[open] .week-chevron {
+  transform: rotate(180deg);
+}
+.week-strip[open] > summary {
+  margin-bottom: 14px;
+}
+.week-edit {
+  margin-top: 12px;
+}
+
+/* Session details (date, body weight, energy, sleep, notes), collapsed by default */
+.session-details {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+.session-details > summary {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  min-height: 28px;
+  white-space: nowrap;
+}
+.session-details > summary::-webkit-details-marker {
+  display: none;
+}
+.session-details > summary::after {
+  content: '▾';
+  margin-left: auto;
+  color: var(--muted);
+  transition: transform 0.2s;
+}
+.session-details[open] > summary::after {
+  transform: rotate(180deg);
+}
+.session-details-hint {
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+.session-details[open] > summary {
+  margin-bottom: 12px;
+}
+.session-details .session-meta {
+  margin-bottom: 10px;
+}
+
+/* Edit mode: plan-restructuring controls only appear after tapping Edit */
+body:not(.edit-mode) .edit-only {
+  display: none !important;
+}
+.edit-toggle {
+  flex-shrink: 0;
+}
+.edit-toggle[aria-pressed='true'] {
+  background: var(--accent);
+  color: #031317;
+  border-color: var(--accent);
+}
+body.edit-mode .exercise-card {
+  outline: 1px dashed var(--accent-glow);
+  outline-offset: -6px;
+}
+.equip-tools {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.title-badges {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+.stat-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+}
+.stat-pill strong {
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--accent);
+  font-size: 17px;
+}
+.stat-pill.lime strong {
+  color: var(--text);
+  text-shadow: none;
+}
+.session-meta {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 12px;
+  background: rgba(10, 15, 28, 0.55);
+  padding: 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  margin-bottom: 16px;
+}
+.meta-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.meta-field label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+}
+.meta-field input,
+.meta-field textarea,
+.meta-field select {
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #fff;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 13.5px;
+  font-weight: 600;
+  outline: none;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
+  width: 100%;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  resize: none;
+}
+.meta-field input:focus,
+.meta-field textarea:focus,
+.meta-field select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+.progress-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.progress-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--muted);
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.progress-bar-bg {
+  height: 8px;
+  background: rgba(15, 23, 42, 0.95);
+  border-radius: 999px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+.progress-bar-fill {
+  height: 100%;
+  width: 0%;
+  background: var(--accent);
+  border-radius: 999px;
+  transition: width 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.day-view {
+  display: none;
+  flex-direction: column;
+  gap: 18px;
+}
+/* .day-view.active { display: flex; animation: dayIn .35s cubic-bezier(0.16, 1, 0.3, 1); } */
+.day-view.active {
+  display: flex;
+}
+@keyframes dayIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.category-section {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  position: relative;
+}
+.category-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.category-count {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--muted);
+  margin-left: 6px;
+}
+.category-tag {
+  font-size: 15px;
+  font-weight: 800;
+  padding: 4px 2px;
+  width: fit-content;
+  color: var(--text);
+  letter-spacing: -0.2px;
+}
+.section-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.exercise-card {
+  padding: 22px;
+  border-radius: var(--radius-lg);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  position: relative;
+}
+.exercise-card.highlight {
+  border-color: var(--accent-glow);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+}
+.ex-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.ex-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 4px;
+  flex-wrap: wrap;
+}
+.ex-number {
+  background: var(--accent-dim);
+  color: var(--accent);
+  font-weight: 800;
+  font-size: 12px;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  border: 1px solid var(--accent-glow);
+  flex-shrink: 0;
+}
+.ex-title {
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.3px;
+}
+.ex-target {
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 600;
+}
+.ex-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.ex-scheme-badge {
+  background: var(--card-solid);
+  color: var(--accent);
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 5px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--accent-glow);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.ex-type-badge {
+  background: rgba(148, 163, 184, 0.1);
+  color: var(--muted);
+  font-size: 10.5px;
+  font-weight: 800;
+  padding: 4px 8px;
+  border-radius: 7px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.machine-selector-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.machine-label {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--muted);
+}
+.machine-dropdown {
+  flex: 1;
+  min-width: 180px;
+  background: rgba(15, 23, 42, 0.85);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 9px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+.machine-dropdown:focus {
+  border-color: var(--accent);
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent-glow);
+}
+.machine-dropdown option {
+  background: #0f172a;
+  color: #fff;
+}
+/* Sets: one compact grid row per set (number · weight · reps · done); tapping the number
+   reveals tag + RIR on a second line. Fits a phone screen without sideways scrolling. */
+.sets-table-wrap {
+  width: 100%;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(10, 13, 22, 0.5);
+  padding: 2px 8px;
+}
+/* Base table (also used by the preset editor) */
+.sets-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.sets-table th,
+.sets-table td {
+  padding: 6px;
+  text-align: center;
+  vertical-align: middle;
+}
+.sets-table th {
+  font-size: 10px;
+  color: var(--muted);
+  white-space: nowrap;
+  font-weight: 700;
+}
+.sets-table th:first-child {
+  text-align: left;
+}
+/* Workout set rows: a grid per row */
+.exercise-card .sets-table,
+.exercise-card .sets-table thead,
+.exercise-card .sets-table tbody {
+  display: block;
+  width: 100%;
+}
+.exercise-card .sets-table tr {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1.15fr) minmax(0, 1fr) 44px;
+  align-items: center;
+  column-gap: 6px;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+.exercise-card .sets-table thead tr {
+  padding: 8px 0;
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+.exercise-card .sets-table tbody tr:last-child {
+  border-bottom: none;
+}
+.exercise-card .sets-table th,
+.exercise-card .sets-table td {
+  display: block;
+  padding: 0;
+  border: none;
+}
+.set-num-btn {
+  position: relative;
+  width: 30px;
+  height: 40px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: none;
+  color: var(--accent);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0 0 6px;
+}
+.set-num-btn::after {
+  content: '▾';
+  position: absolute;
+  left: 50%;
+  bottom: 2px;
+  transform: translateX(-50%);
+  font-size: 8px;
+  color: var(--muted);
+}
+.sets-table tr.expanded .set-num-btn {
+  background: var(--accent-dim);
+  border-color: var(--accent-glow);
+}
+.sets-table tr.expanded .set-num-btn::after {
+  content: '▴';
+}
+/* Non-working sets are colour-coded on the set number */
+.sets-table tr:has(.set-tag option[value='Warmup']:checked) .set-num-btn {
+  color: var(--warning);
+}
+.sets-table tr:has(.set-tag option[value='Drop Set']:checked) .set-num-btn {
+  color: #c4b5fd;
+}
+.sets-table tr:has(.set-tag option[value='Failure']:checked) .set-num-btn {
+  color: var(--danger);
+}
+.sets-table td.set-extra {
+  display: none;
+  grid-column: 2 / -1;
+  gap: 12px;
+  padding-top: 8px;
+  align-items: center;
+}
+.sets-table tr.expanded td.set-extra {
+  display: flex;
+}
+.set-extra label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--muted);
+}
+.set-extra .set-tag {
+  min-width: 104px;
+}
+.set-extra .set-rir {
+  width: 52px;
+  height: 38px;
+}
+
+.input-field {
+  width: 100%;
+  min-width: 48px;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #fff;
+  padding: 8px;
+  border-radius: 8px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-variant-numeric: tabular-nums;
+  font-size: 14px;
+  font-weight: 700;
+  text-align: center;
+  outline: none;
+  transition: all 0.2s;
+}
+.input-field::placeholder {
+  color: var(--muted);
+  opacity: 0.45;
+  font-size: 11px;
+  font-weight: 500;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+.input-field:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-glow);
+}
+
+.stepper {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  justify-content: center;
+  width: 100%;
+  max-width: 190px;
+  margin: 0 auto;
+}
+.stepper-btn {
+  width: 30px;
+  height: 40px;
+  border: 1px solid var(--card-border);
+  background: rgba(15, 23, 42, 0.9);
+  color: var(--text);
+  border-radius: 8px;
+  font-size: 16px;
+  line-height: 1;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+  flex-shrink: 0;
+}
+.stepper-btn:hover {
+  background: var(--accent-dim);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.stepper-btn:active {
+  transform: scale(0.92);
+}
+.stepper .input-field {
+  flex: 1;
+  min-width: 0;
+  width: auto;
+  height: 40px;
+  padding: 4px 2px;
+  font-size: 14px;
+}
+/* Spinner arrows steal width from small number inputs; the steppers replace them. */
+.sets-table input[type='number'] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+.sets-table input[type='number']::-webkit-inner-spin-button,
+.sets-table input[type='number']::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.set-tag {
+  width: 100%;
+  min-width: 90px;
+  height: 38px;
+  padding: 4px 8px;
+  background: rgba(15, 23, 42, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #fff;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  outline: none;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+.set-tag:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-glow);
+}
+
+.check-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(15, 23, 42, 0.95);
+  color: var(--muted);
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  font-size: 18px;
+}
+.check-btn:hover {
+  background: var(--accent-dim);
+  color: var(--accent);
+  border-color: var(--accent);
+  transform: scale(1.08);
+}
+.check-btn.completed {
+  background: var(--success);
+  color: #052e14;
+  border-color: var(--success);
+}
+@keyframes popCheck {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.25);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.ex-actions-bar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.btn-xs {
+  background: rgba(30, 41, 59, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #e2e8f0;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-height: 34px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.btn-xs:hover {
+  background: rgba(51, 65, 85, 0.95);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.25);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.35);
+}
+
+.bottom-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+  width: 100%;
+  margin-bottom: 24px;
+}
+.bottom-bar .btn {
+  flex: 1;
+  justify-content: center;
+  min-width: 140px;
+}
+
+@media (max-width: 768px) {
+  .bottom-bar {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+  .bottom-bar .btn {
+    width: 100%;
+    min-width: 0;
+    padding: 12px 8px;
+    font-size: 13px;
+  }
+  .bottom-bar .btn-primary {
+    grid-column: 1 / -1;
+  }
+}
+@media (max-width: 480px) {
+  .exercise-card {
+    padding: 16px;
+  }
+  .header-card {
+    padding: 18px;
+  }
+  .week-count {
+    display: none;
+  } /* the dots already show lift vs rest days */
+}
