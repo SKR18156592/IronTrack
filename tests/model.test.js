@@ -71,3 +71,59 @@ describe('rebuildWorkoutDatabase', () => {
     expect(model.WORKOUT['1'].sections.map(s => s.title)).toEqual([...titles].reverse());
   });
 });
+
+describe('section tags', () => {
+  it('gives created sections the same tag on every rebuild', () => {
+    set('iron_custom_sections', [{ day: '1', title: 'Pump Work', color: 'blue' }]);
+    set('iron_custom_exercises', [
+      { category: 'cus_1', prefix: 'cp_a', title: 'Fly', rest: 60, varLabel: 'v', day: '2', sectionTitle: 'Extras' }
+    ]);
+    const tags = () => ['1', '2'].map(d => model.WORKOUT[d].sections.find(s => /Pump Work|Extras/.test(s.title)).tag);
+    rebuildWorkoutDatabase();
+    const first = tags();
+    rebuildWorkoutDatabase();
+    expect(tags()).toEqual(first);
+    expect(first.every(t => /^[A-Za-z0-9_-]+$/.test(t))).toBe(true);
+    expect(first[0]).not.toBe(first[1]);
+  });
+});
+
+describe('getMuscleGroup', () => {
+  const custom = (fields, day = '2') =>
+    set('iron_custom_exercises', [
+      { category: 'cus_1', prefix: 'cp_a', rest: 60, varLabel: 'v', day, sectionTitle: 'Extras', ...fields }
+    ]);
+
+  it('uses the catalog for built-in exercises', () => {
+    expect(model.getMuscleGroup('d1_incline')).toBe('chest');
+    expect(model.getMuscleGroup('d3_trap')).toBe('shoulders');
+  });
+
+  it('uses the group chosen for a custom exercise, whatever day it is on', () => {
+    custom({ title: 'Machine thing', target: '', muscleGroup: 'back' }, '1');
+    expect(model.getMuscleGroup('cus_1')).toBe('back');
+    custom({ title: 'Plank', target: 'Core', muscleGroup: 'none' });
+    expect(model.getMuscleGroup('cus_1')).toBeNull();
+  });
+
+  it('guesses from the title and target when no group was chosen, not from the day', () => {
+    custom({ title: 'Cable Fly', target: 'Chest' }, '2');
+    expect(model.getMuscleGroup('cus_1')).toBe('chest');
+    custom({ title: 'Romanian Deadlift', target: 'Hamstrings & Glutes' }, '1');
+    expect(model.getMuscleGroup('cus_1')).toBe('legs');
+    custom({ title: 'Hanging Knee Raise', target: 'Abs' });
+    expect(model.getMuscleGroup('cus_1')).toBeNull();
+  });
+
+  it('guesses sensibly for tricky names', () => {
+    expect(model.guessMuscleGroup('Rear delt row')).toBe('shoulders');
+    expect(model.guessMuscleGroup('Chest-supported row')).toBe('back');
+    expect(model.guessMuscleGroup('Narrow grip bench press')).toBe('chest');
+    expect(model.guessMuscleGroup('Lateral raise')).toBe('shoulders');
+    expect(model.guessMuscleGroup('Tricep dip')).toBe('arms');
+  });
+
+  it('counts deleted custom exercises toward no group', () => {
+    expect(model.getMuscleGroup('cus_gone')).toBeNull();
+  });
+});
