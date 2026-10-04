@@ -59,6 +59,7 @@ describe('creating an account', () => {
       options: { emailRedirectTo: location.origin + location.pathname }
     });
     expect(el('authMsg').textContent).toMatch(/we sent a link to sam@gmail.com/);
+    expect(el('authMsg').textContent).toMatch(/spelled right, then sign up again/);
     expect(el('authResendBtn').hidden).toBe(false);
     expect(el('authOverlay').classList.contains('active')).toBe(true);
   });
@@ -108,5 +109,17 @@ describe('signing in before confirming', () => {
     await submit();
     expect(el('authMsg').textContent).toBe('Confirm your email first: open the link we sent to sam@gmail.com.');
     expect(el('authResendBtn').hidden).toBe(false);
+  });
+});
+
+describe('without a bot check configured', () => {
+  it('sends no captcha token', async () => {
+    auth.signInWithPassword.mockResolvedValueOnce({
+      data: { user: null, session: null },
+      error: { message: 'Invalid login credentials' }
+    });
+    fill('sam@gmail.com');
+    await submit();
+    expect(auth.signInWithPassword).toHaveBeenCalledWith({ email: 'sam@gmail.com', password: 'secret123' });
   });
 });
