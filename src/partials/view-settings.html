@@ -1,5 +1,20 @@
 <!-- SETTINGS VIEW -->
 <section id="view-settings" class="app-view">
+  <div id="installCard" class="settings-card" hidden>
+    <div class="settings-title" style="font-size: 15px; font-weight: 800">
+      <i data-icon="download" data-size="18"></i> Install app
+    </div>
+    <p class="legal-note" style="text-align: left">
+      Add IronTrack to your home screen. It opens in its own window and works with no signal.
+    </p>
+    <button id="installButton" class="btn btn-primary" data-on-click="installApp" hidden>
+      <i data-icon="download"></i> Install IronTrack
+    </button>
+    <p id="installIosSteps" class="legal-note" style="text-align: left" hidden>
+      In Safari, tap <strong>Share</strong> <i data-icon="share" data-size="14"></i>, then
+      <strong>Add to Home Screen</strong>, then <strong>Add</strong>.
+    </p>
+  </div>
   <div class="settings-card">
     <div class="settings-row" style="flex-direction: column; align-items: flex-start; gap: 10px">
       <span class="settings-title"><i data-icon="palette" data-size="16"></i> Theme Accent</span>

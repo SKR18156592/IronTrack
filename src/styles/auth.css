@@ -140,3 +140,9 @@
 .feedback-link:hover {
   border-color: var(--accent);
 }
+
+/* Settings → Install app: shown only when the app can be installed */
+.settings-card[hidden],
+#installCard [hidden] {
+  display: none;
+}

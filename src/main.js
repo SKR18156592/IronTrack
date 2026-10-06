@@ -12,6 +12,7 @@ import { currentUser, pullFromCloud, startSessionSync, supabaseClient } from './
 import { showTab, showToast, unlockAudio, updateOnlineStatus } from './ui.js';
 import { hydrateIcons } from './icons.js';
 import { listenForActions, registerActions } from './actions.js';
+import * as install from './install.js';
 import * as ui from './ui.js';
 import * as sync from './sync.js';
 import * as analytics from './render/analytics.js';
@@ -54,7 +55,8 @@ registerActions([
   setRows,
   timers,
   exerciseHints,
-  exerciseFocus
+  exerciseFocus,
+  install
 ]);
 listenForActions();
 
@@ -99,6 +101,7 @@ async function init() {
   compute1RM();
   computePlates();
   updateOnlineStatus();
+  install.initInstall();
   document.getElementById('sessionDate').valueAsDate = new Date();
 
   document

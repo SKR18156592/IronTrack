@@ -38,7 +38,8 @@ describe('actions in the markup', () => {
       import('../src/render/set-rows.js'),
       import('../src/render/timers.js'),
       import('../src/render/exercise-hints.js'),
-      import('../src/render/exercise-focus.js')
+      import('../src/render/exercise-focus.js'),
+      import('../src/install.js')
     ]);
     registerActions(mods);
     const names = new Set(markup.flatMap(([, text]) => [...text.matchAll(/data-on-[a-z-]+="(\w+)"/g)].map(m => m[1])));
