@@ -1,6 +1,36 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" fill="#0a0a0f"/>
-  <circle cx="256" cy="256" r="150" fill="#00f3ff"/>
-  <circle cx="256" cy="256" r="75" fill="#0a0a0f"/>
-  <path d="M256 170 L290 245 L370 245 L305 290 L330 370 L256 320 L182 370 L207 290 L142 245 L222 245 Z" fill="#39ff14"/>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#141428"/>
+      <stop offset="1" stop-color="#05050a"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#00f3ff" stop-opacity="0.45"/>
+      <stop offset="0.6" stop-color="#00f3ff" stop-opacity="0.08"/>
+      <stop offset="1" stop-color="#00f3ff" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="bolt" x1="0.3" y1="0" x2="0.7" y2="1">
+      <stop offset="0" stop-color="#00f3ff"/>
+      <stop offset="1" stop-color="#39ff14"/>
+    </linearGradient>
+    <linearGradient id="steel" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f4f7fb"/>
+      <stop offset="0.5" stop-color="#b9c2cf"/>
+      <stop offset="1" stop-color="#6b7584"/>
+    </linearGradient>
+    <filter id="neon" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="10" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <circle cx="256" cy="256" r="230" fill="url(#glow)"/>
+  <g fill="url(#steel)">
+    <rect x="104" y="240" width="304" height="32" rx="10"/>
+    <rect x="84" y="176" width="40" height="160" rx="14"/>
+    <rect x="124" y="196" width="32" height="120" rx="12"/>
+    <rect x="388" y="176" width="40" height="160" rx="14"/>
+    <rect x="356" y="196" width="32" height="120" rx="12"/>
+  </g>
+  <path d="M306 62 L146 294 H238 L204 450 L368 208 H272 Z" fill="url(#bolt)" stroke="#0a0a0f" stroke-width="18" stroke-linejoin="round" paint-order="stroke" filter="url(#neon)"/>
 </svg>

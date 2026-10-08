@@ -1,6 +1,39 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="96" fill="#0a0a0f"/>
-  <path d="M256 88 L316 224 L460 224 L344 312 L384 456 L256 368 L128 456 L168 312 L52 224 L196 224 Z" stroke="#39ff14" stroke-width="24" fill="none"/>
-  <circle cx="256" cy="256" r="56" fill="#ff007f"/>
-  <path d="M256 120 L300 224 L420 224 L320 304 L360 432 L256 352 L152 432 L192 304 L92 224 L212 224 Z" stroke="#00f3ff" stroke-width="16" fill="none" opacity="0.7"/>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#141428"/>
+      <stop offset="1" stop-color="#05050a"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#00f3ff" stop-opacity="0.45"/>
+      <stop offset="0.6" stop-color="#00f3ff" stop-opacity="0.08"/>
+      <stop offset="1" stop-color="#00f3ff" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="bolt" x1="0.3" y1="0" x2="0.7" y2="1">
+      <stop offset="0" stop-color="#00f3ff"/>
+      <stop offset="1" stop-color="#39ff14"/>
+    </linearGradient>
+    <linearGradient id="steel" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f4f7fb"/>
+      <stop offset="0.5" stop-color="#b9c2cf"/>
+      <stop offset="1" stop-color="#6b7584"/>
+    </linearGradient>
+    <filter id="neon" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="10" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <clipPath id="r"><rect width="512" height="512" rx="96"/></clipPath>
+  <g clip-path="url(#r)">
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <circle cx="256" cy="256" r="230" fill="url(#glow)"/>
+  <g fill="url(#steel)">
+    <rect x="104" y="240" width="304" height="32" rx="10"/>
+    <rect x="84" y="176" width="40" height="160" rx="14"/>
+    <rect x="124" y="196" width="32" height="120" rx="12"/>
+    <rect x="388" y="176" width="40" height="160" rx="14"/>
+    <rect x="356" y="196" width="32" height="120" rx="12"/>
+  </g>
+  <path d="M306 62 L146 294 H238 L204 450 L368 208 H272 Z" fill="url(#bolt)" stroke="#0a0a0f" stroke-width="18" stroke-linejoin="round" paint-order="stroke" filter="url(#neon)"/>
+  </g>
 </svg>
